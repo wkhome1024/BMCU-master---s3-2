@@ -8,6 +8,8 @@
         "ostream": "cpp",
         "sstream": "cpp",
         "streambuf": "cpp",
-        "string_view": "cpp"
+        "string_view": "cpp",
+        "array": "cpp",
+        "string": "cpp"
     }
 }

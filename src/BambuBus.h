@@ -1,4 +1,5 @@
 #pragma once
+#include <main.h>
 #include "Flash_saves.h"
 
 #define Bambubus_version 5

@@ -1,8 +1,13 @@
 #pragma once
 #include <Arduino.h>
-#include "stdlib.h"
-#include "BambuBus.h"
+#include <SPI.h>
+#include <WiFi.h>
+#include "stdio.h"
 #include "time64.h"
+#include "485.h"
+#include "BambuBus.h"
+#include "Flash_saves.h"
+#include "switch.h"
 
 
 
