@@ -49,6 +49,7 @@ extern "C"
     extern package_type BambuBus_run();
 #define max_filament_num 4
     extern bool Bambubus_read();
+    extern void Bambu_readuart();
     extern void Bmcu_readuart();
     extern void Bambubus_set_need_to_save();
     extern int get_now_filament_num();
@@ -62,6 +63,8 @@ extern "C"
     _filament_motion_state_set get_filament_motion(int num);
     extern void set_filament_motion(int num, _filament_motion_state_set motion);
     extern bool BambuBus_if_on_print();
+    extern char* Bmcu_set_josn(int ams_num);
+    extern int get_AMS_num_max();
 #ifdef __cplusplus
 }
 #endif

@@ -11,9 +11,9 @@
 #define BMCU_RTS_PIN 0
 
 
-void send_bambu_uart(const unsigned char *data, uint16_t length)
+void send_bambu_uart(const unsigned char *data, size_t length)
 {
-    Serial.write(*data);
+    Serial.write(data, length);
 }
 
 void BambuBUS_UART_Init()
@@ -27,9 +27,9 @@ void BambuBUS_UART_Init()
 }
 
 
-void send_bmcu_uart(const unsigned char *data, uint16_t length)
+void send_bmcu_uart(const unsigned char *data, size_t length)
 {
-    Serial1.write(*data);
+    Serial1.write(data, length);
 }
 
 void BMCU_UART_Init()
@@ -38,7 +38,7 @@ void BMCU_UART_Init()
     while (!Serial1) {
         delay(10);
     }
-    Serial.setPins(-1, -1, -1, BMCU_RTS_PIN);
+    Serial1.setPins(-1, -1, -1, BMCU_RTS_PIN);
     Serial1.setMode(UART_MODE_RS485_HALF_DUPLEX);
 }
 

@@ -8,7 +8,8 @@
 #include "BambuBus.h"
 #include "Flash_saves.h"
 #include "switch.h"
-
+#include <PubSubClient.h>
+#include <HTTPClient.h>
 
 
 
