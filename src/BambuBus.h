@@ -53,7 +53,6 @@ extern "C"
     extern void Bmcu_readuart();
     extern void Bambubus_set_need_to_save();
     extern int get_now_filament_num();
-    extern void serialEvent();
     //extern uint16_t get_now_BambuBus_device_type();
     extern void reset_filament_meters(int num);
     extern void add_filament_meters(int num, float meters);
@@ -63,8 +62,9 @@ extern "C"
     _filament_motion_state_set get_filament_motion(int num);
     extern void set_filament_motion(int num, _filament_motion_state_set motion);
     extern bool BambuBus_if_on_print();
-    extern char* Bmcu_set_josn(int ams_num);
+    extern String Bmcu_set_json(int ams_num ,int i);
     extern int get_AMS_num_max();
+    extern void Bmcu_reset();
 #ifdef __cplusplus
 }
 #endif

@@ -10,6 +10,8 @@
         "streambuf": "cpp",
         "string_view": "cpp",
         "array": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "typeinfo": "cpp",
+        "random": "cpp"
     }
 }

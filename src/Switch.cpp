@@ -52,15 +52,20 @@ uint8_t get_filament_map_to(uint8_t num)
 }
 
 std::pair<uint8_t, uint8_t> get_bmcu_and_channel(uint8_t num) {
-    uint8_t number = get_filament_map_to(num);
-    uint8_t bmcuNumber = number / 4;      // 计算 AMS 编号
-    uint8_t channelNumber = number % 4; // 计算通道编号
-    if (num >= 4)
+
+
+    if (num < 4)
     {
-       bmcuNumber = 0;
-       channelNumber = num;
+        uint8_t number = get_filament_map_to(num);
+        uint8_t bmcuNumber = number / 4;      // 计算 AMS 编号
+        uint8_t channelNumber = number % 4; // 计算通道编号
+        return {bmcuNumber, channelNumber};
     }
-    return {bmcuNumber, channelNumber};
+    else 
+    {
+        return {0, num};  
+    }
+
 }
 
 bool Switch_set_filament(unsigned char *buf, int length, uint8_t AMS_num, uint8_t read_num)
@@ -89,6 +94,7 @@ bool Switch_set_filament(unsigned char *buf, int length, uint8_t AMS_num, uint8_
             switch_save.filament_map_to[2] = read_num * 4 + 2;
             switch_save.filament_map_to[3] = read_num * 4 + 3;
             Switch_set_need_to_delay();
+            Bmcu_reset();
         }
 
 
