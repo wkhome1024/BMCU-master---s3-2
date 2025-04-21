@@ -1,7 +1,7 @@
 #include "switch.h"
 #include "BambuBus.h"
 
-#define BMCUSwitch_version 3
+#define BMCUSwitch_version 6
 #define use_flash_addr ((uint32_t)0x0800)
 struct alignas(4) switch_save_struct
 {
@@ -94,7 +94,7 @@ bool Switch_set_filament(unsigned char *buf, int length, uint8_t AMS_num, uint8_
             switch_save.filament_map_to[2] = read_num * 4 + 2;
             switch_save.filament_map_to[3] = read_num * 4 + 3;
             Switch_set_need_to_delay();
-            Bmcu_reset();
+            //Bmcu_reset();
         }
 
 

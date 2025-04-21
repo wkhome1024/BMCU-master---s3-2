@@ -2,7 +2,7 @@
 #include <main.h>
 #include "Flash_saves.h"
 
-#define Bambubus_version 5
+#define Bambubus_version 6
 
 #ifdef __cplusplus
 extern "C"

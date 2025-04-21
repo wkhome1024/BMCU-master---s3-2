@@ -121,44 +121,43 @@ void loop()
           digitalWrite(LED_BUILTIN1, LOW);
           digitalWrite(LED_BUILTIN2, HIGH);
         }
-        if (WiFi.status() == WL_CONNECTED && 0)
+      }
+      if (WiFi.status() == WL_CONNECTED && stu == BambuBus_long_package_MC_online)
+      {
+
+        if (mqtt_count[postMsgId] == 0)
+          mqtt_count[postMsgId] = time_now + 10000;
+        if (mqtt_count[postMsgId] < time_now)
         {
+          uint8_t ams_num = postMsgId /4;
+          uint8_t tay_num = postMsgId %4;
+          String temp;
+          //String tay[4] = {"11","22","33","44"};
+          //String temp = ("{\"tay1\":" +Bmcu_set_json(postMsgId,0) +", \"tay2\":" +Bmcu_set_json(postMsgId,1) +",\"tay3\":" +Bmcu_set_json(postMsgId,2) +",\"tay4\":" +Bmcu_set_json(postMsgId,3) +"}");
+          //client.publish(topic[postMsgId], temp.c_str());
 
-          if (mqtt_count[postMsgId] == 0)
-            mqtt_count[postMsgId] = time_now + 10000;
-          if (mqtt_count[postMsgId] < time_now)
+          if (tay_num == 0)
+              temp = ("{\"tay1\":" +Bmcu_set_json(ams_num,tay_num) +"}");
+          if (tay_num == 1)
+              temp = ("{\"tay2\":" +Bmcu_set_json(ams_num,tay_num) +"}");
+          if (tay_num == 2)
+              temp = ("{\"tay3\":" +Bmcu_set_json(ams_num,tay_num) +"}");
+          if (tay_num == 3)
+              temp = ("{\"tay4\":" +Bmcu_set_json(ams_num,tay_num) +"}");
+
+          client.publish(topic[ams_num], temp.c_str());
+          postMsgId++;
+          if (postMsgId > ((get_AMS_num_max() *4) - 1))
           {
-            uint8_t ams_num = postMsgId /4;
-            uint8_t tay_num = postMsgId %4;
-            String temp;
-            //String tay[4] = {"11","22","33","44"};
-            //String temp = ("{\"tay1\":" +Bmcu_set_json(postMsgId,0) +", \"tay2\":" +Bmcu_set_json(postMsgId,1) +",\"tay3\":" +Bmcu_set_json(postMsgId,2) +",\"tay4\":" +Bmcu_set_json(postMsgId,3) +"}");
-            //client.publish(topic[postMsgId], temp.c_str());
-
-            if (tay_num == 0)
-                temp = ("{\"tay1\":" +Bmcu_set_json(ams_num,tay_num) +"}");
-            if (tay_num == 1)
-                temp = ("{\"tay2\":" +Bmcu_set_json(ams_num,tay_num) +"}");
-            if (tay_num == 2)
-                temp = ("{\"tay3\":" +Bmcu_set_json(ams_num,tay_num) +"}");
-            if (tay_num == 3)
-                temp = ("{\"tay4\":" +Bmcu_set_json(ams_num,tay_num) +"}");
-
-            client.publish(topic[ams_num], temp.c_str());
-            postMsgId++;
-            if (postMsgId > ((get_AMS_num_max() *4) - 1))
+            postMsgId = 0;
+            for (size_t i = 0; i < 32; i++)
             {
-              postMsgId = 0;
-              for (size_t i = 0; i < 32; i++)
-              {
-                mqtt_count[i] = 0;
-              }
+              mqtt_count[i] = 0;
             }
           }
         }
-
-        
       }
+
       if (Switch_need_to_save())
         Switch_save();
       if (Switch_need_to_delay())

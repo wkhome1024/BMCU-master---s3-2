@@ -224,62 +224,71 @@ void Bambu_readuart()
         RX_IRQ(inChar);
     }
 }
+
 uint8_t buf_Bmcu[50];
 uint8_t buf_B[50];
 uint8_t Bmcu_have_data = 0;
 CRC8 _RX_BMCU_crcx(0x39, 0x66, 0x00, false, false);
-void Bmcu_readuart()
+void RX_BMCU(char inChar)
 {
     static int _index1 = 0;
     static int length = 0;
+
+    if (_index1 == 0)
+    {
+        if (inChar == 0x7D)
+        {
+             _RX_BMCU_crcx.restart();
+             _RX_BMCU_crcx.add(0x7D);
+             buf_B[0] = 0x7D;
+             _index1 = 1;
+        }
+        return;
+    }
+    else
+    {              
+        buf_B[_index1] = inChar;
+        if (_index1 == 1)
+        {
+            length = inChar;
+        }
+        if (_index1 < length - 1)
+        {
+
+            _RX_BMCU_crcx.add(inChar);
+        }
+        else if (_index1 == length - 1)
+        {
+            if (inChar != _RX_BMCU_crcx.calc())
+            {
+                _index1 = 0;
+                return;
+            }
+        }
+        ++_index1;
+        if (_index1 >= length)
+        {
+            _index1 = 0;
+            memcpy(buf_Bmcu, buf_B, length);
+            Bmcu_have_data = length;
+        }
+        if (_index1 >= 49)
+        {
+            _index1 = 0;
+        }
+    }
+    
+}
+
+void Bmcu_readuart()
+{
     while (Serial1.available() > 0)
     {
         char inChar = (char)Serial1.read(); // 读取串口1数据
-        if (_index1 == 0)
-        {
-            if (inChar = 0x7D)
-            {
-                _RX_BMCU_crcx.restart();
-                _RX_BMCU_crcx.add(0x7D);
-                buf_B[0] = 0x7D;
-                _index1 = 1;
-            }
-            return;
-        }
-        else
-        {
-            if (_index1 == 1)
-            {
-                length = inChar;
-            }
-            if (_index1 < length - 1)
-            {
-                buf_B[_index1] = inChar;
-                _RX_BMCU_crcx.add(inChar);
-            }
-            else if (_index1 == length - 1)
-            {
-                if (inChar != _RX_BMCU_crcx.calc())
-                {
-                    _index1 = 0;
-                    return;
-                }
-            }
-            ++_index1;
-            if (_index1 >= length)
-            {
-                _index1 = 0;
-                memcpy(buf_Bmcu, buf_B, length);
-                Bmcu_have_data = length;
-                break;
-            }
-            if (_index1 >= 49)
-            {
-                _index1 = 0;
-            }
-        }
+        RX_BMCU(inChar);
     }
 }
+
 
 void BambuBus_init()
 {
@@ -577,7 +586,7 @@ uint8_t get_filament_left_char(uint8_t AMS_num)
     return data;
 }
 
-void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigned char read_num)
+void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigned char read_num, unsigned char read_num2)
 {
     float meters = 0;
     uint16_t pressure = 0xFFFF;
@@ -599,10 +608,10 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
             motion_flag = 0x04;
         }
     }
-    set_buf[0] = AMS_num;
+    set_buf[0] = 0x00;        //A1 ams_num
     set_buf[1] = 0x00;
     set_buf[2] = motion_flag;
-    set_buf[3] = read_num; // filament number or maybe using number
+    set_buf[3] = read_num2; // filament number or maybe using number
     memcpy(set_buf + 4, &meters, sizeof(float));
     memcpy(set_buf + 8, &pressure, sizeof(uint16_t));
     set_buf[24] = get_filament_left_char(AMS_num);
@@ -763,10 +772,6 @@ void send_for_Hit(unsigned char *buf, int length)
     if (!bmcu_onprint || sw1)
     {
         sw1 = false;
-        Hit_res[3] = AMS_num_c;
-        Hit_res[4] = Tay_num_c;
-        AMS_num_c++; // 每个心跳包轮询一个bmcu_tay
-
         if (AMS_num_c > AMS_num_max)
         {
             Tay_num_c++;
@@ -776,6 +781,11 @@ void send_for_Hit(unsigned char *buf, int length)
         {
             Tay_num_c = 0;
         }
+        Hit_res[3] = AMS_num_c;
+        Hit_res[4] = Tay_num_c;
+        Hit_res[2] = 0x20;
+        AMS_num_c++; // 每个心跳包轮询一个bmcu_tay
+
         if (bmcu_reset)
         {
             Hit_res[5] = 0xE0;      //reset标志
@@ -785,6 +795,7 @@ void send_for_Hit(unsigned char *buf, int length)
     else
     {
         sw1 = true;
+        Hit_res[2] = 0x20;
         Hit_res[3] = data_save.BambuBus_now_filament_num / 4;
         Hit_res[4] = data_save.BambuBus_now_filament_num % 4;
     }
@@ -840,16 +851,16 @@ void send_for_motion_short(unsigned char *buf, int length)
     unsigned char fliment_motion_flag = buf[8];
 
     auto number = get_bmcu_and_channel(read_num);
-    AMS_num = number.first;
-    read_num = number.second;
+    uint8_t AMS_num4 = number.first;
+    uint8_t read_num4 = number.second;
 
     Motion_res[2] = 0x03;
-    Motion_res[3] = AMS_num;
-    Motion_res[4] = read_num;
+    Motion_res[3] = AMS_num4;
+    Motion_res[4] = read_num4;
     Motion_res[5] = statu_flags;
     Motion_res[6] = fliment_motion_flag;
 
-    if (!set_motion(AMS_num, read_num, statu_flags, fliment_motion_flag))
+    if (!set_motion(AMS_num4, read_num4, statu_flags, fliment_motion_flag))
         return;
     if (bmcu_package_num == 3 || bmcu_package_num == 6)
     {
@@ -858,7 +869,7 @@ void send_for_motion_short(unsigned char *buf, int length)
     }
     if (bmcu_package_num == 2 || bmcu_package_num == 5 || bmcu_package_num == 8)
     {
-        set_motion_res_datas(Cxx_res + 5, AMS_num, read_num);
+        set_motion_res_datas(Cxx_res + 5, AMS_num4, read_num4, read_num);
         package_send_with_crc(Cxx_res, sizeof(Cxx_res));
     }
 
@@ -913,9 +924,11 @@ void send_for_motion_long(unsigned char *buf, int length)
     unsigned char fliment_motion_flag = buf[7];
     unsigned char read_num = buf[9];
 
+
+
     auto number = get_bmcu_and_channel(read_num);
-    AMS_num = number.first;
-    read_num = number.second;
+    uint8_t AMS_num4 = number.first;
+    uint8_t read_num4 = number.second;
 
     Motion_long_res[2] = 0x04;
     Motion_long_res[3] = AMS_num;
@@ -939,7 +952,7 @@ void send_for_motion_long(unsigned char *buf, int length)
             filament_flag_NFC |= 1 << i;
         }
     }
-    if (!set_motion(AMS_num, read_num, statu_flags, fliment_motion_flag))
+    if (!set_motion(AMS_num4, read_num4, statu_flags, fliment_motion_flag))
         return;
     /*if (need_res_for_06)
     {
@@ -956,17 +969,17 @@ void send_for_motion_long(unsigned char *buf, int length)
     }
     else*/
 
-    {
-        Dxx_res[1] = 0xC0 | (package_num << 3);
-        Dxx_res[5] = AMS_num;
-        Dxx_res[9] = filament_flag_on;
-        Dxx_res[10] = filament_flag_on - filament_flag_NFC;
-        Dxx_res[11] = filament_flag_on - filament_flag_NFC;
-        Dxx_res[12] = read_num;
-        Dxx_res[13] = filament_flag_NFC;
+    Dxx_res[1] = 0xC0 | (package_num << 3);
+    Dxx_res[5] = AMS_num;                       //A1 ams_num
+    Dxx_res[9] = filament_flag_on;
+    Dxx_res[10] = filament_flag_on - filament_flag_NFC;
+    Dxx_res[11] = filament_flag_on - filament_flag_NFC;
+    Dxx_res[12] = read_num;
+    Dxx_res[13] = filament_flag_NFC;
 
-        set_motion_res_datas(Dxx_res + 17, AMS_num, read_num);
-    }
+
+    set_motion_res_datas(Dxx_res + 17, AMS_num4, read_num4, read_num);
+    
     if (last_detect != 0)
     {
         if (last_detect > 10)
@@ -1236,7 +1249,11 @@ void send_for_long_packge_version(unsigned char *buf, int length)
     Bambubus_long_package_send(&data);
 }
 unsigned char s = 0x01;
-
+unsigned char filament_res[] = {0x7D, 0x0A, 0x08,
+                                0x00, 0x00, // amsnum + taynum
+                                0x00, 0x00, 0x00, 0x00, // 耗材颜色
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // 耗材名字
+                                0x00};      // crc8 校验
 unsigned char Set_filament_res[] = {0x3D, 0xC0, 0x08, 0xB2, 0x08, 0x60, 0xB4, 0x04};
 void send_for_set_filament(unsigned char *buf, int length)
 {
@@ -1244,22 +1261,41 @@ void send_for_set_filament(unsigned char *buf, int length)
     uint8_t AMS_num = read_num >> 4;
     read_num = read_num & 0x0F;
 
+    auto number = get_bmcu_and_channel(read_num);
+    uint8_t AMS_num1 = number.first;
+    uint8_t read_num1 = number.second;
 
     if (Switch_set_filament(buf, length, AMS_num, read_num))
     {
-        memcpy(data_save.filament[AMS_num][read_num].ID, buf + 7, sizeof(data_save.filament[AMS_num][read_num].ID));
+        memcpy(data_save.filament[AMS_num1][read_num1].ID, buf + 7, sizeof(data_save.filament[AMS_num1][read_num1].ID));
 
-        data_save.filament[AMS_num][read_num].color_R = buf[15];
-        data_save.filament[AMS_num][read_num].color_G = buf[16];
-        data_save.filament[AMS_num][read_num].color_B = buf[17];
-        data_save.filament[AMS_num][read_num].color_A = buf[18];
+        data_save.filament[AMS_num1][read_num1].color_R = buf[15];
+        data_save.filament[AMS_num1][read_num1].color_G = buf[16];
+        data_save.filament[AMS_num1][read_num1].color_B = buf[17];
+        data_save.filament[AMS_num1][read_num1].color_A = buf[18];
 
-        memcpy(&data_save.filament[AMS_num][read_num].temperature_min, buf + 19, 2);
-        memcpy(&data_save.filament[AMS_num][read_num].temperature_max, buf + 21, 2);
-        memcpy(data_save.filament[AMS_num][read_num].name, buf + 23, sizeof(data_save.filament[AMS_num][read_num].name));
+        memcpy(&data_save.filament[AMS_num1][read_num1].temperature_min, buf + 19, 2);
+        memcpy(&data_save.filament[AMS_num1][read_num1].temperature_max, buf + 21, 2);
+        memcpy(data_save.filament[AMS_num1][read_num1].name, buf + 23, sizeof(data_save.filament[AMS_num1][read_num1].name));
+    
+        package_send_with_crc(Set_filament_res, sizeof(Set_filament_res));
+        Bambubus_set_need_to_save();
+    
     }
-    package_send_with_crc(Set_filament_res, sizeof(Set_filament_res));
-    Bambubus_set_need_to_save();
+    else
+    {
+        filament_res[2] = 0x08;
+        filament_res[3] = AMS_num1;
+        filament_res[4] = read_num1;
+
+        filament_res[5] = buf[15];
+        filament_res[6] = buf[16];
+        filament_res[7] = buf[17];
+        filament_res[8] = buf[18];
+        memcpy(filament_res + 9, buf + 23, sizeof(data_save.filament[AMS_num1][read_num1].name));
+        Bmcu_package_send_with_crc(filament_res,sizeof(filament_res));
+    }
+
 }
 
 package_type BambuBus_run()
