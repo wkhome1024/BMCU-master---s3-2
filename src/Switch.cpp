@@ -12,15 +12,15 @@ struct alignas(4) switch_save_struct
 } switch_save;
 
 const unsigned char select_bmcu_filament_name[] = "TPU-AMS"; //ID: GFU02
-//const unsigned char set_bmcu_num_color[4] = {0xFF, 0xFF, 0xFF, 0xFF}; //white
+const unsigned char reset_bmcu_meter_color[4] = {0xFF, 0xFF, 0xFF, 0xFF}; //white
 //const unsigned char set_bmcu_auto_color[4] = {0xD3, 0xC5, 0xA3, 0xFF};//沙漠黄
 const unsigned char haset_bmcu_channel_color[4] = {0x40, 0x61, 0x00, 0xFF};
 //const unsigned char hacheck_bmcu_channel_color[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
 const unsigned char reset_bmcu_channel_color[4] = {0xFF, 0xF1, 0x44, 0xFF}; //黄色
-//const unsigned char set_bmcu_filament_color0[4] = {0xAF, 0x79, 0x33, 0xFF}; //棕色
-//const unsigned char set_bmcu_filament_color1[4] = {0x89, 0x89, 0x89, 0xFF}; //岩石灰
-//const unsigned char set_bmcu_filament_color2[4] = {0xBC, 0xBC, 0xBC, 0xFF}; //灰色
-//const unsigned char set_bmcu_filament_color3[4] = {0x16, 0x16, 0x16, 0xFF}; //黑色
+const unsigned char set_bmcu_filament_color0[4] = {0xAF, 0x79, 0x33, 0xFF}; //棕色
+const unsigned char set_bmcu_filament_color1[4] = {0x89, 0x89, 0x89, 0xFF}; //岩石灰
+const unsigned char set_bmcu_filament_color2[4] = {0xBC, 0xBC, 0xBC, 0xFF}; //灰色
+const unsigned char set_bmcu_filament_color3[4] = {0x16, 0x16, 0x16, 0xFF}; //黑色
 void Switch_init()
 {
     bool _init_ready = Switch_read();
@@ -63,12 +63,12 @@ std::pair<uint8_t, uint8_t> get_bmcu_and_channel(uint8_t num) {
     }
     else 
     {
-        return {0, num};  
+        return {11, num};  
     }
 
 }
 
-bool Switch_set_filament(unsigned char *buf, int length, uint8_t AMS_num, uint8_t read_num)
+uint8_t Switch_set_filament(unsigned char *buf, int length, uint8_t AMS_num, uint8_t read_num)
 {
     if (memcmp(select_bmcu_filament_name, buf + 23, sizeof(select_bmcu_filament_name)) == 0)
     { 
@@ -82,7 +82,7 @@ bool Switch_set_filament(unsigned char *buf, int length, uint8_t AMS_num, uint8_
                 {
                     switch_save.filament_map_to[read_num] = i;
                     Switch_set_need_to_save();
-                    return false;
+                    return 0xEE;
                 }
                 
             }
@@ -94,15 +94,35 @@ bool Switch_set_filament(unsigned char *buf, int length, uint8_t AMS_num, uint8_
             switch_save.filament_map_to[2] = read_num * 4 + 2;
             switch_save.filament_map_to[3] = read_num * 4 + 3;
             Switch_set_need_to_delay();
-            //Bmcu_reset();
+            Switch_set_need_to_save();
+            return 0x0D;
+        }
+        else if(memcmp(buf + 15, reset_bmcu_meter_color, 4) == 0)
+        {
+            return 0xD1;
+        }
+        else if(memcmp(buf + 15, set_bmcu_filament_color0, 4) == 0)
+        {
+            return 0xD3;
+        }
+        else if(memcmp(buf + 15, set_bmcu_filament_color1, 4) == 0)
+        {
+            return 0xD5;
+        }
+        else if(memcmp(buf + 15, set_bmcu_filament_color2, 4) == 0)
+        {
+            return 0xD7;
+        }
+        else if(memcmp(buf + 15, set_bmcu_filament_color3, 4) == 0)
+        {
+            return 0xD9;
         }
 
+        return 0xE0;
 
-        Switch_set_need_to_save();
-        return false;
     }
 
-    return true;
+    return 0;
 }
 bool switch_need_to_save = false;
 void Switch_set_need_to_save()

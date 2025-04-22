@@ -785,12 +785,7 @@ void send_for_Hit(unsigned char *buf, int length)
         Hit_res[4] = Tay_num_c;
         Hit_res[2] = 0x20;
         AMS_num_c++; // 每个心跳包轮询一个bmcu_tay
-
-        if (bmcu_reset)
-        {
-            Hit_res[5] = 0xE0;      //reset标志
-            bmcu_reset = false;
-        }      
+    
     }
     else
     {
@@ -862,12 +857,12 @@ void send_for_motion_short(unsigned char *buf, int length)
 
     if (!set_motion(AMS_num4, read_num4, statu_flags, fliment_motion_flag))
         return;
-    if (bmcu_package_num == 3 || bmcu_package_num == 6)
+    if (bmcu_package_num == 2 || bmcu_package_num == 5 || bmcu_package_num == 8)
     {
         // delay(1);
         Bmcu_package_send_with_crc(Motion_res, sizeof(Motion_res)); // 重写amsnum 转发bmcu
     }
-    if (bmcu_package_num == 2 || bmcu_package_num == 5 || bmcu_package_num == 8)
+    if (bmcu_package_num == 1 || bmcu_package_num == 4 || bmcu_package_num == 7)
     {
         set_motion_res_datas(Cxx_res + 5, AMS_num4, read_num4, read_num);
         package_send_with_crc(Cxx_res, sizeof(Cxx_res));
@@ -931,8 +926,8 @@ void send_for_motion_long(unsigned char *buf, int length)
     uint8_t read_num4 = number.second;
 
     Motion_long_res[2] = 0x04;
-    Motion_long_res[3] = AMS_num;
-    Motion_long_res[4] = read_num;
+    Motion_long_res[3] = AMS_num4;
+    Motion_long_res[4] = read_num4;
     Motion_long_res[5] = statu_flags;
     Motion_long_res[6] = fliment_motion_flag;
 
@@ -1251,8 +1246,7 @@ void send_for_long_packge_version(unsigned char *buf, int length)
 unsigned char s = 0x01;
 unsigned char filament_res[] = {0x7D, 0x0A, 0x08,
                                 0x00, 0x00, // amsnum + taynum
-                                0x00, 0x00, 0x00, 0x00, // 耗材颜色
-                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   // 耗材名字
+                                0x00, 0x00, // 公用控制位 + 专用控制位
                                 0x00};      // crc8 校验
 unsigned char Set_filament_res[] = {0x3D, 0xC0, 0x08, 0xB2, 0x08, 0x60, 0xB4, 0x04};
 void send_for_set_filament(unsigned char *buf, int length)
@@ -1265,7 +1259,12 @@ void send_for_set_filament(unsigned char *buf, int length)
     uint8_t AMS_num1 = number.first;
     uint8_t read_num1 = number.second;
 
-    if (Switch_set_filament(buf, length, AMS_num, read_num))
+    uint8_t sw2 = Switch_set_filament(buf, length, AMS_num, read_num);
+
+    filament_res[5] = 0x00;
+    filament_res[6] = 0x00;
+
+    if (!sw2)
     {
         memcpy(data_save.filament[AMS_num1][read_num1].ID, buf + 7, sizeof(data_save.filament[AMS_num1][read_num1].ID));
 
@@ -1283,16 +1282,23 @@ void send_for_set_filament(unsigned char *buf, int length)
     
     }
     else
-    {
+    {   
         filament_res[2] = 0x08;
         filament_res[3] = AMS_num1;
         filament_res[4] = read_num1;
+        filament_res[5] = 0xE0;           //bmcu_reset
 
-        filament_res[5] = buf[15];
-        filament_res[6] = buf[16];
-        filament_res[7] = buf[17];
-        filament_res[8] = buf[18];
-        memcpy(filament_res + 9, buf + 23, sizeof(data_save.filament[AMS_num1][read_num1].name));
+        if (sw2 == 0xD1)
+           filament_res[6] = 0xD1;        //reset meter       白色
+        else if (sw2 == 0xD3)
+           filament_res[6] = 0xD3;        //棕色  --电机标定
+        else if (sw2 == 0xD5)
+           filament_res[6] = 0xD5;
+        else if (sw2 == 0xD7)
+           filament_res[6] = 0xD7;
+        else if (sw2 == 0xD9)
+           filament_res[6] = 0xD9;        //选中激活为onuse    黑色
+
         Bmcu_package_send_with_crc(filament_res,sizeof(filament_res));
     }
 
