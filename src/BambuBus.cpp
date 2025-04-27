@@ -857,12 +857,12 @@ void send_for_motion_short(unsigned char *buf, int length)
 
     if (!set_motion(AMS_num4, read_num4, statu_flags, fliment_motion_flag))
         return;
-    if (bmcu_package_num == 2 || bmcu_package_num == 5 || bmcu_package_num == 8)
+    if (bmcu_package_num == 0 || bmcu_package_num == 3 || bmcu_package_num == 6 || 1)
     {
         // delay(1);
         Bmcu_package_send_with_crc(Motion_res, sizeof(Motion_res)); // 重写amsnum 转发bmcu
     }
-    if (bmcu_package_num == 1 || bmcu_package_num == 4 || bmcu_package_num == 7)
+    if (bmcu_package_num > 1 || 1)
     {
         set_motion_res_datas(Cxx_res + 5, AMS_num4, read_num4, read_num);
         package_send_with_crc(Cxx_res, sizeof(Cxx_res));
