@@ -9,6 +9,11 @@
 #include "Flash_saves.h"
 #include "switch.h"
 #include <PubSubClient.h>
+#include <sht30.h>
+#include <Adafruit_NeoPixel.h>
+
+#define SYS_RGB 8    // RGB灯针脚
+#define ledPixels 3  //led数量
 
 
 

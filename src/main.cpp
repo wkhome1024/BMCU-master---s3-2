@@ -10,13 +10,26 @@ const char *mqtt_username = "wk";
 const char *mqtt_password = "iloveyou12";
 
 #define product_id "bmcu-hub" // 产品ID
-#define device_id "01"        // 设备ID
+#define device_id "s3"        // 设备ID
 
 int postMsgId = 0; // 消息ID初始值为0
-int mqtt_count[32];
 
 WiFiClient espclient;           // 创建一个WiFiClient对象
 PubSubClient client(espclient); // 创建一个PubSubClient对象
+
+Adafruit_NeoPixel SYS_leds(ledPixels, SYS_RGB, NEO_GRB + NEO_KHZ800);
+void LED_init()
+{
+    SYS_leds.begin();
+    SYS_leds.clear();
+    SYS_leds.setBrightness(50);
+    SYS_leds.show();
+}
+
+
+
+
+char mqtt_id[20];
 
 void setup()
 {
@@ -24,8 +37,9 @@ void setup()
   EEPROM.begin(4096); // 申请存储空间
   BambuBus_init();
   Switch_init();
-  LED_Init();
-
+  Sht30_init();
+  LED_init();
+  tft_init();
   // 检查是否有保存的Wi-Fi配置信息
   if (WiFi.status() != WL_CONNECTED)
   {
@@ -40,16 +54,21 @@ void setup()
       // Serial.print(".");
       attempts++;
     }
-
+    uint8_t mac_ad[6];
+    WiFi.macAddress(mac_ad);
+    sprintf(mqtt_id, "%s-%s-%02X%02X", product_id, device_id, mac_ad[4], mac_ad[5]);
     client.setServer(mqtt_server, mqtt_port); // 设置MQTT服务器地址和端口
-    client.connect(product_id, mqtt_username, mqtt_password);
+    client.connect(mqtt_id, mqtt_username, mqtt_password);
     client.publish(topic[0], "Hi, I'm ESP32 ^^");
   }
 
-  Serial.onReceive(Bambu_readuart);    //串口回调；
+  Serial0.onReceive(Bambu_readuart);    //串口回调；
   Serial1.onReceive(Bmcu_readuart);    //串口回调；
 }
 uint64_t error_time = 0;
+uint64_t offline_time = 0;
+uint64_t mqtt_time = 0;
+uint64_t led_time = 0;
 void loop()
 {
   //Bambu_readuart();
@@ -63,78 +82,52 @@ void loop()
     if (stu == BambuBus_package_ERROR) // offline
     {
       // SYS_RGB.set_RGB(0x30, 0x00, 0x00, 0);
-      digitalWrite(LED_BUILTIN2, LOW);
+      SYS_leds.clear();
       if (error_time == 0 || error_time < (time_now - 1000))
         error_time = time_now + 1000;
       else if (error_time > time_now)
-        digitalWrite(LED_BUILTIN1, HIGH);
+        SYS_leds.setPixelColor(0, 0x30, 0x00, 0x00);
       else if (error_time < time_now)
-        digitalWrite(LED_BUILTIN1, LOW);
-      // delayMicroseconds(1000);
-      /*if (WiFi.status() != WL_CONNECTED)
-        {
+        SYS_leds.setPixelColor(2, 0x30, 0x00, 0x00);
 
-          if (WiFi.reconnect())
-          {
-            client.connect(product_id, mqtt_username, mqtt_password);
-          }
-          
+      if (WiFi.status() == WL_CONNECTED)
+      {
+        SYS_leds.setPixelColor(1, 0x10, 0xD0, 0x30); 
+        if (mqtt_time < time_now)
+        {
+          mqtt_time = time_now + 5000; // 5秒延迟
+          client.publish(topic[0], Sht30_read_mqtt().c_str());
         }
-        if (WiFi.status() == WL_CONNECTED)
-        {
-
-          if (mqtt_count[postMsgId] == 0)
-            mqtt_count[postMsgId] = time_now + 10000;
-          if (mqtt_count[postMsgId] < time_now)
-          {
-            //String tay[4] = {"11","22","33","44"};
-            String temp = ("{\"tay1\":" +Bmcu_set_json(postMsgId,0) +", \"tay2\":" +Bmcu_set_json(postMsgId,1) +",\"tay3\":" +Bmcu_set_json(postMsgId,2) +",\"tay4\":" +Bmcu_set_json(postMsgId,3) +"}");
-            client.publish(topic[postMsgId], temp.c_str());
-            postMsgId++;
-            if (postMsgId > (get_AMS_num_max() - 1))
-            {
-              postMsgId = 0;
-              for (size_t i = 0; i < 8; i++)
-              {
-                mqtt_count[i] = 0;
-              }
-            }
-          }
-        }*/
-
+      }
 
 
     }
     else // have data
     {
       if (stu == BambuBus_package_heartbeat)
-      {
+      { 
+        SYS_leds.clear(); 
         if (error_time == 0 || error_time < (time_now - 2000))
           error_time = time_now + 2000;
         else if (error_time > time_now)
         {
-          digitalWrite(LED_BUILTIN1, HIGH);
-          digitalWrite(LED_BUILTIN2, LOW);
+          SYS_leds.setPixelColor(0, 0x10, 0xD0, 0x30);
         }
         else if (error_time < time_now)
         {
-          digitalWrite(LED_BUILTIN1, LOW);
-          digitalWrite(LED_BUILTIN2, HIGH);
+          SYS_leds.setPixelColor(0, 0x00, 0x00, 0x00);
         }
-      }
-      if (WiFi.status() == WL_CONNECTED && stu == BambuBus_long_package_MC_online)
-      {
-
-        if (mqtt_count[postMsgId] == 0)
-          mqtt_count[postMsgId] = time_now + 10000;
-        if (mqtt_count[postMsgId] < time_now)
+      
+        if (WiFi.status() == WL_CONNECTED)
         {
+          SYS_leds.setPixelColor(1, 0x10, 0xD0, 0x30);  
+
+        if (mqtt_time < time_now)
+        {
+          mqtt_time = time_now + 5000; // 5秒延迟
           uint8_t ams_num = postMsgId /4;
           uint8_t tay_num = postMsgId %4;
           String temp;
-          //String tay[4] = {"11","22","33","44"};
-          //String temp = ("{\"tay1\":" +Bmcu_set_json(postMsgId,0) +", \"tay2\":" +Bmcu_set_json(postMsgId,1) +",\"tay3\":" +Bmcu_set_json(postMsgId,2) +",\"tay4\":" +Bmcu_set_json(postMsgId,3) +"}");
-          //client.publish(topic[postMsgId], temp.c_str());
 
           if (tay_num == 0)
               temp = ("{\"tay1\":" +Bmcu_set_json(ams_num,tay_num) +"}");
@@ -150,12 +143,26 @@ void loop()
           if (postMsgId > ((get_AMS_num_max() *4) - 1))
           {
             postMsgId = 0;
-            for (size_t i = 0; i < 32; i++)
-            {
-              mqtt_count[i] = 0;
-            }
+            client.publish(topic[0], Sht30_read_mqtt().c_str());
+            SYS_leds.setPixelColor(2, 0x00, 0x00, 0x30);
+          }
+          else
+          {
+            SYS_leds.setPixelColor(2, 0x10, 0xD0, 0x30);
           }
         }
+        }
+        else if (!Bambu_onprint() && offline_time < time_now)
+        {    
+
+            offline_time = time_now + 300000; // 300秒后重连
+            if (WiFi.reconnect())
+            {
+               client.connect(mqtt_id, mqtt_username, mqtt_password);
+            }
+                
+        }
+        //SYS_leds.show();
       }
 
       if (Switch_need_to_save())
@@ -164,6 +171,14 @@ void loop()
       {
         Switch_set_not_to_delay();
         delay(5000);
+      }
+    }
+    if (led_time < time_now)
+    {
+      led_time = time_now + 500;
+      if (SYS_leds.canShow())
+      {
+        SYS_leds.show();
       }
     }
   }

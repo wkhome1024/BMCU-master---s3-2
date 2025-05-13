@@ -65,6 +65,7 @@ extern "C"
     extern String Bmcu_set_json(int ams_num ,int i);
     extern int get_AMS_num_max();
     extern void Bmcu_reset();
+    extern bool Bambu_onprint();
 #ifdef __cplusplus
 }
 #endif

@@ -218,9 +218,9 @@ void inline RX_IRQ(unsigned char _RX_IRQ_data)
 
 void Bambu_readuart()
 {
-    while (Serial.available() > 0)
+    while (Serial0.available() > 0)
     {
-        char inChar = (char)Serial.read(); // 读取串口0数据
+        char inChar = (char)Serial0.read(); // 读取串口0数据
         RX_IRQ(inChar);
     }
 }
@@ -747,7 +747,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
 }
 void Bmcu_package_send_with_crc(uint8_t *data, int data_length)
 {
-    data[0] = 0x7D;
+    data[0] = 0x9D;
     data[1] = data_length;
     crc_8.restart();
     for (auto i = 0; i < data_length - 1; i++)
@@ -761,7 +761,7 @@ void Bmcu_package_send_with_crc(uint8_t *data, int data_length)
 
 bool bmcu_onprint = false;
 bool bmcu_reset = false;
-unsigned char Hit_res[] = {0x7D, 0x0A, 0x20,
+unsigned char Hit_res[] = {0x9D, 0x0A, 0x20,
                            0x00, 0x00, // amsnum + taynum
                            0x00, 0x00, // 控制位
                            0x00};      // crc8 校验
@@ -832,7 +832,7 @@ void send_for_Hit(unsigned char *buf, int length)
 unsigned char Cxx_res[] = {0x3D, 0xE0, 0x2C, 0x1A, 0x03,
                            C_test 0x00, 0x00, 0x00, 0x00,
                            0x90, 0xE4};
-unsigned char Motion_res[] = {0x7D, 0x0A, 0x03,
+unsigned char Motion_res[] = {0x9D, 0x0A, 0x03,
                               0x00, 0x00, // amsnum + taynum
                               0x00, 0x00, // statu_flags + fliment_motion
                               0x00, 0x00, // 控制位
@@ -857,23 +857,26 @@ void send_for_motion_short(unsigned char *buf, int length)
 
     if (!set_motion(AMS_num4, read_num4, statu_flags, fliment_motion_flag))
         return;
-    if (bmcu_package_num == 0 || bmcu_package_num == 3 || bmcu_package_num == 6 || 1)
-    {
-        // delay(1);
-        Bmcu_package_send_with_crc(Motion_res, sizeof(Motion_res)); // 重写amsnum 转发bmcu
-    }
-    if (bmcu_package_num > 1 || 1)
+
+    if ((bmcu_package_num % 3) != 0)
     {
         set_motion_res_datas(Cxx_res + 5, AMS_num4, read_num4, read_num);
         package_send_with_crc(Cxx_res, sizeof(Cxx_res));
+
+        if (package_num < 7)
+           package_num++;
+        else
+           package_num = 0;
+    }
+    else 
+    {
+        Bmcu_package_send_with_crc(Motion_res, sizeof(Motion_res)); // 重写amsnum 转发bmcu
     }
 
-    if (package_num < 7)
-        package_num++;
-    else
-        package_num = 0;
 
-    if (bmcu_package_num < 10)
+
+
+    if (bmcu_package_num < 9)
         bmcu_package_num++;
     else
         bmcu_package_num = 0;
@@ -889,7 +892,7 @@ void send_for_motion_short(unsigned char *buf, int length)
 0xC1, 0xC3, 0xEC, 0xBC,
 0x01, 0x01, 0x01, 0x01,
 */
-unsigned char Motion_long_res[] = {0x7D, 0x0A, 0x04,
+unsigned char Motion_long_res[] = {0x9D, 0x0A, 0x04,
                                    0x00, 0x00, // amsnum + taynum
                                    0x00, 0x00, // statu_flags + fliment_motion
                                    0x00, 0x00, // 控制位
@@ -1374,7 +1377,7 @@ package_type BambuBus_run()
             uint8_t AMS_num = buf_Bmcu[2];
             uint8_t read_num = buf_Bmcu[3];
             uint8_t bmcu_online = 0x55;
-            if (AMS_num > AMS_num_max - 1)
+            if (AMS_num == AMS_num_max)
             {
                 AMS_num_max = AMS_num + 1; // 自动添加轮询数
             }
@@ -1435,6 +1438,10 @@ package_type BambuBus_run()
 int get_AMS_num_max()
 {
     return AMS_num_max;
+}
+bool Bambu_onprint()
+{
+    return bmcu_onprint;
 }
 void Bmcu_reset()
 {
