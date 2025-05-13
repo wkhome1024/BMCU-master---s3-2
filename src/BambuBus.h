@@ -66,6 +66,7 @@ extern "C"
     extern int get_AMS_num_max();
     extern void Bmcu_reset();
     extern bool Bambu_onprint();
+    extern uint16_t get_tay_color(uint8_t num);
 #ifdef __cplusplus
 }
 #endif

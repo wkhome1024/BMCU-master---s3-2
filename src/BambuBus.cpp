@@ -1468,3 +1468,14 @@ String Bmcu_set_json(int ams_num, int i)
 
     return json;
 }
+uint16_t get_tay_color(uint8_t num)
+{
+    auto number = get_bmcu_and_channel(num);
+    uint8_t AMS_num4 = number.first;
+    uint8_t read_num4 = number.second;
+    uint8_t r, g, b;
+    r = data_save.filament[AMS_num4][read_num4].color_R;
+    g = data_save.filament[AMS_num4][read_num4].color_G;
+    b = data_save.filament[AMS_num4][read_num4].color_B;
+    return (uint16_t)((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+}

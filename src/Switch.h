@@ -16,6 +16,8 @@ extern "C"
     extern bool Switch_need_to_delay();
     extern void Switch_set_not_to_delay();
     extern void Switch_set_need_to_delay();  
+    extern String get_filament_map();
+    extern String get_tay_map(uint8_t num);
 #ifdef __cplusplus
 }
 #endif

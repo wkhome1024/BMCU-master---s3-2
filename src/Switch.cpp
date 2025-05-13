@@ -153,3 +153,25 @@ bool Switch_need_to_delay()
 {
     return switch_need_to_delay;
 }
+
+
+String get_filament_map()
+{
+    char tay1[10];
+    char tay2[10];
+    char tay3[10];
+    char tay4[10];
+    sprintf(tay1, "b%d-%d", (switch_save.filament_map_to[0]/4 + 1), (switch_save.filament_map_to[0]%4 + 1));
+    sprintf(tay2, "b%d-%d", (switch_save.filament_map_to[1]/4 + 1), (switch_save.filament_map_to[1]%4 + 1));
+    sprintf(tay3, "b%d-%d", (switch_save.filament_map_to[2]/4 + 1), (switch_save.filament_map_to[2]%4 + 1));
+    sprintf(tay4, "b%d-%d", (switch_save.filament_map_to[3]/4 + 1), (switch_save.filament_map_to[3]%4 + 1));
+    String temp = "tay1: " + String(tay1) + "tay2: " + String(tay2) + "tay3: " + String(tay3) + "tay4: " + String(tay4);
+    return temp;
+}
+String get_tay_map(uint8_t num)
+{
+    char tay[10];
+    sprintf(tay, "b%d-%d", (switch_save.filament_map_to[num]/4 + 1), (switch_save.filament_map_to[num]%4 + 1));
+    String temp = "tay" + String(num + 1) + ": " + String(tay);
+    return temp;    
+}

@@ -83,8 +83,11 @@ void loop()
     {
       // SYS_RGB.set_RGB(0x30, 0x00, 0x00, 0);
       SYS_leds.clear();
-      if (error_time == 0 || error_time < (time_now - 1000))
+      if (error_time < (time_now - 1000))
+      {
         error_time = time_now + 1000;
+        tft_print();
+      }
       else if (error_time > time_now)
         SYS_leds.setPixelColor(0, 0x30, 0x00, 0x00);
       else if (error_time < time_now)
@@ -107,8 +110,11 @@ void loop()
       if (stu == BambuBus_package_heartbeat)
       { 
         SYS_leds.clear(); 
-        if (error_time == 0 || error_time < (time_now - 2000))
+        if (error_time < (time_now - 2000))
+        {
           error_time = time_now + 2000;
+          Sht30_read();
+        }
         else if (error_time > time_now)
         {
           SYS_leds.setPixelColor(0, 0x10, 0xD0, 0x30);
@@ -144,6 +150,7 @@ void loop()
           {
             postMsgId = 0;
             client.publish(topic[0], Sht30_read_mqtt().c_str());
+            tft_print();
             SYS_leds.setPixelColor(2, 0x00, 0x00, 0x30);
           }
           else
@@ -166,7 +173,10 @@ void loop()
       }
 
       if (Switch_need_to_save())
+      {
+        tft_print();
         Switch_save();
+      }
       if (Switch_need_to_delay())
       {
         Switch_set_not_to_delay();

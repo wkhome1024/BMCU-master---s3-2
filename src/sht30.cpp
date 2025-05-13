@@ -17,27 +17,6 @@
 
 Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);  
 
-void tft_init()
-{
-  pinMode(TFT_BL, OUTPUT);
-  digitalWrite(TFT_BL, HIGH);
-  tft.initR(INITR_144GREENTAB); 
-  tft.setRotation(0);
-  tft.setTextColor(ST7735_WHITE);
-  tft.setTextSize(3);
-  tft.fillScreen(ST7735_BLACK);
-  tft.setCursor(10, 32);
-  tft.println("Hello, Bambu!");
-}
-void tft_print(const char *str)
-{
-    tft.setCursor(10, 32);
-    tft.fillScreen(ST7735_BLACK);
-    tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
-    tft.setTextSize(2);
-    tft.println(str);
-}
-
 
 float Temp = 0;
 float Humidity = 0;
@@ -86,8 +65,8 @@ std::pair<float, float> Sht30_read()
   } 
    
 
-  Temp = ((((data[0] * 256) + data[1]) * 175) / 65535) - 54;
-  Humidity = ((((data[3] * 256) + data[4]) * 100) / 65535) + 10;
+  Temp = ((((data[0] * 256.0) + data[1]) * 175.0) / 65535.0) - 55;   //修正 -10
+  Humidity = ((((data[3] * 256.0) + data[4]) * 100.0) / 65535.0) + 10;  //修正 +10
 
   if (data[0] == 0xFF && data[1] == 0xFF)
   {
@@ -108,4 +87,49 @@ String Sht30_read_mqtt()
   sprintf(HumiBuf,"%4.1f", data.second);
   String json = ("{\"Temp\":\"" + (String)tempBuf + "\",\"Humidity\":\"" + (String)HumiBuf + "\"}");
   return json;
+}
+
+String Sht30_tft()
+{
+  char tempBuf[10];
+  char HumiBuf[10];
+  sprintf(tempBuf,"%4.1f", Temp);
+  sprintf(HumiBuf,"%4.1f", Humidity);
+  return "Temp: " + String(tempBuf) + "Humi: " + String(HumiBuf);
+}
+
+
+void tft_init()
+{
+  pinMode(TFT_BL, OUTPUT);
+  digitalWrite(TFT_BL, HIGH);
+  tft.initR(INITR_GREENTAB); 
+  tft.setRotation(0);
+  tft.setTextColor(ST7735_RED);
+  tft.setTextSize(2);
+  tft.fillScreen(ST7735_CYAN);
+  tft.setCursor(0, 32);
+  tft.println("Hello,I'm Bmcu-hub");
+}
+
+
+void tft_print()
+{
+    tft.setCursor(0, 32);
+    tft.fillScreen(ST7735_CYAN);
+    tft.setTextSize(2);
+    tft.setTextColor(get_tay_color(0));
+    tft.println(get_tay_map(0));
+    tft.setCursor(0, 52);
+    tft.setTextColor(get_tay_color(1));
+    tft.println(get_tay_map(1));
+    tft.setCursor(0, 72);
+    tft.setTextColor(get_tay_color(2));
+    tft.println(get_tay_map(2));
+    tft.setCursor(0, 92);
+    tft.setTextColor(get_tay_color(3));
+    tft.println(get_tay_map(3)); 
+    tft.setCursor(0, 122);
+    tft.setTextColor(ST7735_BLACK);
+    tft.println(Sht30_tft());
 }
