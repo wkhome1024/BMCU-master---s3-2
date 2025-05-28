@@ -14,6 +14,11 @@
 
 void send_bambu_uart(const unsigned char *data, size_t length)
 {
+    if ((get_time64() < 20000)) 
+    {
+        Serial0.flush(); // 等待串口0可用
+        return; // 如果串口0不可用，则不发送数据
+    }
     Serial0.write(data, length);
 }
 

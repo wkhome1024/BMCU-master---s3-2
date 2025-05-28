@@ -1,9 +1,6 @@
 #pragma once
+#include <main.h>
 
-#include <Arduino.h>
-#include <SPI.h>
-#include <WiFi.h>
-#include "stdio.h"
 
 
 extern void BMCU_UART_Init();

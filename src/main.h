@@ -12,8 +12,12 @@
 #include <sht30.h>
 #include <Adafruit_NeoPixel.h>
 
+#include "WiFiUser.h"
+//#include <ArduinoOTA.h>
+extern const char *host_name;
 #define SYS_RGB 8    // RGB灯针脚
 #define ledPixels 3  //led数量
+
 
 
 
