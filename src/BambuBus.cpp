@@ -573,6 +573,11 @@ uint8_t get_filament_left_char(uint8_t AMS_num)
         auto number1 = get_bmcu_and_channel(i);
         uint8_t AMS_num1 = number1.first;
         uint8_t read_num1 = number1.second;
+        if (BambuBus_address == BambuBus_AMS)
+        {
+            AMS_num1 = AMS_num;
+            read_num1 = i;
+        }
         if (data_save.filament[AMS_num1][read_num1].statu == online)
         {
             data |= (0x1 << i) << i; // 1<<(2*i)
@@ -760,7 +765,7 @@ void Bmcu_package_send_with_crc(uint8_t *data, int data_length)
 }
 
 bool bmcu_onprint = false;
-bool bmcu_reset = false;
+bool bambus_send = false;
 unsigned char Hit_res[] = {0x9D, 0x0A, 0x20,
                            0x00, 0x00, // amsnum + taynum
                            0x00, 0x00, // 控制位
@@ -794,6 +799,27 @@ void send_for_Hit(unsigned char *buf, int length)
         Hit_res[3] = data_save.BambuBus_now_filament_num / 4;
         Hit_res[4] = data_save.BambuBus_now_filament_num % 4;
     }
+
+    Hit_res[5] = 0; //sw_read();               // 五通前端状态
+    if (BambuBus_address == BambuBus_AMS) // AMS08
+    {
+        Hit_res[5] |= 0x30; // 0x30
+        if (!bambus_send)
+        {
+            bambus_send = true;
+            my_printf("(bambus) Bambubus工作模式: AMS08");
+        }
+    }
+    else if (BambuBus_address == BambuBus_AMS_lite) // AMS lite
+    {
+        Hit_res[5] |= 0xC0; // 0xC0
+        if (!bambus_send)
+        {
+            bambus_send = true;
+            my_printf("(bambus) Bambubus工作模式: AMS_lite");
+        }
+    }
+
     Bmcu_package_send_with_crc(Hit_res, sizeof(Hit_res));
 }
 // 3D E0 3C 12 04 00 00 00 00 09 09 09 00 00 00 00 00 00 00
@@ -848,6 +874,12 @@ void send_for_motion_short(unsigned char *buf, int length)
     auto number = get_bmcu_and_channel(read_num);
     uint8_t AMS_num4 = number.first;
     uint8_t read_num4 = number.second;
+
+    if (BambuBus_address == BambuBus_AMS)
+    {
+        AMS_num4 = AMS_num;
+        read_num4 = read_num;
+    }
 
     Motion_res[2] = 0x03;
     Motion_res[3] = AMS_num4;
@@ -922,11 +954,14 @@ void send_for_motion_long(unsigned char *buf, int length)
     unsigned char fliment_motion_flag = buf[7];
     unsigned char read_num = buf[9];
 
-
-
     auto number = get_bmcu_and_channel(read_num);
     uint8_t AMS_num4 = number.first;
     uint8_t read_num4 = number.second;
+    if (BambuBus_address == BambuBus_AMS)
+    {
+        AMS_num4 = AMS_num;
+        read_num4 = read_num;
+    }
 
     Motion_long_res[2] = 0x04;
     Motion_long_res[3] = AMS_num4;
@@ -940,6 +975,11 @@ void send_for_motion_long(unsigned char *buf, int length)
         auto number1 = get_bmcu_and_channel(i);
         uint8_t AMS_num1 = number1.first;
         uint8_t read_num1 = number1.second;
+        if (BambuBus_address == BambuBus_AMS)
+        {
+            AMS_num1 = AMS_num;
+            read_num1 = i;
+        }
         if (data_save.filament[AMS_num1][read_num1].statu == online)
         {
             filament_flag_on |= 1 << i;
@@ -1049,50 +1089,56 @@ void NFC_detect_run()
         filament_flag_detected = 0;
     }*/
 }
-uint8_t online_detect_num2[] = {0x0E, 0x7D, 0x32, 0x31, 0x31, 0x38, 0x15, 0x00, // 序列号？(额外包含之前一位)
-                                0x36, 0x39, 0x37, 0x33, 0xFF, 0xFF, 0xFF, 0xFF};
-uint8_t online_detect_num[] = {0x90, 0x31, 0x33, 0x34, 0x36, 0x35, 0x02, 0x00, 0x37, 0x39, 0x33, 0x38, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t online_detect_num1[] = {0x0E, 0x7D, 0x32, 0x31, 0x31, 0x38, 0x15, 0x00, 0x36, 0x39, 0x37, 0x33, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t online_detect_num2[] = {0x90, 0x31, 0x33, 0x34, 0x36, 0x35, 0x02, 0x00, 0x37, 0x39, 0x33, 0x38, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t online_detect_num3[] = {0x2E, 0xC2, 0x35, 0x31, 0x38, 0x37, 0x18, 0x00, 0x36, 0x36, 0x38, 0x30, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t online_detect_num4[] = {0xC9, 0xD2, 0x36, 0x38, 0x34, 0x36, 0x17, 0x00, 0x53, 0x33, 0x32, 0x33, 0xFF, 0xFF, 0xFF, 0xFF};
 unsigned char F01_res[] = {
     0x3D, 0xC0, 0x1D, 0xB4, 0x05, 0x01, 0x00,
     0x16,
     0x0E, 0x7D, 0x32, 0x31, 0x31, 0x38, 0x15, 0x00, 0x36, 0x39, 0x37, 0x33, 0xFF, 0xFF, 0xFF, 0xFF,
     0x00, 0x00, 0x00, 0x33, 0xF0};
+int num_F00 = 0;
 void send_for_online_detect(unsigned char *buf, int length)
 {
-    /*
-    uint8_t F00_res[4 * sizeof(F01_res)];
+    uint8_t F00_res[sizeof(F01_res)];
+    memcpy(F00_res, F01_res, sizeof(F01_res));
     if ((buf[5] == 0x00))
     {
-        for (auto i = 0; i < 4; i++)
+        if (num_F00 > 3)
         {
-            memcpy(F00_res + i * sizeof(F01_res), F01_res, sizeof(F01_res));
-            F00_res[i * sizeof(F01_res) + 5] = 0;
-            F00_res[i * sizeof(F01_res) + 6] = i;
-            F00_res[i * sizeof(F01_res) + 7] = i;
+            num_F00 = 0;
+        }
+
+        F00_res[5] = 0;
+        F00_res[6] = num_F00;
+        F00_res[7] = 22;
+        if (BambuBus_address == BambuBus_AMS)
+        {
+            F00_res[7] = 22 - num_F00;
+            if (num_F00 == 0)
+            {
+                memcpy(F00_res + 8, online_detect_num1, sizeof(online_detect_num1));
+            }
+            else if (num_F00 == 1)
+            {
+                memcpy(F00_res + 8, online_detect_num2, sizeof(online_detect_num2));
+            }
+            else if (num_F00 == 2)
+            {
+                memcpy(F00_res + 8, online_detect_num3, sizeof(online_detect_num3));
+            }
+            else if (num_F00 == 3)
+            {
+                memcpy(F00_res + 8, online_detect_num4, sizeof(online_detect_num4));
+            }
+            num_F00++;
         }
         package_send_with_crc(F00_res, sizeof(F00_res));
-    }
-
-    if ((buf[5] == 0x01) && (buf[6] < 4))
+    }else if ((buf[5] == 0x01) && (buf[6] < 4))
     {
-        memcpy(F01_res + 4, buf + 4, 3);
-        package_send_with_crc(F01_res, sizeof(F01_res));
-    }*/
-    uint8_t F00_res[sizeof(F01_res)];
-    if ((buf[5] == 0x00))
-    {
-        memcpy(F00_res, F01_res, sizeof(F01_res));
-        F00_res[5] = 0;
-        F00_res[6] = 0;
-        F00_res[7] = 0;
-
+        memcpy(F00_res + 4, buf + 4, 20);
         package_send_with_crc(F00_res, sizeof(F00_res));
-    }
-
-    if ((buf[5] == 0x01) && (buf[6] == 0))
-    {
-        memcpy(F01_res + 4, buf + 4, 3);
-        package_send_with_crc(F01_res, sizeof(F01_res));
     }
 }
 // 3D C5 0D F1 07 00 00 00 00 00 00 CE EC
@@ -1162,17 +1208,28 @@ void send_for_long_packge_filament(unsigned char *buf, int length)
     long_packge_filament[1] = filament_num;
 
     auto number = get_bmcu_and_channel(filament_num);
-    AMS_num = number.first;
-    filament_num = number.second;
+    uint8_t AMS_num4 = number.first;
+    uint8_t read_num4 = number.second;
 
-    memcpy(long_packge_filament + 19, data_save.filament[AMS_num][filament_num].ID, sizeof(data_save.filament[AMS_num][filament_num].ID));
-    memcpy(long_packge_filament + 27, data_save.filament[AMS_num][filament_num].name, sizeof(data_save.filament[AMS_num][filament_num].name));
-    long_packge_filament[59] = data_save.filament[AMS_num][filament_num].color_R;
-    long_packge_filament[60] = data_save.filament[AMS_num][filament_num].color_G;
-    long_packge_filament[61] = data_save.filament[AMS_num][filament_num].color_B;
-    long_packge_filament[62] = data_save.filament[AMS_num][filament_num].color_A;
-    memcpy(long_packge_filament + 79, &data_save.filament[AMS_num][filament_num].temperature_max, 2);
-    memcpy(long_packge_filament + 81, &data_save.filament[AMS_num][filament_num].temperature_min, 2);
+    if (filament_num > 3)
+    {
+        my_printf("(bambubus) 错误的通道耗材长包裹数据");
+        return;
+    }
+    if (BambuBus_address == BambuBus_AMS)
+    {
+        AMS_num4 = AMS_num;
+        read_num4 = filament_num;
+    }
+
+    memcpy(long_packge_filament + 19, data_save.filament[AMS_num4][read_num4].ID, sizeof(data_save.filament[AMS_num4][read_num4].ID));
+    memcpy(long_packge_filament + 27, data_save.filament[AMS_num4][read_num4].name, sizeof(data_save.filament[AMS_num4][read_num4].name));
+    long_packge_filament[59] = data_save.filament[AMS_num4][read_num4].color_R;
+    long_packge_filament[60] = data_save.filament[AMS_num4][read_num4].color_G;
+    long_packge_filament[61] = data_save.filament[AMS_num4][read_num4].color_B;
+    long_packge_filament[62] = data_save.filament[AMS_num4][read_num4].color_A;
+    memcpy(long_packge_filament + 79, &data_save.filament[AMS_num4][read_num4].temperature_max, 2);
+    memcpy(long_packge_filament + 81, &data_save.filament[AMS_num4][read_num4].temperature_min, 2);
 
     data.datas = long_packge_filament;
     data.data_length = sizeof(long_packge_filament);
@@ -1222,11 +1279,22 @@ void send_for_long_packge_version(unsigned char *buf, int length)
     case 0x402:
 
         AMS_num = printer_data_long.datas[33];
+        serial_number[5] = AMS_num;
         long_packge_version_serial_number[0] = sizeof(serial_number);
         memcpy(long_packge_version_serial_number + 1, serial_number, sizeof(serial_number));
         data.datas = long_packge_version_serial_number;
         data.data_length = sizeof(long_packge_version_serial_number);
-
+        if (printer_data_long.target_address == 0x0700)
+        {
+            if (AMS_num == 0)
+                memcpy(long_packge_version_serial_number + 33, online_detect_num1, sizeof(online_detect_num1));
+            else if (AMS_num == 1)
+                memcpy(long_packge_version_serial_number + 33, online_detect_num2, sizeof(online_detect_num2));
+            else if (AMS_num == 2)
+                memcpy(long_packge_version_serial_number + 33, online_detect_num3, sizeof(online_detect_num3));
+            else if (AMS_num == 3)
+                memcpy(long_packge_version_serial_number + 33, online_detect_num4, sizeof(online_detect_num4));
+        }
         data.datas[65] = AMS_num;
         break;
     case 0x103:
@@ -1252,6 +1320,8 @@ unsigned char filament_res[] = {0x7D, 0x0A, 0x08,
                                 0x00, 0x00, // 公用控制位 + 专用控制位
                                 0x00};      // crc8 校验
 unsigned char Set_filament_res[] = {0x3D, 0xC0, 0x08, 0xB2, 0x08, 0x60, 0xB4, 0x04};
+uint8_t motor_time[4] = {10, 11, 12, 13};    // 电机退料时间
+uint16_t pwm_zero[4] = {260, 320, 360, 400}; // 电机pwm 零点
 void send_for_set_filament(unsigned char *buf, int length)
 {
     uint8_t read_num = buf[5];
@@ -1292,16 +1362,30 @@ void send_for_set_filament(unsigned char *buf, int length)
         filament_res[5] = 0xE0;           //bmcu_reset
 
         if (sw2 == 0xD1)
-           filament_res[6] = 0xD1;        //reset meter       白色
+        {
+            filament_res[6] = 0xD1; // reset meter       白色
+            my_printf("(bmcu) 重置耗材里程: Bmcu%d-%d_reset_meter", AMS_num1, read_num1);
+        }
         else if (sw2 == 0xD3)
-           filament_res[6] = 0xD3;        //棕色  --电机标定
+        {
+            filament_res[6] = 0xD3; // 棕色  --电机退料时间设定
+            my_printf("(bmcu) 电机退料时间设定: Bmcu%d-%d_motor_time = %ds", AMS_num1, read_num1, motor_time[read_num1]);
+        }
         else if (sw2 == 0xD5)
-           filament_res[6] = 0xD5;
+        {
+            filament_res[6] = 0xD5; // 岩石灰  --电机pwm 设定
+            my_printf("(bmcu) 电机pwm设定: Bmcu%d-%d_pwm_zero = %d", AMS_num1, read_num1, pwm_zero[read_num1]);
+        }
         else if (sw2 == 0xD7)
-           filament_res[6] = 0xD7;
+        {
+            filament_res[6] = 0xD7; // 灰色  --电机pwm 自动标定
+            my_printf("(bmcu) 电机pwm自动标定");
+        }
         else if (sw2 == 0xD9)
-           filament_res[6] = 0xD9;        //选中激活为onuse    黑色
-
+        {
+            filament_res[6] = 0xD9; // 选中激活为onuse    黑色
+            my_printf("(bmcu) 选中激活为onuse: Bmcu%d-%d_onuse", AMS_num1, read_num1);
+        }
         Bmcu_package_send_with_crc(filament_res,sizeof(filament_res));
     }
 
@@ -1460,10 +1544,7 @@ bool Bambu_onprint()
 {
     return bmcu_onprint;
 }
-void Bmcu_reset()
-{
-    bmcu_reset = true;
-}
+
 
 // char jsonBuf[256];
 String Bmcu_set_json(int ams_num, int i)

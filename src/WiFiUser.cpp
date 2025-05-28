@@ -592,7 +592,7 @@ void handleData()
       server.send(200, "text/plain", "normal mode");
       return;
     }
-    server.send(200, "text/plain", catchkey); // 返回错误页面
+    //server.send(200, "text/plain", catchkey); // 返回错误页面
   }
 
   if (C_data[0] == '\0')

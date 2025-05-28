@@ -1,13 +1,13 @@
 #include <main.h>
 
-//const char *ssid = "WKhome";       // WiFi名称
-//const char *password = "44332211"; // WiFi密码
+//const char *ssid = "";       // WiFi名称
+//const char *password = ""; // WiFi密码
 
 //const char *mqtt_server1 = "192.168.10.10"; // MQTT服务器地址
 //const int mqtt_port1 = 1883;                // MQTT服务器端口
 const char *topic[8] = {"bmcu1", "bmcu2", "bmcu3", "bmcu4", "bmcu5", "bmcu6", "bmcu7", "bmcu8"};
-//const char *mqtt_username1 = "wk";
-//const char *mqtt_password1 = "iloveyou12";
+//const char *mqtt_username1 = "";
+//const char *mqtt_password1 = "";
 const char *host_name = "bmcu-hub-s3"; // 设备主机名
 #define product_id "bmcu-hub"          // 产品ID
 #define device_id "s3"                 // 设备ID
@@ -152,7 +152,7 @@ void loop()
             uint8_t tay_num = postMsgId % 4;
             String temp;
             ESP_LOGE("memory", "RAM可使用大小: %d", ESP.getFreeHeap());
-            my_printf("(memory) RAM可使用大小: %d", ESP.getFreeHeap());
+            //my_printf("(memory) RAM可使用大小: %d", ESP.getFreeHeap());
             if (tay_num == 0)
               temp = ("{\"tay1\":" + Bmcu_set_json(ams_num, tay_num) + "}");
             if (tay_num == 1)
