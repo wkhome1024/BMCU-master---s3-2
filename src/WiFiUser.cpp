@@ -18,8 +18,8 @@ int mqtt_port = 0;         // 暂时存储mqtt服务器端口
 String mqtt_username = ""; // 暂时存储mqtt用户名
 String mqtt_password = ""; // 暂时存储mqtt密码
 
-char L_data[20] = "test1234567890"; // test
-char C_data[20] = "test1234567890";
+//char L_data[20] = "test1234567890"; // test
+//char C_data[20] = "test1234567890";
 
 #define config_addr ((uint32_t)0x0900)
 
@@ -80,9 +80,8 @@ String ROOT_HTML_1 = R"(
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
-  <title>设置页面</title>
+  <title>WIFI设置页面</title>
   <style>
     #content, .login, .login-card a, .login-card h1, .login-help { text-align: center }
     body, html { margin: 0; padding: 0; width: 100%; height: 100%; display: table }
@@ -118,7 +117,7 @@ String ROOT_HTML_1 = R"(
       <div class="login-card">
         <h1>WiFi+MQTT</h1>
         <form name="login_form" method="post" action="$PORTAL_ACTION$">
-          <input type="text" name="ssid" placeholder="请输入 WiFi 名称" id="auth_user" list="data-list" style="border-radius: 10px">
+          <input type="text" name="ssid" placeholder="请选择 WiFi 名称" id="auth_user" list="data-list" style="border-radius: 10px">
           <datalist id="data-list">
 )";
 
@@ -150,82 +149,21 @@ String config_HTML = R"(
   <meta name="viewport" content="width=device-width">
   <title>BMCU设置</title>
   <style>
-    body {
-      background: #e5e9f2;
-      margin: 0;
-      display: grid;
-      place-items: center;
-      min-height: 100vh;
-      font-family: sans-serif;
-    }
-    .card {
-      width: min(90vw, 300px);
-      padding: 2rem;
-      background: #f7f7f7;
-      border-radius: 1rem;
-      box-shadow: 0 0.5rem 1rem #0003;
-      text-align: center;
-    }
-    h1 {
-      color: #1383c6;
-      margin-bottom: 1.5rem;
-    }
-    h1 span {
-      color: #f26721;
-    }
-    .btn {
-      width: 100%;
-      padding: 0.75rem;
-      margin: 0.5rem 0;
-      background: #4d90fe;
-      color: #fff;
-      border: none;
-      border-radius: 0.5rem;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      position: relative;
-      overflow: hidden;
-    }
-    .btn:hover {
-      background: #357ae8;
-    }
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    .btn.progress::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      height: 3px;
-      background: #4CAF50;
-      width: var(--progress, 0%);
-      transition: width 2s linear;
-    }
-    .btn.active {
-      background: #4CAF50;
-      box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
-    }
-    .divider {
-      margin: 1.5rem 0;
-      border-top: 1px solid #d9d9d9;
-    }
-    .status-text {
-      font-size: 0.8em;
-      color: #666;
-      margin-top: 0.5rem;
-      height: 1.2em;
-    }
+    body {background:#e5e9f2;margin:0;display:grid;place-items:center;min-height:100vh;font-family:sans-serif}
+    .card {width:min(90vw,300px);padding:2rem;background:#f7f7f7;border-radius:1rem;box-shadow:0 .5rem 1rem rgba(0,0,0,.3);text-align:center}
+    h1 {color:#1383c6;margin-bottom:1.5rem}h1 span {color:#f26721}
+    .btn {width:100%;padding:.75rem;margin:.5rem 0;background:#4d90fe;color:#fff;border:none;border-radius:.5rem;font-size:1rem;font-weight:600;cursor:pointer;position:relative;overflow:hidden}
+    .btn:hover {background:#357ae8}.btn:disabled {opacity:.6;cursor:not-allowed}
+    .btn.progress::after {content:'';position:absolute;bottom:0;left:0;height:3px;background:#4CAF50;width:var(--progress,0%);transition:width 2s linear}
+    .btn.active {background:#4CAF50;box-shadow:0 0 10px rgba(76,175,80,.5)}
+    .divider {margin:1.5rem 0;border-top:1px solid #d9d9d9}
+    .status-text {font-size:.8em;color:#666;margin-top:.5rem;height:1.2em}
   </style>
 </head>
 <body>
   <div class="card">
     <h1>BMCU-HUB</h1>
-    <form action="/upload" method="POST">
-      <button class="btn">固件更新</button>
-    </form>
+    <form action="/upload" method="POST"><button class="btn">固件更新</button></form>
     <div class="divider"></div>
     <form action="/updatewifi" method="POST">
       <button id="wifiBtn" class="btn" disabled>更新wifi+mqtt参数</button>
@@ -237,11 +175,10 @@ String config_HTML = R"(
     const statusText = document.getElementById('statusText');
     let hoverTimer;
     wifiBtn.addEventListener('mouseenter', () => {
-      if(wifiBtn.disabled) {
+      if (wifiBtn.disabled) {
         wifiBtn.classList.add('progress');
         wifiBtn.style.setProperty('--progress', '100%');
         statusText.textContent = '激活中...';
-        
         hoverTimer = setTimeout(() => {
           wifiBtn.disabled = false;
           wifiBtn.classList.remove('progress');
@@ -251,7 +188,7 @@ String config_HTML = R"(
       }
     });
     wifiBtn.addEventListener('mouseleave', () => {
-      if(wifiBtn.disabled) {
+      if (wifiBtn.disabled) {
         clearTimeout(hoverTimer);
         wifiBtn.classList.remove('progress');
         wifiBtn.style.removeProperty('--progress');
@@ -271,120 +208,38 @@ String root2_html = R"(
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>BMCU-HUB 控制中心</title>
   <style>
-    :root {
-      --primary: #1383c6;
-      --secondary: #4d90fe;
-      --accent: #f26721;
-      --light-bg: #e5e9f2;
-      --card-bg: #f7f7f7;
-      --text-dark: #333;
-      --text-light: #666;
-      --border: #d9d9d9;
-    }
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    body {
-      background-color: var(--light-bg);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      line-height: 1.5;
-    }
-    .control-card {
-      width: min(90vw, 320px);
-      padding: 2rem;
-      background: var(--card-bg);
-      border-radius: 1.25rem;
-      box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.15);
-      text-align: center;
-    }
-    .logo {
-      width: 120px;
-      margin-bottom: 1.5rem;
-    }
-    h1 {
-      color: var(--primary);
-      font-weight: 500;
-      margin-bottom: 1.5rem;
-    }
-    h1 span {
-      color: var(--accent);
-    }
-    .form-group {
-      margin-bottom: 1.25rem;
-    }
-    select, button {
-      width: 100%;
-      padding: 0.75rem;
-      border-radius: 0.5rem;
-      border: 1px solid var(--border);
-      font-size: 1rem;
-      transition: all 0.2s;
-    }
-    select {
-      background-color: white;
-      margin-bottom: 0.75rem;
-    }
-    select:hover {
-      border-color: #b9b9b9;
-      box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-    }
-    button {
-      background-color: var(--secondary);
-      color: white;
-      border: none;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #357ae8;
-    }
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    .divider {
-      margin: 1.5rem 0;
-      border-top: 1px solid var(--border);
-    }
+    :root{--p:#1383c6;--s:#4d90fe;--a:#f26721;--bg:#e5e9f2;--cbg:#f7f7f7;--td:#333;--tl:#666;--b:#d9d9d9}
+    body{background:#bg;min-height:100vh;display:flex;justify-content:center;align-items:center;font-family:system-ui,sans-serif}
+    .card{width:min(90vw,320px);padding:2rem;background:#cbg;border-radius:.75rem;box-shadow:0 .5rem 1rem rgba(0,0,0,.1);text-align:center}
+    h1{color:var(--p);font-weight:500;margin-bottom:1rem}h1 span{color:var(--a)}
+    .form-group{margin-bottom:1rem}select,button{width:100%;padding:.75rem;border-radius:.5rem;border:1px solid var(--b);font-size:1rem}
+    select{background:#fff;margin-bottom:.5rem}button{background:var(--s);color:#fff;border:0;font-weight:600;cursor:pointer}
+    button:hover{background:#357ae8}button:disabled{opacity:.6;cursor:not-allowed}.divider{margin:1rem 0;border-top:1px solid var(--b)}
   </style>
 </head>
 <body>
-  <div class="control-card">
+  <div class="card">
     <h1>BMCU-HUB</h1>
     <form id="captureForm" action="/data" method="POST">
       <div class="form-group">
-        <select id="catchkey" required>
-          <option value="" disabled selected>选择抓包参数</option>
+        <select id="catchkey" name="catchkey" required>
+          <option disabled selected>选择抓包参数</option>
           <option value="data">输出抓包数据</option>
           <option value="open">开启抓包500个包</option>
           <option value="close">关闭抓包</option>
-          <option value="catch_mode">开启抓包模式-屏蔽输出</option>
-          <option value="normal_mode">关闭开启抓包模式</option>
+          <option value="catch_mode">开启抓包模式</option>
+          <option value="normal_mode">关闭抓包模式</option>
         </select>
-        <button type="submit" class="capture-btn">抓包设置</button>
+        <button type="submit">抓包设置</button>
       </div>
     </form>
     <div class="divider"></div>
-    <form id="logForm" action="/log" method="POST">
-      <div class="form-group">
-        <button type="submit" class="log-btn">查看系统日志</button>
-      </div>
-    </form>
+    <form action="/log" method="POST"><div class="form-group"><button type="submit">查看系统日志</button></div></form>
     <div class="divider"></div>
-    <form id="updateForm" action="/config" method="POST">
-      <div class="form-group">
-        <button type="submit" class="update-btn">HUB设置</button>
-      </div>
-    </form>
+    <form action="/config" method="POST"><div class="form-group"><button type="submit">HUB设置</button></div></form>
   </div>
 </body>
 </html>
@@ -396,74 +251,19 @@ String upload_html = R"(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>文件上传系统</title>
-  <style>
-    body {
-      background-color: #e5e9f2;
-      margin: 0;
-      padding: 0;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-family: 'Arial', sans-serif;
-    }
-    .upload-container {
-      background-color: #fff;
-      width: 350px;
-      padding: 30px;
-      border-radius: 15px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-    h1 {
-      color: #1383c6;
-      margin-bottom: 25px;
-      font-weight: 500;
-    }
-    .upload-area {
-      border: 2px dashed #ddd;
-      border-radius: 8px;
-      padding: 30px;
-      margin-bottom: 20px;
-      transition: all 0.3s;
-    }
-    .upload-area:hover {
-      border-color: #4d90fe;
-      background-color: #f8faff;
-    }
-    .upload-btn {
-      background-color: #4d90fe;
-      color: white;
-      border: none;
-      padding: 12px 25px;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    .upload-btn:hover {
-      background-color: #357ae8;
-    }
-    .file-info {
-      margin-top: 15px;
-      font-size: 14px;
-      color: #666;
-    }
-    .progress-bar {
-      height: 8px;
-      background-color: #eee;
-      border-radius: 4px;
-      margin-top: 20px;
-      overflow: hidden;
-    }
-    .progress {
-      height: 100%;
-      background-color: #4d90fe;
-      width: 0%;
-      transition: width 0.3s;
-    }
-  </style>
+  <title>BMCU-HUB更新</title>
+    <style>
+        body {background:#e5e9f2;margin:0;padding:0;height:100vh;display:flex;justify-content:center;align-items:center;font-family:Arial,sans-serif}
+        .upload-container {background:#fff;width:350px;padding:30px;border-radius:15px;box-shadow:0 10px 25px rgba(0,0,0,0.1);text-align:center}
+        h1 {color:#1383c6;margin-bottom:25px;font-weight:500}
+        .upload-area {border:2px dashed #ddd;border-radius:8px;padding:30px;margin-bottom:20px;transition:all .3s}
+        .upload-area:hover {border-color:#4d90fe;background:#f8faff}
+        .upload-btn {background:#4d90fe;color:#fff;border:none;padding:12px 25px;border-radius:8px;font-size:16px;cursor:pointer;transition:background .3s}
+        .upload-btn:hover {background:#357ae8}
+        .file-info {margin-top:15px;font-size:14px;color:#666}
+        .progress-bar {height:8px;background:#eee;border-radius:4px;margin-top:20px;overflow:hidden}
+        .progress {height:100%;background:#4d90fe;width:0%;transition:width .3s}
+    </style>
 </head>
 <body>
   <div class="upload-container">
@@ -471,8 +271,8 @@ String upload_html = R"(
     <form id="uploadForm" action="/update" method="POST" enctype="multipart/form-data">
       <div class="upload-area" id="dropZone">
         <p>拖放更新固件到此处或</p>
-        <input type="file" id="fileInput" name="file" style="display: none;">
-        <label for="fileInput" class="upload-btn">选择文件</label>
+        <input type="file" id="fileInput" name="file" style="display: none;" accept=".bin" maxSize="1500000">
+        <label for="fileInput" class="upload-btn">选择固件文件</label>
         <div class="file-info" id="fileName">未选择文件</div>
       </div>
       <div class="progress-bar">
@@ -485,12 +285,13 @@ String upload_html = R"(
   <script>
     const fileInput = document.getElementById('fileInput');
     const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
     const dropZone = document.getElementById('dropZone');
     const uploadProgress = document.getElementById('uploadProgress');
-    // 原生JS事件处理
     fileInput.addEventListener('change', (e) => {
       if(e.target.files.length) {
-        fileName.textContent = `已选择: ${e.target.files[0].name}`;
+        const fileSizeInKB = (e.target.files[0].size / 1024).toFixed(2);
+        fileName.textContent = `已选择: ${e.target.files[0].name}，文件大小 ${fileSizeInKB} KB`;
       }
     });
     dropZone.addEventListener('dragover', (e) => {
@@ -511,7 +312,6 @@ String upload_html = R"(
         fileName.textContent = `已选择: ${e.dataTransfer.files[0].name}`;
       }
     });
-    // jQuery AJAX上传处理
     $('#uploadForm').submit(function(e){
       e.preventDefault();
       if(!fileInput.files.length) return;
@@ -538,8 +338,8 @@ String upload_html = R"(
           fileName.textContent = '未选择文件';
           fileInput.value = '';
         },
-        error: function(xhr, status, error) {
-          //alert('上传失败: ' + error);
+        error: function(a, b, c) {
+          alert('上传失败: ' + c);
           uploadProgress.style.width = '0%';
           fileName.textContent = '未选择文件';
           fileInput.value = '';
@@ -697,12 +497,12 @@ void handleUpdateWifi() // 返回http状态
   if (WiFi.status() == WL_CONNECTED) // 如果WiFi连接成功
   {
     // server.send(200, "text/html", "<meta charset='UTF-8'>WiFi连接成功!<br />IP地址: " + WiFi.localIP().toString()); //返回连接成功页面
-    // my_log("<br />(http) Bambu-hub更新wifi+mqtt参数成功");
+    my_printf("(http) Bambu-hub更新wifi+mqtt参数成功");
   }
   else // 如果WiFi连接失败
   {
     // server.send(200, "text/html", "<meta charset='UTF-8'>WiFi连接失败，请检查配置参数是否正确。"); //返回连接失败页面
-    // my_log("<br />(http) Bambu-hub更新wifi+mqtt参数失败");
+    my_printf("(http) Bambu-hub更新wifi+mqtt参数失败");
     WiFi.softAPdisconnect();
     WiFi.mode(WIFI_STA);                                          // 设置WiFi为STA模式
     WiFi.begin(config_save.wifi_ssid, config_save.wifi_password); // 重新开始WiFi连接
@@ -763,35 +563,36 @@ void handleData()
   if (server.hasArg("catchkey")) // 判断是否有抓包参数
   {
     String catchkey = server.arg("catchkey"); // 获取html表单输入框name名为"catchkey"的内容
-    catchkey.trim();                          // 去除前后空格
+    //catchkey.trim();                          // 去除前后空格
     if (catchkey == "open")                   // 如果抓包参数为"开启抓包"
     {
-      // catch_key = 1; //开启抓包
-      // my_log("<br />(http) Bambu-hub开启抓包");
+      catch_key = 1; //开启抓包
+      my_printf("(http) Bambu-hub开启抓包");
       server.send(200, "text/plain", "open catch");
       return;
     }
     else if (catchkey == "close") // 如果抓包参数为"关闭抓包"
     {
-      // catch_key = 0; //关闭抓包
-      // my_log("<br />(http) Bambu-hub关闭抓包");
+      catch_key = 0; //关闭抓包
+      my_printf("(http) Bambu-hub关闭抓包");
       server.send(200, "text/plain", "close catch");
       return;
     }
     else if (catchkey == "catch_mode") // 如果抓包参数为"catch_mode"
     {
-      // catch_mode = true; //设置为抓包模式
-      // my_log("<br />(http) Bambu-hub设置为抓包模式");
+      catch_mode = true; //设置为抓包模式
+      my_printf("(http) Bambu-hub设置为抓包模式--屏蔽输出");
       server.send(200, "text/plain", "catch mode");
       return;
     }
     else if (catchkey == "normal_mode") // 如果抓包参数为"normal_mode"
     {
-      // catch_mode = false; //设置为normal模式
-      // my_log("<br />(http) Bambu-hub设置为normal模式");
+      catch_mode = false; //设置为normal模式
+      my_printf("(http) Bambu-hub设置为normal模式--抓包数据包含bmcu数据");
       server.send(200, "text/plain", "normal mode");
       return;
     }
+    server.send(200, "text/plain", catchkey); // 返回错误页面
   }
 
   if (C_data[0] == '\0')
@@ -799,9 +600,8 @@ void handleData()
     server.send(200, "text/plain", "no catch data");
     return;
   }
-  // String str = C_data;
-  // str.replace("\n", "<br />");
-  server.send(200, "text/plain", C_data);
+  else
+     server.send(200, "text/plain", C_data);
   // server.sendContent("<br />");
 }
 /*
@@ -865,11 +665,12 @@ void initWebServer()
             {
     server.sendHeader("Connection", "close");
     server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+    delay(1000);
     ESP.restart(); }, []()
             {
     HTTPUpload& upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
-      Serial.printf("Update: %s\n", upload.filename.c_str());
+      ESP_LOGE("Update","Update: %s\n", upload.filename.c_str());
       if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
         Update.printError(Serial);
       }
@@ -880,7 +681,7 @@ void initWebServer()
       }
     } else if (upload.status == UPLOAD_FILE_END) {
       if (Update.end(true)) { //true to set the size to the current progress
-        Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+        ESP_LOGE("Update","Update Success: %u\nRebooting...\n", upload.totalSize);
       } else {
         Update.printError(Serial);
       }

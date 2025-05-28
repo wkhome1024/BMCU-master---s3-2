@@ -6,7 +6,7 @@
 #include "time64.h"
 #include "485.h"
 #include "BambuBus.h"
-#include "Flash_saves.h"
+#include "Data.h"
 #include "switch.h"
 #include <PubSubClient.h>
 #include <sht30.h>
@@ -17,8 +17,9 @@
 extern const char *host_name;
 #define SYS_RGB 8    // RGB灯针脚
 #define ledPixels 3  //led数量
-
-
+extern int catch_key; // 抓包开关
+extern bool catch_mode;             // 抓包模式
+#define EN_log true                          // 日志开关
 
 
 

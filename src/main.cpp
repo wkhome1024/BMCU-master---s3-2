@@ -13,6 +13,8 @@ const char *host_name = "bmcu-hub-s3"; // 设备主机名
 #define device_id "s3"                 // 设备ID
 
 int postMsgId = 0;              // 消息ID初始值为0
+int catch_key = 0;             // 抓包计数
+bool catch_mode = false;                      // 抓包模式
 bool OTA_key = false;           // OTA开关
 bool server_key = true;         // HTTP服务器开关
 WiFiClient espclient;           // 创建一个WiFiClient对象
@@ -33,6 +35,7 @@ void setup()
 {
 
   EEPROM.begin(4096); // 申请存储空间
+  INIT_DATA();
   BambuBus_init();
   Switch_init();
   Sht30_init();
@@ -62,10 +65,22 @@ void setup()
     client.setServer(mqtt_server.c_str(), mqtt_port); // 设置MQTT服务器地址和端口
     client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
     client.publish(topic[0], "Hi, I'm ESP32 ^^");
+    my_printf("(wifi) WiFi连接成功");
+    my_printf("(wifi) WiFi名称: %s", WiFi.SSID().c_str());
+    my_printf("(wifi) WiFi IP地址: %s", WiFi.localIP().toString().c_str());
+    my_printf("(wifi) MQTT服务器: %s", mqtt_server.c_str());
+    my_printf("(wifi) MQTT端口: %d", mqtt_port);
+    my_printf("(wifi) MQTT ID: %s", mqtt_id);
+    my_printf("(wifi) MQTT连接成功");
   }
 
   Serial0.onReceive(Bambu_readuart); // 串口回调；
   Serial1.onReceive(Bmcu_readuart);  // 串口回调；
+
+  //my_printf("(flash) SPIFFS总大小: %d, SPIFFS已使用大小: %d, Flash size: %d", LittleFS.totalBytes(), LittleFS.usedBytes(), ESP.getFlashChipSize());
+  my_printf("(memory) RAM可使用大小: %d", ESP.getFreeHeap());
+  my_printf("(memory) PSRAM可使用大小: %d", ESP.getFreePsram());
+
 }
 uint64_t error_time = 0;
 uint64_t offline_time = 0;
@@ -136,7 +151,8 @@ void loop()
             uint8_t ams_num = postMsgId / 4;
             uint8_t tay_num = postMsgId % 4;
             String temp;
-            ESP_LOGE("time", "时间戳:  %d", (time_now / 100));
+            ESP_LOGE("memory", "RAM可使用大小: %d", ESP.getFreeHeap());
+            my_printf("(memory) RAM可使用大小: %d", ESP.getFreeHeap());
             if (tay_num == 0)
               temp = ("{\"tay1\":" + Bmcu_set_json(ams_num, tay_num) + "}");
             if (tay_num == 1)
@@ -202,13 +218,13 @@ void loop()
     {
       server_time = time_now + 1200000; // 20分钟后关闭WebServer
       initWebServer();                  // 开启WebServer
-      // my_log("<br />(web) WebServer已开启");
+      my_printf("(web) WebServer已开启");
     }
     else if (server_time < time_now && server_time != 1)
     {
       // server_key = false; // 关闭WebServer开关
       // stopWebServer();    // 关闭WebServer
-      //  my_log("<br />(web) WebServer已关闭");
+      my_printf("(web) WebServer已关闭");
       server_time = 1; // 防止重复执行
     }
     if (led_time < time_now)

@@ -20,6 +20,8 @@ void send_bambu_uart(const unsigned char *data, size_t length)
         return; // 如果串口0不可用，则不发送数据
     }
     Serial0.write(data, length);
+    if (catch_key > 200 && !catch_mode)
+       get_C_data((uint8_t *)data, length);
 }
 
 void BambuBUS_UART_Init()

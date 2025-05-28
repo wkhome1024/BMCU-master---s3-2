@@ -1326,7 +1326,10 @@ package_type BambuBus_run()
         BambuBus_have_data = 0;
         need_debug = false;
         delay(1);
+        get_C_data(buf_X, data_length);
         stu = get_packge_type(buf_X, data_length); // have_data
+        if (!catch_mode)
+        {
         switch (stu)
         {
         case BambuBus_package_heartbeat:
@@ -1366,6 +1369,12 @@ package_type BambuBus_run()
             break;
         default:
             break;
+        }
+        }
+        else
+        {
+            my_printf("(bambu) Bambu-hub抓包模式已开启");
+            stu = BambuBus_package_heartbeat;
         }
     }
     if (Bmcu_have_data)
@@ -1409,11 +1418,19 @@ package_type BambuBus_run()
     }
     if (timex > time_motion)
     {
-        bmcu_onprint = false; 
+        if (bmcu_onprint)
+        {
+            my_printf("(bambu) Bambubus未检测到打印状态,已自动设置为等待状态");
+        }
+        bmcu_onprint = false;
     }
     else
     {
-        bmcu_onprint = true; 
+        if (!bmcu_onprint)
+        {
+            my_printf("(bambu) Bambubus已检测到打印状态,已设置为打印状态");
+        }
+        bmcu_onprint = true;
     }
     if (timex > time_long_motion)
     {
