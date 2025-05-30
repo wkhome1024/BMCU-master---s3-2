@@ -77,82 +77,16 @@ String ROOT_HTML_1 = R"(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WIFI设置页面</title>
   <style>
-    :root {
-      --primary: #1383c6;
-      --secondary: #f26721;
-      --bg-color: #e5e9f2;
-      --card-bg: #F7F7F7;
-      --input-border: #d9d9d9;
-      --btn-color: #4d90fe;
-      --btn-hover: #357ae8
-    }
-    body, html {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      display: table;
-      background-color: var(--bg-color);
-      font-family: 'Source Sans Pro', Arial, sans-serif
-    }
-    #content {
-      display: table-cell;
-      vertical-align: middle;
-      text-align: center
-    }
-    .login-card {
-      padding: 2.5rem;
-      width: 22rem;
-      background-color: var(--card-bg);
-      margin: 0 auto 1rem;
-      border-radius: 1.25rem;
-      box-shadow: 0.5rem 0.5rem 1rem rgba(0,0,0,0.15);
-      transition: transform 0.3s ease
-    }
-    .login-card:hover {
-      transform: translateY(-0.25rem)
-    }
-    .login-card h1 {
-      font-weight: 400;
-      font-size: 2rem;
-      color: var(--primary);
-      margin-bottom: 1.5rem
-    }
-    .login-card h1 span {
-      color: var(--secondary)
-    }
-    input[type="text"],
-    input[type="password"],
-    input[type="submit"] {
-      width: 100%;
-      padding: 0.75rem;
-      margin-bottom: 1rem;
-      border-radius: 0.625rem;
-      border: 1px solid var(--input-border);
-      font-size: 1rem;
-      box-sizing: border-box
-    }
-    input[type="submit"] {
-      background-color: var(--btn-color);
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: background 0.2s
-    }
-    input[type="submit"]:hover {
-      background-color: var(--btn-hover)
-    }
-    input[type="submit"]:disabled {
-      opacity: 0.6;
-      cursor: not-allowed
-    }
-    @media (max-width: 480px) {
-      .login-card {
-        width: 85%;
-        padding: 1.5rem
-      }
-    }
+   :root{--primary:#1383c6;--secondary:#f26721;--bg-color:#e5e9f2;--card-bg:#F7F7F7;--input-border:#d9d9d9;--btn-color:#4d90fe;--btn-hover:#357ae8}
+   body,html{margin:0;padding:0;width:100%;height:100%;display:table;background-color:var(--bg-color);font-family:'Source Sans Pro',Arial,sans-serif}#content{display:table-cell;vertical-align:middle;text-align:center}
+   .login-card{padding:2.5rem;width:22rem;background-color:var(--card-bg);margin:0 auto 1rem;border-radius:1.25rem;box-shadow:0.5rem 0.5rem 1rem rgba(0,0,0,0.15);transition:transform 0.3s ease}
+   .login-card:hover{transform:translateY(-0.25rem)}
+   .login-card h1{font-weight:400;font-size:2rem;color:var(--primary);margin-bottom:1.5rem}
+   input[type="text"],input[type="password"],input[type="submit"]{width:100%;padding:0.75rem;margin-bottom:1rem;border-radius:0.625rem;border:1px solid var(--input-border);font-size:1rem;box-sizing:border-box}
+   input[type="submit"]{background-color:var(--btn-color);color:white;font-weight:600;cursor:pointer;border:none;transition:background 0.2s}
+   input[type="submit"]:hover{background-color:var(--btn-hover)}
+   input[type="submit"]:disabled{opacity:0.6;cursor:not-allowed}
+   @media (max-width:480px){.login-card{width:85%;padding:1.5rem}}
   </style>
 </head>
 <body>
@@ -317,8 +251,6 @@ String upload_html = R"(
         body {background:#e5e9f2;margin:0;padding:0;height:100vh;display:flex;justify-content:center;align-items:center;font-family:Arial,sans-serif}
         .upload-container {background:#fff;width:350px;padding:30px;border-radius:15px;box-shadow:0 10px 25px rgba(0,0,0,0.1);text-align:center}
         h1 {color:#1383c6;margin-bottom:25px;font-weight:500}
-        .upload-area {border:2px dashed #ddd;border-radius:8px;padding:30px;margin-bottom:20px;transition:all .3s}
-        .upload-area:hover {border-color:#4d90fe;background:#f8faff}
         .upload-btn {background:#4d90fe;color:#fff;border:none;padding:12px 25px;border-radius:8px;font-size:16px;cursor:pointer;transition:background .3s}
         .upload-btn:hover {background:#357ae8}
         .file-info {margin-top:15px;font-size:14px;color:#666}
@@ -330,12 +262,9 @@ String upload_html = R"(
   <div class="upload-container">
     <h1>BMCU-HUB</h1>
     <form id="uploadForm" action="/update" method="POST" enctype="multipart/form-data">
-      <div class="upload-area" id="dropZone">
-        <p>拖放更新固件到此处或</p>
-        <input type="file" id="fileInput" name="file" style="display: none;" accept=".bin" maxSize="1500000">
+        <input type="file" id="fileInput" name="file" style="display: none;" accept=".bin" maxSize="1000000">
         <label for="fileInput" class="upload-btn">选择固件文件</label>
         <div class="file-info" id="fileName">未选择文件</div>
-      </div>
       <div class="progress-bar">
         <div class="progress" id="uploadProgress"></div>
       </div>
@@ -347,30 +276,11 @@ String upload_html = R"(
     const fileInput = document.getElementById('fileInput');
     const fileName = document.getElementById('fileName');
     const fileSize = document.getElementById('fileSize');
-    const dropZone = document.getElementById('dropZone');
     const uploadProgress = document.getElementById('uploadProgress');
     fileInput.addEventListener('change', (e) => {
       if(e.target.files.length) {
         const fileSizeInKB = (e.target.files[0].size / 1024).toFixed(2);
         fileName.textContent = `已选择: ${e.target.files[0].name}，文件大小 ${fileSizeInKB} KB`;
-      }
-    });
-    dropZone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      dropZone.style.borderColor = '#4d90fe';
-      dropZone.style.backgroundColor = '#f8faff';
-    });
-    dropZone.addEventListener('dragleave', () => {
-      dropZone.style.borderColor = '#ddd';
-      dropZone.style.backgroundColor = 'transparent';
-    });
-    dropZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropZone.style.borderColor = '#ddd';
-      dropZone.style.backgroundColor = 'transparent';
-      if(e.dataTransfer.files.length) {
-        fileInput.files = e.dataTransfer.files;
-        fileName.textContent = `已选择: ${e.dataTransfer.files[0].name}`;
       }
     });
     $('#uploadForm').submit(function(e){
