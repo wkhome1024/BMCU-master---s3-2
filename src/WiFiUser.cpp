@@ -71,70 +71,113 @@ WebServer server(webPort); // 开启web服务, 创建TCP SERVER,参数: 端口�
 // 上下两段HTML代码
 String ROOT_HTML_1 = R"(
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WIFI设置页面</title>
   <style>
-    #content, .login, .login-card a, .login-card h1, .login-help { text-align: center }
-    body, html { margin: 0; padding: 0; width: 100%; height: 100%; display: table }
-    #content { font-family: 'Source Sans Pro', sans-serif; -webkit-background-size: cover; -moz-background-size: cover; -o-background-size: cover; background-size: cover; display: table-cell; vertical-align: middle }
-    .login-card { padding: 40px; width: 274px; background-color: #F7F7F7; margin: 0 auto 10px; border-radius: 20px; box-shadow: 8px 8px 15px rgba(0,0,0,.3); overflow: hidden }
-    .login-card h1 { font-weight: 400; font-size: 2.3em; color: #1383c6 }
-    .login-card h1 span { color: #f26721 }
-    .login-card img { width: 70%; height: 70% }
-    .login-card input[type=submit] { width: 100%; display: block; margin-bottom: 10px; position: relative }
-    .login-card input[type=text], input[type=password] { height: 44px; font-size: 16px; width: 100%; margin-bottom: 10px; -webkit-appearance: none; background: #fff; border: 1px solid #d9d9d9; border-top: 1px solid silver; padding: 0 8px; box-sizing: border-box; -moz-box-sizing: border-box }
-    .login-card input[type=text]:hover, input[type=password]:hover { border: 1px solid #b9b9b9; border-top: 1px solid #a0a0a0; -moz-box-shadow: inset 0 1px 2px rgba(0,0,0,.1); -webkit-box-shadow: inset 0 1px 2px rgba(0,0,0,.1); box-shadow: inset 0 1px 2px rgba(0,0,0,.1) }
-    .login { font-size: 14px; font-family: Arial,sans-serif; font-weight: 700; height: 36px; padding: 0 8px }
-    .login-submit { -webkit-appearance: none; -moz-appearance: none; appearance: none; border: 0; color: #fff; text-shadow: 0 1px rgba(0,0,0,.1); background-color: #4d90fe }
-    .login-submit:disabled { opacity: .6 }
-    .login-submit:hover { border: 0; text-shadow: 0 1px rgba(0,0,0,.3); background-color: #357ae8 }
-    .login-card a { text-decoration: none; color: #666; font-weight: 400; display: inline-block; opacity: .6; transition: opacity ease .5s }
-    .login-card a:hover { opacity: 1 }
-    .login-help { width: 100%; font-size: 12px }
-    .list { list-style-type: none; padding: 0 }
-    .list__item { margin: 0 0 .7rem; padding: 0 }
-    label { display: -webkit-box; display: -webkit-flex; display: -ms-flexbox; display: flex; -webkit-box-align: center; -webkit-align-items: center; -ms-flex-align: center; align-items: center; text-align: left; font-size: 14px; }
-    input[type=checkbox] { -webkit-box-flex: 0; -webkit-flex: none; -ms-flex: none; flex: none; margin-right: 10px; float: left }
-    .error { font-size: 14px; font-family: Arial,sans-serif; font-weight: 700; height: 25px; padding: 0 8px; padding-top: 10px; -webkit-appearance: none; -moz-appearance: none; appearance: none; border: 0; color: #fff; text-shadow: 0 1px rgba(0,0,0,.1); background-color: #ff1215 }
-    @media screen and (max-width:450px) {
-      .login-card { width: 70%!important }
-      .login-card img { width: 30%; height: 30% }
+    :root {
+      --primary: #1383c6;
+      --secondary: #f26721;
+      --bg-color: #e5e9f2;
+      --card-bg: #F7F7F7;
+      --input-border: #d9d9d9;
+      --btn-color: #4d90fe;
+      --btn-hover: #357ae8
+    }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      display: table;
+      background-color: var(--bg-color);
+      font-family: 'Source Sans Pro', Arial, sans-serif
+    }
+    #content {
+      display: table-cell;
+      vertical-align: middle;
+      text-align: center
+    }
+    .login-card {
+      padding: 2.5rem;
+      width: 22rem;
+      background-color: var(--card-bg);
+      margin: 0 auto 1rem;
+      border-radius: 1.25rem;
+      box-shadow: 0.5rem 0.5rem 1rem rgba(0,0,0,0.15);
+      transition: transform 0.3s ease
+    }
+    .login-card:hover {
+      transform: translateY(-0.25rem)
+    }
+    .login-card h1 {
+      font-weight: 400;
+      font-size: 2rem;
+      color: var(--primary);
+      margin-bottom: 1.5rem
+    }
+    .login-card h1 span {
+      color: var(--secondary)
+    }
+    input[type="text"],
+    input[type="password"],
+    input[type="submit"] {
+      width: 100%;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      border-radius: 0.625rem;
+      border: 1px solid var(--input-border);
+      font-size: 1rem;
+      box-sizing: border-box
+    }
+    input[type="submit"] {
+      background-color: var(--btn-color);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background 0.2s
+    }
+    input[type="submit"]:hover {
+      background-color: var(--btn-hover)
+    }
+    input[type="submit"]:disabled {
+      opacity: 0.6;
+      cursor: not-allowed
+    }
+    @media (max-width: 480px) {
+      .login-card {
+        width: 85%;
+        padding: 1.5rem
+      }
     }
   </style>
 </head>
-<body style="background-color: #e5e9f2">
+<body>
   <div id="content">
-    <form name='input' action='/configwifi' method='POST'>
-      <div class="login-card">
-        <h1>WiFi+MQTT</h1>
-        <form name="login_form" method="post" action="$PORTAL_ACTION$">
-          <input type="text" name="ssid" placeholder="请选择 WiFi 名称" id="auth_user" list="data-list" style="border-radius: 10px">
-          <datalist id="data-list">
+    <div class="login-card">
+      <h1>WiFi+MQTT</h1>
+      <form name="login_form" method="post" action="/configwifi">
+        <input type="text" name="ssid" placeholder="请选择 WiFi 名称" list="data-list" required>
+        <datalist id="data-list">
 )";
 
 String ROOT_HTML_2 = R"(
-          <input type="password" name="password" placeholder="请输入 WiFi 密码" id="auth_pass" style="border-radius: 10px">
-          <input type="text" name="mqtt_server" placeholder="请输入 MQTT IP" id="auth_mqtt_ip" style="border-radius: 10px">
-          <input type="text" name="mqtt_port" placeholder="请输入 MQTT 端口" id="auth_mqtt_port" style="border-radius: 10px">
-          <input type="text" name="mqtt_username" placeholder="请输入 MQTT 用户名" id="auth_mqtt_id" style="border-radius: 10px">
-          <input type="text" name="mqtt_password" placeholder="请输入 MQTT 密码" id="auth_mqtt_pd" style="border-radius: 10px">
-          <div class="login-help">
-            <ul class="list">
-              <li class="list__item"></li>
-            </ul>
-          </div>
-          <input type="submit" class="login login-submit" value="确 定 连 接" id="login" style="border-radius: 15px">
-        </form>
-      </div>
-    </form>
+        <input type="password" name="password" placeholder="请输入 WiFi 密码" required>
+        <input type="text" name="mqtt_server" placeholder="请输入 MQTT IP" value="192.168.10.10">
+        <input type="text" name="mqtt_port" placeholder="请输入 MQTT 端口" value="1883">
+        <input type="text" name="mqtt_username" placeholder="请输入 MQTT 用户名">
+        <input type="password" name="mqtt_password" placeholder="请输入 MQTT 密码">
+        <input type="submit" value="确 定 连 接">
+      </form>
+    </div>
   </div>
 </body>
 </html>
 )";
-
+/*
 String config_HTML = R"(
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -193,6 +236,7 @@ String config_HTML = R"(
 </body>
 </html>
 )";
+*/
 // String ROOT_HTML_2 = "</form> </body></html>";
 // String ROOT_HTML_3 = "<meta charset='UTF-8'>error, not found ssid";
 // String ROOT_HTML_4 = "<meta charset='UTF-8'>error, not found ssid";
@@ -212,6 +256,7 @@ String root2_html = R"(
     .form-group{margin-bottom:1rem}select,button{width:100%;padding:.75rem;border-radius:.5rem;border:1px solid var(--b);font-size:1rem}
     select{background:#fff;margin-bottom:.5rem}button{background:var(--s);color:#fff;border:0;font-weight:600;cursor:pointer}
     button:hover{background:#357ae8}button:disabled{opacity:.6;cursor:not-allowed}.divider{margin:1rem 0;border-top:1px solid var(--b)}
+    .status-text {font-size:.8em;color:#666;margin-top:.5rem;height:1.2em}
   </style>
 </head>
 <body>
@@ -233,8 +278,30 @@ String root2_html = R"(
     <div class="divider"></div>
     <form action="/log" method="POST"><div class="form-group"><button type="submit">查看系统日志</button></div></form>
     <div class="divider"></div>
-    <form action="/config" method="POST"><div class="form-group"><button type="submit">HUB设置</button></div></form>
+    <form action="/upload" method="POST"><div class="form-group"><button type="submit">HUB固件更新</button></div></form>
+    <div class="divider"></div>
+    <form action="/updatewifi" method="POST"><div class="form-group"><button type="submit" id="wifiBtn" disabled>更新wifi+mqtt参数</button></div><div class="status-text" id="statusText"></div></form>
   </div>
+  <script>
+    const wifiBtn = document.getElementById('wifiBtn');
+    const statusText = document.getElementById('statusText');
+    let hoverTimer;
+    wifiBtn.addEventListener('mouseenter', () => {
+      if (wifiBtn.disabled) {
+        statusText.textContent = '激活中...';
+        hoverTimer = setTimeout(() => {
+          wifiBtn.disabled = false;
+          statusText.textContent = '按钮已激活';
+        }, 2000);
+      }
+    });
+    wifiBtn.addEventListener('mouseleave', () => {
+      if (wifiBtn.disabled) {
+        clearTimeout(hoverTimer);
+        statusText.textContent = '';
+      }
+    });
+  </script>
 </body>
 </html>
 )";
@@ -525,7 +592,7 @@ void handleNotFound() // 当浏览器请求的网络资源无法在服务器找�
 
 void handleConfig()
 {
-  server.send(200, "text/html", config_HTML);
+  server.send(200, "text/html", "config_HTML");
 }
 
 void handleUpload()
@@ -669,7 +736,7 @@ void initWebServer()
   }
   // server.on("/", HTTP_GET, handleRoot);                      //  当浏览器请求服务器根目录(网站首页)时调用自定义函数handleRoot处理，设置主页回调函数，必须添加第二个参数HTTP_GET，否则无法强制门户
   server.on("/configwifi", HTTP_POST, handleConfigWifi); //  当浏览器请求服务器/configwifi(表单字段)目录时调用自定义函数handleConfigWifi处理
-  server.on("/config", HTTP_POST, handleConfig);
+  //server.on("/config", HTTP_POST, handleConfig);
   server.on("/data", HTTP_POST, handleData);
   server.on("/log", HTTP_POST, handlelog);
   // server.on("/update", HTTP_POST, handleUpdate);

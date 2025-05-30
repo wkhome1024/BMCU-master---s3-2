@@ -119,7 +119,7 @@ void loop()
         if (mqtt_time < time_now)
         {
           mqtt_time = time_now + 5000; // 5秒延迟
-          client.publish(topic[0], Sht30_read_mqtt().c_str());
+          client.publish(ha_topic, Sht30_read_mqtt().c_str());
         }
       }
     }
