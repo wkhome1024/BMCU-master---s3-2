@@ -1551,7 +1551,7 @@ bool Bambu_onprint()
 }
 
 
-// char jsonBuf[256];
+/*
 String Bmcu_set_json(int ams_num, int i)
 {
     char colorBuf[20];
@@ -1571,7 +1571,7 @@ String Bmcu_set_json(int ams_num, int i)
     // sprintf(jsonBuf,"{ name : %s , color : %X , meter : %f}",name,color,meter);
 
     return json;
-}
+}*/
 uint16_t get_tay_color(uint8_t num)
 {
     auto number = get_bmcu_and_channel(num);
@@ -1582,4 +1582,27 @@ uint16_t get_tay_color(uint8_t num)
     g = data_save.filament[AMS_num4][read_num4].color_G;
     b = data_save.filament[AMS_num4][read_num4].color_B;
     return (uint16_t)((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+}
+
+String Bmcu_set_json(int ams_num, int i)
+{
+    const auto& filament = data_save.filament[ams_num][i];
+    String name = filament.name;
+    char colorBuf[20];
+    sprintf(colorBuf, "#%02X%02X%02X",
+            filament.color_R,
+            filament.color_G,
+            filament.color_B);
+    char meterBuf[10];
+    float meters = filament.meters;
+    if (isnan(meters) || isinf(meters)) {
+        meters = 0.0f; 
+    }
+    sprintf(meterBuf, "%6.1f", meters);
+    String json = (
+        "{\"name\":\"%s\",\"color\":\"%s\",\"meter\":\"%s\"}",
+        name.c_str(),
+        colorBuf,
+        meterBuf);
+    return json;
 }

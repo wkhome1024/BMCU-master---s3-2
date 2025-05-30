@@ -11,8 +11,6 @@ void INIT_DATA()
 }
 void RESET_DATA(char *data)
 {
-    free(data);
-    data = (char *)heap_caps_malloc(1024 * 64, MALLOC_CAP_SPIRAM);
     memset(data, 0, 1024 * 64);
 }
 
@@ -43,60 +41,31 @@ void get_C_data(uint8_t *buf_X, int data_length)
 static int data_count = 0;
 void WriteData(const char *data)
 {
-
-    if (data_count < 1024 * 64)
-    {
-        memcpy(C_data + data_count, data, strlen(data));
-        data_count += strlen(data);
-    }
-    else
-    {
+    int len = strlen(data);
+    if (data_count + len >= 1024 * 64) {
         data_count = 0;
-        //RESET_DATA(C_data);
-        memcpy(C_data + data_count, data, strlen(data));
-        data_count += strlen(data);
     }
+    memcpy(C_data + data_count, data, len);
+    data_count += len;
 }
 
 static int log_count = 0;
 size_t my_log(const char *format)
 {
-    if (!EN_log)
-    {
-        return 0; // 日志开关关闭
-    }
-    // char buffer[128];
-    // int len = snprintf(buffer, sizeof(buffer), format);
-    String hexStr = ""; // 初始化空字符串
+    if (!EN_log) return 0;
 
-    // 将日志输出到文件
-    if (memcmp(format, "(", 1) == 0)
-    {
-        if (log_count != 0)
-        {
-            hexStr += "<br />"; // 添加换行符
-        }
-        hexStr += millis();     // 获取当前时间戳
-        hexStr += " : > ";      // 添加时间戳和分隔符
-        hexStr += format;
-    }
-    else
-    {
-        hexStr += format; // 添加日志内容
-    }
+    char hexStr[128]; // 固定大小缓冲区，避免 String 的开销
+    sprintf(hexStr, "%lu : > %s", millis(), format);
 
-    if (log_count < 1024 * 64)
-    {
-        memcpy(L_data + log_count, hexStr.c_str(), hexStr.length());
-        log_count += hexStr.length();
-    }
-    else
-    {
+    int len = strlen(hexStr);
+    if (log_count + len >= 1024 * 64) {
         log_count = 0;
-        memcpy(L_data + log_count, hexStr.c_str(), hexStr.length());
-        log_count += hexStr.length();
     }
-    return hexStr.length();
+
+    memcpy(L_data + log_count, hexStr, len);
+    log_count += len;
+
+    return len;
 }
 int my_printf(const char *format, ...)
 {
@@ -120,7 +89,6 @@ int esplog_printf()
 
 bool Flash_saves(void *buf, uint32_t length, uint32_t address)
 {
-
     EEPROM.writeBytes(address, buf, length);
     EEPROM.commit();
     return true;

@@ -1,21 +1,21 @@
 #include <main.h>
 
-//const char *ssid = "";       // WiFi名称
-//const char *password = ""; // WiFi密码
+// const char *ssid = "";       // WiFi名称
+// const char *password = ""; // WiFi密码
 
-//const char *mqtt_server1 = "192.168.10.10"; // MQTT服务器地址
-//const int mqtt_port1 = 1883;                // MQTT服务器端口
+// const char *mqtt_server1 = "192.168.10.10"; // MQTT服务器地址
+// const int mqtt_port1 = 1883;                // MQTT服务器端口
 const char *ha_topic = "bmcu-hub";
 const char *topic[8] = {"bmcu1", "bmcu2", "bmcu3", "bmcu4", "bmcu5", "bmcu6", "bmcu7", "bmcu8"};
-//const char *mqtt_username1 = "";
-//const char *mqtt_password1 = "";
+// const char *mqtt_username1 = "";
+// const char *mqtt_password1 = "";
 const char *host_name = "bmcu-hub-s3"; // 设备主机名
 #define product_id "bmcu-hub"          // 产品ID
 #define device_id "s3"                 // 设备ID
 
 int postMsgId = 0;              // 消息ID初始值为0
-int catch_key = 0;             // 抓包计数
-bool catch_mode = false;                      // 抓包模式
+int catch_key = 0;              // 抓包计数
+bool catch_mode = false;        // 抓包模式
 bool OTA_key = false;           // OTA开关
 bool server_key = true;         // HTTP服务器开关
 WiFiClient espclient;           // 创建一个WiFiClient对象
@@ -55,7 +55,6 @@ void setup()
     delay(100);
     checkDNS_HTTP();
     // Serial.print(".");
-
   }
 
   if (WiFi.status() == WL_CONNECTED)
@@ -78,10 +77,9 @@ void setup()
   Serial0.onReceive(Bambu_readuart); // 串口回调；
   Serial1.onReceive(Bmcu_readuart);  // 串口回调；
 
-  //my_printf("(flash) SPIFFS总大小: %d, SPIFFS已使用大小: %d, Flash size: %d", LittleFS.totalBytes(), LittleFS.usedBytes(), ESP.getFlashChipSize());
+  // my_printf("(flash) SPIFFS总大小: %d, SPIFFS已使用大小: %d, Flash size: %d", LittleFS.totalBytes(), LittleFS.usedBytes(), ESP.getFlashChipSize());
   my_printf("(memory) RAM可使用大小: %d", ESP.getFreeHeap());
   my_printf("(memory) PSRAM可使用大小: %d", ESP.getFreePsram());
-
 }
 uint64_t error_time = 0;
 uint64_t offline_time = 0;
@@ -131,7 +129,7 @@ void loop()
         if (error_time < (time_now - 2000))
         {
           error_time = time_now + 2000;
-          Sht30_read();
+          //Sht30_read();
         }
         else if (error_time > time_now)
         {
@@ -151,19 +149,12 @@ void loop()
             mqtt_time = time_now + 5000; // 5秒延迟
             uint8_t ams_num = postMsgId / 4;
             uint8_t tay_num = postMsgId % 4;
-            String temp;
             ESP_LOGE("memory", "RAM可使用大小: %d", ESP.getFreeHeap());
-            //my_printf("(memory) RAM可使用大小: %d", ESP.getFreeHeap());
-            if (tay_num == 0)
-              temp = ("{\"tay1\":" + Bmcu_set_json(ams_num, tay_num) + "}");
-            if (tay_num == 1)
-              temp = ("{\"tay2\":" + Bmcu_set_json(ams_num, tay_num) + "}");
-            if (tay_num == 2)
-              temp = ("{\"tay3\":" + Bmcu_set_json(ams_num, tay_num) + "}");
-            if (tay_num == 3)
-              temp = ("{\"tay4\":" + Bmcu_set_json(ams_num, tay_num) + "}");
-
-            client.publish(topic[ams_num], temp.c_str());
+            // my_printf("(memory) RAM可使用大小: %d", ESP.getFreeHeap());
+            static const char *tay_prefix[] = {"tay1", "tay2", "tay3", "tay4"};
+            char json[256];
+            snprintf(json, sizeof(json), "{\"%s\":%s}", tay_prefix[tay_num], Bmcu_set_json(ams_num, tay_num));
+            client.publish(topic[ams_num], json);
             postMsgId++;
             if (postMsgId > ((get_AMS_num_max() * 4) - 1))
             {
@@ -194,7 +185,7 @@ void loop()
       {
         tft_print();
         if (error_time < time_now - 1500)
-            Switch_save();
+          Switch_save();
       }
       if (Switch_need_to_delay())
       {
