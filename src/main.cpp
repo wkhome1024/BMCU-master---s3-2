@@ -5,6 +5,7 @@
 
 //const char *mqtt_server1 = "192.168.10.10"; // MQTT服务器地址
 //const int mqtt_port1 = 1883;                // MQTT服务器端口
+const char *ha_topic = "bmcu-hub";
 const char *topic[8] = {"bmcu1", "bmcu2", "bmcu3", "bmcu4", "bmcu5", "bmcu6", "bmcu7", "bmcu8"};
 //const char *mqtt_username1 = "";
 //const char *mqtt_password1 = "";
@@ -64,7 +65,7 @@ void setup()
     sprintf(mqtt_id, "%s-%02X%02X", host_name, mac_ad[4], mac_ad[5]);
     client.setServer(mqtt_server.c_str(), mqtt_port); // 设置MQTT服务器地址和端口
     client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
-    client.publish(topic[0], "Hi, I'm ESP32 ^^");
+    client.publish(ha_topic, "Hi, I'm ESP32 ^^");
     my_printf("(wifi) WiFi连接成功");
     my_printf("(wifi) WiFi名称: %s", WiFi.SSID().c_str());
     my_printf("(wifi) WiFi IP地址: %s", WiFi.localIP().toString().c_str());
@@ -167,7 +168,7 @@ void loop()
             if (postMsgId > ((get_AMS_num_max() * 4) - 1))
             {
               postMsgId = 0;
-              client.publish(topic[0], Sht30_read_mqtt().c_str());
+              client.publish(ha_topic, Sht30_read_mqtt().c_str());
               tft_print();
               SYS_leds.setPixelColor(2, 0x00, 0x00, 0x30);
             }
@@ -192,7 +193,8 @@ void loop()
       if (Switch_need_to_save())
       {
         tft_print();
-        Switch_save();
+        if (error_time < time_now - 1500)
+            Switch_save();
       }
       if (Switch_need_to_delay())
       {

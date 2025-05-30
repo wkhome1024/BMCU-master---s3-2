@@ -47,22 +47,16 @@ bool Config_read()
     mqtt_port = config_save.mqtt_port;
     mqtt_username = config_save.mqtt_username;
     mqtt_password = config_save.mqtt_password;
+    wifi_ssid = config_save.wifi_ssid;
+    wifi_pass = config_save.wifi_password;
   }
-  wifi_ssid = "";
-  wifi_pass = "";
-  // checkConnect(config_save.resetcheck);
-
-  if (wifi_ssid != "") // wifi_ssid不为空，意味着从网页读取到wifi
+  else
   {
-    // 使用局部变量存储 wifi_ssid 和 wifi_pass
-    const char *ssid = wifi_ssid.c_str();
-    const char *pass = wifi_pass.c_str();
-
-    // Serial.println("用web配置信息连接.");
-    WiFi.begin(ssid, pass); // 使用局部变量的指针
     wifi_ssid = "";
     wifi_pass = "";
   }
+
+  // checkConnect(config_save.resetcheck);
 
   return config_save.resetcheck;
 }
@@ -132,7 +126,7 @@ String ROOT_HTML_2 = R"(
               <li class="list__item"></li>
             </ul>
           </div>
-          <input type="submit" class="login login-submit" value="确 定 连 接" id="login" disabled style="border-radius: 15px">
+          <input type="submit" class="login login-submit" value="确 定 连 接" id="login" style="border-radius: 15px">
         </form>
       </div>
     </form>
@@ -460,28 +454,38 @@ void handleConfigWifi() // 返回http状态
     return;
   }
   server.send(200, "text/html", "<meta charset='UTF-8'>SSID:" + wifi_ssid + "<br />password:" + wifi_pass + "<br />mqtt_server:" + mqtt_server + "<br />mqtt_port:" + String(mqtt_port) + "<br />mqtt_username:" + mqtt_username + "<br />mqtt_password:" + mqtt_password + "<br />已取得WiFi信息,正在尝试连接,请手动关闭此页面。"); // 返回保存成功页面
-
-  delay(2000);
+  config_save.resetcheck = false;
+  Config_save();                     // 保存配置
+  delay(1000);
+  if (WiFi.status() == WL_CONNECTED && WiFi.getMode() == WIFI_STA)
+  {
+     WiFi.disconnect(false,true);
+     WiFi.mode(WIFI_STA);
+     WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
+  }
+  else
+  {
   WiFi.softAPdisconnect(true); // 参数设置为true，设备将直接关闭接入点模式，即关闭设备所建立的WiFi网络。
   server.close();              // 关闭web服务
   WiFi.softAPdisconnect();     // 在不输入参数的情况下调用该函数,将关闭接入点模式,并将当前配置的AP热点网络名和密码设置为空值.
   // Serial.println("WiFi Connect SSID:" + wifi_ssid + "  PASS:" + wifi_pass);
-  Config_save();                     // 保存配置
+  }
+
+  
   if (WiFi.status() != WL_CONNECTED) // wifi没有连接成功
   {
     // Serial.println("开始调用连接函数connectToWiFi()..");
     connectToWiFi(connectTimeOut_s);
   }
-  else
-  {
-    config_save.resetcheck = false; // 如果wifi连接成功，则将resetcheck设置为false
-    // Serial.println("提交的配置信息自动连接成功..");
-  }
+
   // Config_save(); //保存配置
 }
 
 void handleUpdateWifi() // 返回http状态
 {
+  scanWiFi();
+  server.send(200, "text/html", ROOT_HTML_1 + scanNetworksID + ROOT_HTML_2);
+  /*
   server.send(200, "text/html", "<meta charset='UTF-8'>即将断开连接,请手动切换到bmcu-hub-ap进行wifi配置,配置模式持续120s"); // 返回保存成功页面
   WiFi.disconnect();                                                                                                        // 断开当前连接的WiFi
   delay(500);
@@ -506,7 +510,7 @@ void handleUpdateWifi() // 返回http状态
     WiFi.softAPdisconnect();
     WiFi.mode(WIFI_STA);                                          // 设置WiFi为STA模式
     WiFi.begin(config_save.wifi_ssid, config_save.wifi_password); // 重新开始WiFi连接
-  }
+  }*/
   // ESP.restart();                   //重启设备
 }
 
@@ -549,10 +553,22 @@ void handlelog()
     server.send(200, "text/plain", "no log data");
     return;
   }
-  // Serial.println("日志数据");
-  // String str = L_data;
-  // str.replace("\n", "<br />");
-  server.send(200, "text/html", "<!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"UTF-8\"> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"> <title>日志</title> </head> <body>" + String(L_data) + "</body> </html>");
+  char *p = L_data;
+  int len = strlen(L_data);
+  if (len > 1024 * 48)
+  {
+      p = p + 1024 * 48;
+  }
+  else if (len > 1024 * 32)
+  {
+      p = p + 1024 * 32;
+  }
+  else if (len > 1024 * 16)
+  {
+      p = p + 1024 * 16;
+  }
+
+  server.send(200, "text/html", "<!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"UTF-8\"> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"> <title>日志</title> </head> <body>" + String(p) + "</body> </html>");
   // server.sendContent("<meta charset='UTF-8'>LOG:<br />"  + String(L_data) + "</body> </html>");
   // server.sendContent(L_data);
   // server.sendContent("</body> </html>");

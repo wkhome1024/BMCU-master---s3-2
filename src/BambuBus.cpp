@@ -540,10 +540,14 @@ package_type get_packge_type(unsigned char *buf, int length)
         Bambubus_long_package_analysis(buf, length, &printer_data_long);
         if (printer_data_long.target_address == BambuBus_AMS)
         {
+            if (BambuBus_address != BambuBus_AMS)
+               my_printf("(bambu) Bambubus工作模式: AMS08");
             BambuBus_address = BambuBus_AMS;
         }
         else if (printer_data_long.target_address == BambuBus_AMS_lite)
         {
+            if (BambuBus_address != BambuBus_AMS_lite)
+               my_printf("(bambu) Bambubus工作模式: AMS_lite");
             BambuBus_address = BambuBus_AMS_lite;
         }
 
@@ -804,20 +808,10 @@ void send_for_Hit(unsigned char *buf, int length)
     if (BambuBus_address == BambuBus_AMS) // AMS08
     {
         Hit_res[5] |= 0x30; // 0x30
-        if (!bambus_send)
-        {
-            bambus_send = true;
-            my_printf("(bambus) Bambubus工作模式: AMS08");
-        }
     }
     else if (BambuBus_address == BambuBus_AMS_lite) // AMS lite
     {
         Hit_res[5] |= 0xC0; // 0xC0
-        if (!bambus_send)
-        {
-            bambus_send = true;
-            my_printf("(bambus) Bambubus工作模式: AMS_lite");
-        }
     }
 
     Bmcu_package_send_with_crc(Hit_res, sizeof(Hit_res));
@@ -1213,7 +1207,7 @@ void send_for_long_packge_filament(unsigned char *buf, int length)
 
     if (filament_num > 3)
     {
-        my_printf("(bambubus) 错误的通道耗材长包裹数据");
+        my_printf("(bambu) 错误的通道耗材长包裹数据");
         return;
     }
     if (BambuBus_address == BambuBus_AMS)
@@ -1397,6 +1391,7 @@ package_type BambuBus_run()
     static uint64_t time_set = 0;
     static uint64_t time_motion = 0;
     static uint64_t time_long_motion = 0;
+    static uint64_t time_save = 0;
     uint64_t timex = get_time64();
 
     /*for (auto i : data_save.filament)
@@ -1457,7 +1452,7 @@ package_type BambuBus_run()
         }
         else
         {
-            my_printf("(bambu) Bambu-hub抓包模式已开启");
+            my_printf("(bmcu) Bambu-hub抓包模式已开启");
             stu = BambuBus_package_heartbeat;
         }
     }
@@ -1504,7 +1499,7 @@ package_type BambuBus_run()
     {
         if (bmcu_onprint)
         {
-            my_printf("(bambu) Bambubus未检测到打印状态,已自动设置为等待状态");
+            my_printf("(bmcu) Bambubus未检测到打印状态,已自动设置为等待状态");
         }
         bmcu_onprint = false;
     }
@@ -1512,7 +1507,7 @@ package_type BambuBus_run()
     {
         if (!bmcu_onprint)
         {
-            my_printf("(bambu) Bambubus已检测到打印状态,已设置为打印状态");
+            my_printf("(bmcu) Bambubus已检测到打印状态,已设置为打印状态");
         }
         bmcu_onprint = true;
     }
@@ -1526,9 +1521,19 @@ package_type BambuBus_run()
     }
     if (Bambubus_need_to_save)
     {
-        Bambubus_save();
-        time_set = get_time64() + 1000;
-        Bambubus_need_to_save = false;
+        if (timex > time_save)
+        {
+            time_save = timex + 6000;
+        }
+        else if (time_save < timex + 1000 && !time_save)    //延迟5s 保存数据
+        {
+            Bambubus_save();
+            time_set = get_time64() + 1000;
+            Bambubus_need_to_save = false;
+            my_printf("(bmcu) Bambubus已保存");
+            time_save = 0;
+        }
+
     }
     // HAL_UART_Transmit(&use_Serial.handle,&s,1,1000);
 
@@ -1551,6 +1556,7 @@ String Bmcu_set_json(int ams_num, int i)
 {
     char colorBuf[20];
     String name = data_save.filament[ams_num][i].name;
+    String id = data_save.filament[ams_num][i].ID;
     char motion = data_save.filament[ams_num][i].motion_set;
     char meter[10];
     sprintf(meter, "%6.1f", data_save.filament[ams_num][i].meters);
