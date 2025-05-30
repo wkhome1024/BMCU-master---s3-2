@@ -21,7 +21,7 @@ String mqtt_password = ""; // 暂时存储mqtt密码
 //char L_data[20] = "test1234567890"; // test
 //char C_data[20] = "test1234567890";
 
-#define config_addr ((uint32_t)0x0900)
+#define config_addr ((uint16_t)0x0900)
 
 struct alignas(4) config_struct
 {
@@ -63,6 +63,7 @@ bool Config_read()
 void Config_save()
 {
   Flash_saves(&config_save, sizeof(config_save), config_addr);
+  save_count++;
 }
 
 // DNSServer dnsServer;                       //创建dnsServer实例

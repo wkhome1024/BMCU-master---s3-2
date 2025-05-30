@@ -2,7 +2,7 @@
 #include "BambuBus.h"
 
 #define BMCUSwitch_version 6
-#define use_flash_addr ((uint32_t)0x0800)
+#define switch_addr ((uint16_t)0x0800)
 struct alignas(4) switch_save_struct
 {
     uint32_t version = BMCUSwitch_version;
@@ -37,7 +37,7 @@ void Switch_init()
 }
 bool Switch_read()
 {
-    switch_save_struct *ptr = (switch_save_struct *)(EEPROM.getDataPtr() + use_flash_addr);
+    switch_save_struct *ptr = (switch_save_struct *)(EEPROM.getDataPtr() + switch_addr);
     if (ptr->version == BMCUSwitch_version)
     {
         memcpy(&switch_save, ptr, sizeof(switch_save));
@@ -132,8 +132,9 @@ void Switch_set_need_to_save()
 void Switch_save()
 {
     //Flash_saves(&switch_save, sizeof(switch_save), use_flash_addr + sizeof(switch_save));
-    Flash_saves(&switch_save, sizeof(switch_save), use_flash_addr);
+    Flash_saves(&switch_save, sizeof(switch_save), switch_addr);
     switch_need_to_save = false;
+    save_count++;
 }
 bool Switch_need_to_save()
 {

@@ -12,11 +12,10 @@ const char *topic[8] = {"bmcu1", "bmcu2", "bmcu3", "bmcu4", "bmcu5", "bmcu6", "b
 const char *host_name = "bmcu-hub-s3"; // 设备主机名
 #define product_id "bmcu-hub"          // 产品ID
 #define device_id "s3"                 // 设备ID
-
+int save_count = 0;
 int postMsgId = 0;              // 消息ID初始值为0
 int catch_key = 0;              // 抓包计数
 bool catch_mode = false;        // 抓包模式
-bool OTA_key = false;           // OTA开关
 bool server_key = true;         // HTTP服务器开关
 WiFiClient espclient;           // 创建一个WiFiClient对象
 PubSubClient client(espclient); // 创建一个PubSubClient对象
@@ -86,7 +85,7 @@ uint64_t offline_time = 0;
 uint64_t mqtt_time = 0;
 uint64_t led_time = 0;
 uint64_t server_time = 0;
-uint64_t ota_time = 0;
+uint64_t save_time = 0;
 void loop()
 {
   // Bambu_readuart();
@@ -184,28 +183,20 @@ void loop()
       if (Switch_need_to_save())
       {
         tft_print();
-        if (error_time < time_now - 1500)
-          Switch_save();
+        Switch_save();
+      }
+      if (save_time < time_now)
+      {
+        save_time = time_now + 60000;      //60 秒保存一次
+        save_time = 0;
+        if(save_count)
+           Flash_commit();
       }
       if (Switch_need_to_delay())
       {
         Switch_set_not_to_delay();
         delay(5000);
       }
-    }
-    if (OTA_key && ota_time == 0) // 如果OTA服务开启且时间未设置
-    {
-
-      // ArduinoOTA.begin();
-      //  my_log("<br />(ota) OTA服务已开启");
-      ota_time = time_now + 600000; // 5分钟后关闭OTA服务
-    }
-    else if (ota_time < time_now && ota_time != 1) // 5分钟后关闭OTA服务
-    {
-      // OTA_key = false;
-      ota_time = 1; // 重置OTA时间
-      // ArduinoOTA.end();
-      //  my_log("<br />(ota) OTA服务已关闭");
     }
     if (server_time == 0 && server_key) // 如果WebServer未开启
     {
@@ -225,10 +216,6 @@ void loop()
       led_time = time_now + 500;
       if (server_key)    // 如果WebServer开启
         checkDNS_HTTP(); // 检查DNS和HTTP请求
-      if (OTA_key)
-      {
-        // ArduinoOTA.handle(); // 保持OTA服务运行
-      }
       if (SYS_leds.canShow())
       {
         SYS_leds.show();

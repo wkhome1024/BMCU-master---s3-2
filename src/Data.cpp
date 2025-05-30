@@ -87,18 +87,23 @@ int esplog_printf()
     return 0; 
 }
 
-bool Flash_saves(void *buf, uint32_t length, uint32_t address)
+bool Flash_saves(void *buf, uint16_t length, uint16_t address)
 {
     EEPROM.writeBytes(address, buf, length);
-    EEPROM.commit();
     return true;
 }
 
-bool Flash_read(void *buf, uint32_t length, uint32_t address)
+void Flash_commit()
+{
+    if (!EEPROM.commit()) my_log("EEPROM commit failed!");
+    else  save_count = 0;
+}
+
+bool Flash_read(void *buf, uint16_t length, uint16_t address)
 {
 
-    EEPROM.readBytes(address, buf, length);
-    // EEPROM.commit();
+    if(EEPROM.readBytes(address, buf, length) == 0)
+       my_log("EEPROM read failed!");
 
     return true;
 }
