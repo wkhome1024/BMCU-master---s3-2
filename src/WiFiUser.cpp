@@ -1,27 +1,29 @@
 #include "WiFiUser.h"
 
-const byte DNS_PORT = 53; // 设置DNS端口号
-const int webPort = 80;   // 设置Web端口号
+#define HTML_BUF_SIZE 1024 * 4
+static char htmlBuf[HTML_BUF_SIZE]; // 静态变量，避免栈溢出
+const byte DNS_PORT = 53;           // 设置DNS端口号
+const int webPort = 80;             // 设置Web端口号
 
 const char *AP_SSID = "Bmcu-hub-AP"; // 设置AP热点名称
 // const char* AP_PASS  = "";               //这里不设置设置AP热点密码
 
-//const char *HOST_NAME = "bmcu-hub-s3"; // 设置设备名
-String scanNetworksID = "";            // 用于储存扫描到的WiFi ID
-int connectTimeOut_s = 30;             // WiFi连接超时时间，单位秒
-IPAddress apIP(192, 168, 4, 1);        // 设置AP的IP地址
+// const char *HOST_NAME = "bmcu-hub-s3"; // 设置设备名
+String scanNetworksID = "";     // 用于储存扫描到的WiFi ID
+int connectTimeOut_s = 30;      // WiFi连接超时时间，单位秒
+IPAddress apIP(192, 168, 4, 1); // 设置AP的IP地址
 
-String wifi_ssid = "";     // 暂时存储wifi账号密码
-String wifi_pass = "";     // 暂时存储wifi账号密码
-String mqtt_server = "";   // 暂时存储mqtt服务器地址
-int mqtt_port = 0;         // 暂时存储mqtt服务器端口
-String mqtt_username = ""; // 暂时存储mqtt用户名
-String mqtt_password = ""; // 暂时存储mqtt密码
+String wifi_ssid = "";                // 暂时存储wifi账号密码
+String wifi_pass = "";                // 暂时存储wifi账号密码
+String mqtt_server = "192.168.10.10"; // 暂时存储mqtt服务器地址
+int mqtt_port = 1883;                 // 暂时存储mqtt服务器端口
+String mqtt_username = "11";          // 暂时存储mqtt用户名
+String mqtt_password = "11";          // 暂时存储mqtt密码
 
-//char L_data[20] = "test1234567890"; // test
-//char C_data[20] = "test1234567890";
+// char L_data[20] = "test1234567890"; // test
+// char C_data[20] = "test1234567890";
 
-#define config_addr ((uint16_t)0x0900)
+const char *config_addr = "wificonfig";
 
 struct alignas(4) config_struct
 {
@@ -37,32 +39,38 @@ struct alignas(4) config_struct
 
 bool Config_read()
 {
-  config_struct *ptr = (config_struct *)(EEPROM.getDataPtr() + config_addr);
-  // flash_save_struct ptr;
-  // Flash_read(&ptr,sizeof(ptr),use_flash_addr);
-  if (ptr->version == Bambubus_version)
+  config_struct ptr;
+  if (!Flash_read(&ptr, sizeof(config_save), config_addr))
+    return true;
+  if (ptr.version == Bambubus_version)
   {
-    memcpy(&config_save, ptr, sizeof(config_save));
+    memcpy(&config_save, &ptr, sizeof(config_save));
+
     mqtt_server = config_save.mqtt_server;
     mqtt_port = config_save.mqtt_port;
     mqtt_username = config_save.mqtt_username;
     mqtt_password = config_save.mqtt_password;
     wifi_ssid = config_save.wifi_ssid;
     wifi_pass = config_save.wifi_password;
+    return false;
   }
   else
   {
     wifi_ssid = "";
     wifi_pass = "";
+    return true;
   }
 
+  // connectToWiFi(30);
   // checkConnect(config_save.resetcheck);
 
-  return config_save.resetcheck;
+  return false;
 }
 void Config_save()
 {
-  Flash_saves(&config_save, sizeof(config_save), config_addr);
+  if (!Flash_saves(&config_save, sizeof(config_save), config_addr))
+    ESP_LOGE("FLASH", "wifi保存失败");
+
   save_count++;
 }
 
@@ -70,7 +78,7 @@ void Config_save()
 WebServer server(webPort); // 开启web服务, 创建TCP SERVER,参数: 端口号,最大连接数
 
 // 上下两段HTML代码
-String ROOT_HTML_1 = R"(
+const char ROOT_HTML_1[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -97,9 +105,9 @@ String ROOT_HTML_1 = R"(
       <form name="login_form" method="post" action="/configwifi">
         <input type="text" name="ssid" placeholder="请选择 WiFi 名称" list="data-list" required>
         <datalist id="data-list">
-)";
+)rawliteral";
 
-String ROOT_HTML_2 = R"(
+const char ROOT_HTML_2[] PROGMEM = R"rawliteral(
         <input type="password" name="password" placeholder="请输入 WiFi 密码" required>
         <input type="text" name="mqtt_server" placeholder="请输入 MQTT IP" value="192.168.10.10">
         <input type="text" name="mqtt_port" placeholder="请输入 MQTT 端口" value="1883">
@@ -111,7 +119,7 @@ String ROOT_HTML_2 = R"(
   </div>
 </body>
 </html>
-)";
+)rawliteral";
 /*
 String config_HTML = R"(
 <!DOCTYPE html>
@@ -176,7 +184,7 @@ String config_HTML = R"(
 // String ROOT_HTML_3 = "<meta charset='UTF-8'>error, not found ssid";
 // String ROOT_HTML_4 = "<meta charset='UTF-8'>error, not found ssid";
 
-String root2_html = R"(
+const char root2_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -239,9 +247,9 @@ String root2_html = R"(
   </script>
 </body>
 </html>
-)";
+)rawliteral";
 
-String upload_html = R"(
+const char upload_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
@@ -321,21 +329,27 @@ String upload_html = R"(
   </script>
 </body>
 </html>
-)";
+)rawliteral";
 
 /*
  * 处理网站根目录的访问请求
  */
 void handleRoot()
 {
+  htmlBuf[0] = '\0'; // 清空缓冲区
+
   if (WiFi.getMode() != WIFI_STA) // 如果没有连接wifi
   {
-    server.send(200, "text/html", ROOT_HTML_1 + scanNetworksID + ROOT_HTML_2); // scanNetWprksID是扫描到的wifi
+    strcpy_P(htmlBuf, ROOT_HTML_1);
+    strcpy(htmlBuf, scanNetworksID.c_str());
+    strcpy_P(htmlBuf, ROOT_HTML_2);
   }
-  else if (WiFi.status() == WL_CONNECTED) // 如果连接wifi
+  else if (WiFi.status() == WL_CONNECTED) // 如果已连接wifi
   {
-    server.send(200, "text/html", root2_html);
+    strcpy_P(htmlBuf, root2_html);
   }
+
+  server.send(200, "text/html", htmlBuf);
 }
 
 /*
@@ -433,23 +447,22 @@ void handleConfigWifi() // 返回http状态
   }
   server.send(200, "text/html", "<meta charset='UTF-8'>SSID:" + wifi_ssid + "<br />password:" + wifi_pass + "<br />mqtt_server:" + mqtt_server + "<br />mqtt_port:" + String(mqtt_port) + "<br />mqtt_username:" + mqtt_username + "<br />mqtt_password:" + mqtt_password + "<br />已取得WiFi信息,正在尝试连接,请手动关闭此页面。"); // 返回保存成功页面
   config_save.resetcheck = false;
-  Config_save();                     // 保存配置
+  Config_save(); // 保存配置
   delay(1000);
   if (WiFi.status() == WL_CONNECTED && WiFi.getMode() == WIFI_STA)
   {
-     WiFi.disconnect(false,true);
-     WiFi.mode(WIFI_STA);
-     WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
+    WiFi.disconnect(false, true);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
   }
   else
   {
-  WiFi.softAPdisconnect(true); // 参数设置为true，设备将直接关闭接入点模式，即关闭设备所建立的WiFi网络。
-  server.close();              // 关闭web服务
-  WiFi.softAPdisconnect();     // 在不输入参数的情况下调用该函数,将关闭接入点模式,并将当前配置的AP热点网络名和密码设置为空值.
-  // Serial.println("WiFi Connect SSID:" + wifi_ssid + "  PASS:" + wifi_pass);
+    WiFi.softAPdisconnect(true); // 参数设置为true，设备将直接关闭接入点模式，即关闭设备所建立的WiFi网络。
+    server.close();              // 关闭web服务
+    WiFi.softAPdisconnect();     // 在不输入参数的情况下调用该函数,将关闭接入点模式,并将当前配置的AP热点网络名和密码设置为空值.
+    // Serial.println("WiFi Connect SSID:" + wifi_ssid + "  PASS:" + wifi_pass);
   }
 
-  
   if (WiFi.status() != WL_CONNECTED) // wifi没有连接成功
   {
     // Serial.println("开始调用连接函数connectToWiFi()..");
@@ -462,7 +475,16 @@ void handleConfigWifi() // 返回http状态
 void handleUpdateWifi() // 返回http状态
 {
   scanWiFi();
-  server.send(200, "text/html", ROOT_HTML_1 + scanNetworksID + ROOT_HTML_2);
+  htmlBuf[0] = '\0'; // 清空缓冲区
+  strcpy_P(htmlBuf, ROOT_HTML_1);
+  strcpy(htmlBuf, scanNetworksID.c_str());
+  strcpy_P(htmlBuf, ROOT_HTML_2);
+  server.send(200, "text/html", htmlBuf);
+
+  // server.send(200, "text/html", ROOT_HTML_1 + scanNetworksID + ROOT_HTML_2); // scanNetWprksID是扫描到的wifi
+
+  // scanWiFi();
+  // server.send(200, "text/html", ROOT_HTML_1 + scanNetworksID + ROOT_HTML_2);
   /*
   server.send(200, "text/html", "<meta charset='UTF-8'>即将断开连接,请手动切换到bmcu-hub-ap进行wifi配置,配置模式持续120s"); // 返回保存成功页面
   WiFi.disconnect();                                                                                                        // 断开当前连接的WiFi
@@ -508,7 +530,10 @@ void handleConfig()
 
 void handleUpload()
 {
-  server.send(200, "text/html", upload_html);
+  htmlBuf[0] = '\0'; // 清空缓冲区
+  strcpy_P(htmlBuf, upload_html);
+  server.send(200, "text/html", htmlBuf);
+  // server.send(200, "text/html", upload_html);
 }
 
 void handleUpdate()
@@ -535,15 +560,15 @@ void handlelog()
   int len = strlen(L_data);
   if (len > 1024 * 48)
   {
-      p = p + 1024 * 48;
+    p = p + 1024 * 48;
   }
   else if (len > 1024 * 32)
   {
-      p = p + 1024 * 32;
+    p = p + 1024 * 32;
   }
   else if (len > 1024 * 16)
   {
-      p = p + 1024 * 16;
+    p = p + 1024 * 16;
   }
 
   server.send(200, "text/html", "<!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"UTF-8\"> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"> <title>日志</title> </head> <body>" + String(p) + "</body> </html>");
@@ -557,36 +582,36 @@ void handleData()
   if (server.hasArg("catchkey")) // 判断是否有抓包参数
   {
     String catchkey = server.arg("catchkey"); // 获取html表单输入框name名为"catchkey"的内容
-    //catchkey.trim();                          // 去除前后空格
-    if (catchkey == "open")                   // 如果抓包参数为"开启抓包"
+    // catchkey.trim();                          // 去除前后空格
+    if (catchkey == "open") // 如果抓包参数为"开启抓包"
     {
-      catch_key = 1; //开启抓包
+      catch_key = 1; // 开启抓包
       my_printf("(http) Bambu-hub开启抓包");
       server.send(200, "text/plain", "open catch");
       return;
     }
     else if (catchkey == "close") // 如果抓包参数为"关闭抓包"
     {
-      catch_key = 0; //关闭抓包
+      catch_key = 0; // 关闭抓包
       my_printf("(http) Bambu-hub关闭抓包");
       server.send(200, "text/plain", "close catch");
       return;
     }
     else if (catchkey == "catch_mode") // 如果抓包参数为"catch_mode"
     {
-      catch_mode = true; //设置为抓包模式
+      catch_mode = true; // 设置为抓包模式
       my_printf("(http) Bambu-hub设置为抓包模式--屏蔽输出");
       server.send(200, "text/plain", "catch mode");
       return;
     }
     else if (catchkey == "normal_mode") // 如果抓包参数为"normal_mode"
     {
-      catch_mode = false; //设置为normal模式
+      catch_mode = false; // 设置为normal模式
       my_printf("(http) Bambu-hub设置为normal模式--抓包数据包含bmcu数据");
       server.send(200, "text/plain", "normal mode");
       return;
     }
-    //server.send(200, "text/plain", catchkey); // 返回错误页面
+    // server.send(200, "text/plain", catchkey); // 返回错误页面
   }
 
   if (C_data[0] == '\0')
@@ -595,7 +620,7 @@ void handleData()
     return;
   }
   else
-     server.send(200, "text/plain", C_data);
+    server.send(200, "text/plain", C_data);
   // server.sendContent("<br />");
 }
 /*
@@ -636,25 +661,21 @@ void initDNS()
 void initWebServer()
 {
 
-  // 必须添加第二个参数HTTP_GET，以下面这种格式去写，否则无法强制门户
-  if (WiFi.getMode() == WIFI_AP)
-  {
-    server.on("/", HTTP_GET, handleRoot);
-  }
-  else
-  {
-    server.on("/", HTTP_POST, handleRoot);
-  }
+  server.on("/", HTTP_POST, handleRoot);
+
   // server.on("/", HTTP_GET, handleRoot);                      //  当浏览器请求服务器根目录(网站首页)时调用自定义函数handleRoot处理，设置主页回调函数，必须添加第二个参数HTTP_GET，否则无法强制门户
   server.on("/configwifi", HTTP_POST, handleConfigWifi); //  当浏览器请求服务器/configwifi(表单字段)目录时调用自定义函数handleConfigWifi处理
-  //server.on("/config", HTTP_POST, handleConfig);
+  // server.on("/config", HTTP_POST, handleConfig);
   server.on("/data", HTTP_POST, handleData);
   server.on("/log", HTTP_POST, handlelog);
   // server.on("/update", HTTP_POST, handleUpdate);
   server.on("/upload", HTTP_POST, handleUpload);
   server.on("/updatewifi", HTTP_POST, handleUpdateWifi); //  当浏览器请求服务器/updatewifi(表单字段)目录时调用自定义函数handleUpdateWifi处理
   server.onNotFound(handleNotFound);                     // 当浏览器请求的网络资源无法在服务器找到时调用自定义函数handleNotFound处理
-
+  server.on("/.*\\.ico", HTTP_GET, []()
+            {
+              server.send(404, "text/plain", "Not Found"); // 忽略所有静态资源请求
+            });
   server.on("/update", HTTP_POST, []()
             {
     server.sendHeader("Connection", "close");
@@ -693,7 +714,11 @@ void stopWebServer()
   // dnsServer.stop();                                        //停止dns服务
   // Serial.println("WebServer stopped!");
 }
-
+void startwebServer()
+{
+  server.begin();
+  // Serial.println("WebServer started!");
+}
 void stopDNS()
 {
   MDNS.end(); // 停止dns服务
@@ -719,18 +744,9 @@ bool scanWiFi()
   {
     // Serial.print(n);
     // Serial.println(" networks found");
-    for (int i = 0; i < n; ++i)
+    for (int i = 0; i < min(n, 5); ++i)
     {
-      // Print SSID and RSSI for each network found
-      // Serial.print(i + 1);
-      // Serial.print(": ");
-      // Serial.print(WiFi.SSID(i));
-      // Serial.print(" (");
-      // Serial.print(WiFi.RSSI(i));
-      // Serial.print(")");
-      // Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? " " : "*");
       scanNetworksID += "<option>" + WiFi.SSID(i) + "</option>";
-      delay(10);
     }
     scanNetworksID += "</datalist>";
     return true;
@@ -744,10 +760,10 @@ void connectToWiFi(int timeOut_s)
 {
   WiFi.setHostname(host_name); // 设置设备名
   // Serial.println("进入connectToWiFi()函数");
-  WiFi.mode(WIFI_STA);       // 设置为STA模式并连接WIFI
-  WiFi.setAutoConnect(true); // 设置自动连接
+  WiFi.mode(WIFI_STA); // 设置为STA模式并连接WIFI
+  // WiFi.setAutoConnect(true); // 设置自动连接
 
-  if (wifi_ssid != "") // wifi_ssid不为空，意味着从网页读取到wifi
+  if (wifi_ssid != "") // wifi_ssid不为空，意味着从网页或存储读取到wifi
   {
     // 使用局部变量存储 wifi_ssid 和 wifi_pass
     const char *ssid = wifi_ssid.c_str();
@@ -761,7 +777,8 @@ void connectToWiFi(int timeOut_s)
   else // 未从网页读取到wifi
   {
     // Serial.println("用nvs保存的信息连接.");
-    WiFi.begin(); // begin()不传入参数，默认连接上一次连接成功的wifi
+    WiFi.begin();
+    ESP_LOGE("WIFI", "WiFi_connect_id : default");
   }
 
   int Connect_time = 0;                 // 用于连接计时，如果长时间连接不成功，复位设备
@@ -776,7 +793,7 @@ void connectToWiFi(int timeOut_s)
     {
 
       // Serial.println("");                     //主要目的是为了换行符
-      // Serial.println("WIFI autoconnect fail, start AP for webconfig now...");
+      ESP_LOGE("WIFI", "connect fail, check id and psd start AP for webconfig now...");
       wifiConfig(); // 开始配网功能
       return;       // 跳出 防止无限初始化
     }
@@ -798,22 +815,59 @@ void connectToWiFi(int timeOut_s)
     */
     // my_log("<br />(http) Bambu-hub配置WiFi成功");
     config_save.resetcheck = false; // 如果wifi连接成功，则将resetcheck设置为false
-                                    // Config_save();                  //保存配置
-
-    MDNS.end(); // 停止DNS服务器
-    // server.stop();                            //停止开发板所建立的网络服务器。
+    // Config_save();
+    if (millis() > 60000 && server_key)
+        server.begin();
+    // MDNS.end(); // 停止DNS服务器
+    //  server.stop();                            //停止开发板所建立的网络服务器。
   }
 }
 
 /*
  * 配置配网功能
  */
+void webServerTask(void *parameter)
+{
+  bool task_flag = true;
+  while (true)
+  {
+    if (server_key)
+    {
+      if (task_flag)
+      {
+        task_flag = false;
+        initWebServer();
+      }
+      server.handleClient();
+    }
+    else
+    {
+      if (!task_flag)
+      {
+        task_flag = true;
+        server.stop();
+      }
+    }
+
+
+    vTaskDelay(pdMS_TO_TICKS(200));
+  }
+}
+
+// 在 setup() 中启动任务
+void webtask_setup()
+{
+  //initWebServer();
+  xTaskCreatePinnedToCore(webServerTask, "WebServer", 8192 * 2, NULL, 0, NULL, 0);
+}
+
 void wifiConfig()
 {
   initSoftAP();
   initDNS();
   initWebServer();
   scanWiFi();
+  server_key = true;
 }
 
 /*
@@ -832,23 +886,21 @@ void restoreWiFi()
  */
 void checkConnect(bool reConnect)
 {
-  if (WiFi.status() != WL_CONNECTED) // wifi连接失败
-  {
 
-    if (reConnect == true && WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA)
-    {
-      // Serial.println("WIFI未连接.");
-      // Serial.println("WiFi Mode:");
-      // Serial.println(WiFi.getMode());
-      // Serial.println("正在连接WiFi...");
-      wifiConfig(); // 开始配网功能
-      return;       // 跳出 防止无限初始化
-    }
-    if (reConnect == false)
-    {
-      connectToWiFi(connectTimeOut_s); // 连接wifi函数
-    }
+  if (reConnect == true && WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA)
+  {
+    // Serial.println("WIFI未连接.");
+    // Serial.println("WiFi Mode:");
+    // Serial.println(WiFi.getMode());
+    // Serial.println("正在连接WiFi...");
+    wifiConfig(); // 开始配网功能
+    return;       // 跳出 防止无限初始化
   }
+  if (reConnect == false)
+  {
+    connectToWiFi(connectTimeOut_s); // 连接wifi函数
+  }
+
   // wifi连接成功
 }
 

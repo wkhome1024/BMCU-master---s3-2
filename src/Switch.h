@@ -13,9 +13,8 @@ extern "C"
     extern void Switch_set_need_to_save();
     extern bool Switch_need_to_save();
     extern void Switch_save();
-    extern bool Switch_need_to_delay();
-    extern void Switch_set_not_to_delay();
-    extern void Switch_set_need_to_delay();  
+    extern void Switch_set_refresh(bool refresh);
+    extern bool Switch_need_refresh(); 
     extern String get_filament_map();
     extern String get_tay_map(uint8_t num);
 #ifdef __cplusplus

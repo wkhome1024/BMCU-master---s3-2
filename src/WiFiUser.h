@@ -8,7 +8,7 @@
 #include <ESPmDNS.h>      //用于设备域名 MDNS.begin("esp32")
 //#include <esp_wifi.h>     //用于esp_wifi_restore() 删除保存的wifi信息
 #include <Update.h>
-
+#include <pgmspace.h>
 //extern const char* HOST_NAME;                 //设置设备名
 //extern int connectTimeOut_s = 30;                 //WiFi连接超时时间，单位秒
 
@@ -28,7 +28,7 @@ extern void Config_save();                  //保存配置数据
 extern bool Config_read();                  //读取配置数据
 extern void stopWebServer();                //停止WebServer
 extern void initWebServer();                 //初始化WebServer 
-
+extern void webtask_setup();
 
 //===========内部函数===========
 extern void handleRoot();                    //处理网站根目录的访问请求

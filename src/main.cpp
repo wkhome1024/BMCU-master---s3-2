@@ -34,7 +34,6 @@ char mqtt_id[20];
 void setup()
 {
 
-  EEPROM.begin(4096); // 申请存储空间
   INIT_DATA();
   BambuBus_init();
   Switch_init();
@@ -42,19 +41,13 @@ void setup()
   LED_init();
   tft_init();
   // 检查是否有保存的Wi-Fi配置信息
-
-  WiFi.setHostname(host_name);
+  RS485_init();
+  //WiFi.setHostname(host_name);
   // WiFi.begin(ssid, password); // 尝试自动连接上次保存的Wi-Fi
   //  Serial.println("尝试连接已保存的WiFi...");
   checkConnect(Config_read()); // 检查配置Wi-Fi连接
   // 等待连接成功
-
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(100);
-    checkDNS_HTTP();
-    // Serial.print(".");
-  }
+  ESP_LOGE("setup","wifi_sever_init");
 
   if (WiFi.status() == WL_CONNECTED)
   {
@@ -79,6 +72,7 @@ void setup()
   // my_printf("(flash) SPIFFS总大小: %d, SPIFFS已使用大小: %d, Flash size: %d", LittleFS.totalBytes(), LittleFS.usedBytes(), ESP.getFlashChipSize());
   my_printf("(memory) RAM可使用大小: %d", ESP.getFreeHeap());
   my_printf("(memory) PSRAM可使用大小: %d", ESP.getFreePsram());
+  webtask_setup();
 }
 uint64_t error_time = 0;
 uint64_t offline_time = 0;
@@ -86,6 +80,7 @@ uint64_t mqtt_time = 0;
 uint64_t led_time = 0;
 uint64_t server_time = 0;
 uint64_t save_time = 0;
+uint64_t switch_time = 0;
 void loop()
 {
   // Bambu_readuart();
@@ -188,20 +183,24 @@ void loop()
       if (save_time < time_now)
       {
         save_time = time_now + 60000;      //60 秒保存一次
-        save_time = 0;
-        if(save_count)
-           Flash_commit();
+
+
       }
-      if (Switch_need_to_delay())
+      if (Switch_need_refresh())
       {
-        Switch_set_not_to_delay();
-        delay(5000);
+        if (switch_time == 0)
+            switch_time = time_now + 2000;            //强制刷新耗材信息
+        else if (switch_time < time_now && switch_time != 0)
+        {
+            Switch_set_refresh(false);
+            switch_time = 0;          
+        }
       }
     }
     if (server_time == 0 && server_key) // 如果WebServer未开启
     {
       server_time = time_now + 1200000; // 20分钟后关闭WebServer
-      initWebServer();                  // 开启WebServer
+      //initWebServer();                  // 开启WebServer
       my_printf("(web) WebServer已开启");
     }
     else if (server_time < time_now && server_time != 1)
@@ -214,8 +213,6 @@ void loop()
     if (led_time < time_now)
     {
       led_time = time_now + 500;
-      if (server_key)    // 如果WebServer开启
-        checkDNS_HTTP(); // 检查DNS和HTTP请求
       if (SYS_leds.canShow())
       {
         SYS_leds.show();

@@ -2,7 +2,7 @@
 #include "BambuBus.h"
 
 #define BMCUSwitch_version 6
-#define switch_addr ((uint16_t)0x0800)
+const char *switch_addr = "switch";
 struct alignas(4) switch_save_struct
 {
     uint32_t version = BMCUSwitch_version;
@@ -37,10 +37,11 @@ void Switch_init()
 }
 bool Switch_read()
 {
-    switch_save_struct *ptr = (switch_save_struct *)(EEPROM.getDataPtr() + switch_addr);
-    if (ptr->version == BMCUSwitch_version)
+    switch_save_struct ptr;
+    if (!Flash_read(&ptr,sizeof(switch_save),switch_addr)) return false;  
+    if (ptr.version == BMCUSwitch_version)
     {
-        memcpy(&switch_save, ptr, sizeof(switch_save));
+        memcpy(&switch_save, &ptr, sizeof(switch_save));
         return true;
     }
     return false;
@@ -81,6 +82,7 @@ uint8_t Switch_set_filament(unsigned char *buf, int length, uint8_t AMS_num, uin
                 if (memcmp(buf + 17, &hacheck, 1) == 0)
                 {
                     switch_save.filament_map_to[read_num] = i;
+                    my_printf("(switch)Filament %d map to %d", read_num, i);
                     Switch_set_need_to_save();
                     return 0xEE;
                 }
@@ -93,7 +95,8 @@ uint8_t Switch_set_filament(unsigned char *buf, int length, uint8_t AMS_num, uin
             switch_save.filament_map_to[1] = read_num * 4 + 1;
             switch_save.filament_map_to[2] = read_num * 4 + 2;
             switch_save.filament_map_to[3] = read_num * 4 + 3;
-            Switch_set_need_to_delay();
+            my_printf("(switch)reset_map_to bmcu-%d" ,read_num);
+            Switch_set_refresh(true);
             Switch_set_need_to_save();
             return 0x0D;
         }
@@ -132,7 +135,7 @@ void Switch_set_need_to_save()
 void Switch_save()
 {
     //Flash_saves(&switch_save, sizeof(switch_save), use_flash_addr + sizeof(switch_save));
-    Flash_saves(&switch_save, sizeof(switch_save), switch_addr);
+    if(!Flash_saves(&switch_save, sizeof(switch_save), switch_addr))  ESP_LOGE("FLASH", "switch保存失败");
     switch_need_to_save = false;
     save_count++;
 }
@@ -141,18 +144,14 @@ bool Switch_need_to_save()
     return switch_need_to_save;
 }
 
-bool switch_need_to_delay = false;
-void Switch_set_need_to_delay()
+bool switch_need_to_refresh = false;
+void Switch_set_refresh(bool refresh)
 {
-    switch_need_to_delay = true;
+    switch_need_to_refresh = refresh;
 }
-void Switch_set_not_to_delay()
+bool Switch_need_refresh()
 {
-    switch_need_to_delay = false;
-}
-bool Switch_need_to_delay()
-{
-    return switch_need_to_delay;
+    return switch_need_to_refresh;
 }
 
 

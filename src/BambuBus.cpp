@@ -5,6 +5,7 @@
 CRC16 crc_16;
 CRC8 crc_8;
 
+package_type bambu_stu = BambuBus_package_NONE;
 uint8_t BambuBus_data_buf[500];
 int BambuBus_have_data = 0;
 uint16_t BambuBus_address = 0;
@@ -12,7 +13,7 @@ uint8_t AMS_num_c = 0;
 uint8_t Tay_num_c = 0;
 uint8_t AMS_num_max = 4;
 
-_filament_motion_state_set motion_temp[8][4];
+_filament_motion_state_set motion_temp[4][4];
 
 struct _filament
 {
@@ -34,7 +35,7 @@ struct _filament
     uint16_t pressure = 0xFFFF;
 };
 
-#define use_flash_addr ((uint16_t)0x01)
+const char *bmcu_addr = "bmcu";
 
 struct alignas(4) flash_save_struct
 {
@@ -46,12 +47,11 @@ struct alignas(4) flash_save_struct
 
 bool Bambubus_read()
 {
-    flash_save_struct *ptr = (flash_save_struct *)(EEPROM.getDataPtr() + use_flash_addr);
-    // flash_save_struct ptr;
-    // Flash_read(&ptr,sizeof(ptr),use_flash_addr);
-    if ((ptr->check == 0x40614061) && (ptr->version == Bambubus_version))
+    flash_save_struct ptr;
+    if (!Flash_read(&ptr,sizeof(data_save),bmcu_addr))  return false;
+    if ((ptr.check == 0x40614061) && (ptr.version == Bambubus_version))
     {
-        memcpy(&data_save, ptr, sizeof(data_save));
+        memcpy(&data_save, &ptr, sizeof(data_save));
         return true;
     }
     return false;
@@ -63,8 +63,9 @@ void Bambubus_set_need_to_save()
 }
 void Bambubus_save()
 {
-    Flash_saves(&data_save, sizeof(data_save), use_flash_addr);
-    save_count++;
+    if(!Flash_saves(&data_save, sizeof(data_save), bmcu_addr)) ESP_LOGE("FLASH", "bmcu保存失败");
+
+    Bambubus_need_to_save = false;
 }
 
 int get_now_filament_num()
@@ -148,7 +149,7 @@ bool BambuBus_if_on_print()
 }
 uint8_t buf_X[500];
 CRC8 _RX_IRQ_crcx(0x39, 0x66, 0x00, false, false);
-void inline RX_IRQ(unsigned char _RX_IRQ_data)
+void  RX_IRQ(unsigned char _RX_IRQ_data)
 {
     static int _index = 0;
     static int length = 500;
@@ -208,7 +209,7 @@ void inline RX_IRQ(unsigned char _RX_IRQ_data)
             memcpy(buf_X, BambuBus_data_buf, length);
             BambuBus_have_data = length;
         }
-        if (_index >= 999)
+        if (_index >= 499)        
         {
             _index = 0;
         }
@@ -230,7 +231,7 @@ uint8_t buf_Bmcu[50];
 uint8_t buf_B[50];
 uint8_t Bmcu_have_data = 0;
 CRC8 _RX_BMCU_crcx(0x39, 0x66, 0x00, false, false);
-void RX_BMCU(char inChar)
+void RX_BMCU(unsigned char inChar)
 {
     static int _index1 = 0;
     static int length = 0;
@@ -400,6 +401,8 @@ void BambuBus_init()
         data_save.filament[7][3].color_R = 0x20;
         data_save.filament[7][3].color_G = 0x20;
         data_save.filament[7][3].color_B = 0x20;
+
+        //Bambubus_save(); 
     }
     for (auto &i : data_save.filament)
     {
@@ -415,8 +418,6 @@ void BambuBus_init()
             //   j.meters = 0;
         }
     }
-    BambuBUS_UART_Init();
-    BMCU_UART_Init();
 }
 
 bool package_check_crc16(uint8_t *data, int data_length)
@@ -1103,7 +1104,7 @@ void send_for_online_detect(unsigned char *buf, int length)
         F00_res[7] = 22;
         if (BambuBus_address == BambuBus_AMS)
         {
-            F00_res[7] = 22 - num_F00;
+            F00_res[7] = 3 - num_F00;
             if (num_F00 == 0)
             {
                 memcpy(F00_res + 8, online_detect_num1, sizeof(online_detect_num1));
@@ -1396,7 +1397,7 @@ package_type BambuBus_run()
         int data_length = BambuBus_have_data;
         BambuBus_have_data = 0;
         need_debug = false;
-        delay(1);
+        //delay(1);
         get_C_data(buf_X, data_length);
         stu = get_packge_type(buf_X, data_length); // have_data
         if (!catch_mode)
@@ -1476,7 +1477,7 @@ package_type BambuBus_run()
                     data_save.filament[AMS_num][i].motion_set = need_send_out;
                 else if (buf_Bmcu[i + 4] == 0x04)
                     data_save.filament[AMS_num][i].motion_set = on_use;
-                if (bmcu_online & (0x01 << (2 * i)))
+                if ((bmcu_online & (0x01 << (2 * i))) && !Switch_need_refresh())
                     data_save.filament[AMS_num][i].statu = online;
                 else
                     data_save.filament[AMS_num][i].statu = offline;
@@ -1491,21 +1492,24 @@ package_type BambuBus_run()
     {
         if (bmcu_onprint)
         {
-            my_printf("(bmcu) Bambubus未检测到打印状态,已自动设置为等待状态");
+            my_printf("(bmcu) Bambubus未检测到打印状态,已设置为等待状态");
+            bmcu_onprint = false;
         }
-        bmcu_onprint = false;
     }
     else
     {
         if (!bmcu_onprint)
         {
             my_printf("(bmcu) Bambubus已检测到打印状态,已设置为打印状态");
+            bmcu_onprint = true;
         }
-        bmcu_onprint = true;
+        
     }
     if (timex > time_long_motion)
     {
         set_filament_motion(get_now_filament_num(), idle);
+        //if (timex < time_set)
+            //my_printf("(bmcu) Bambubus已检测到DXX回应超时!!!");
         /*for(auto i:data_save.filament)
         {
             i->motion_set=idle;
@@ -1513,14 +1517,22 @@ package_type BambuBus_run()
     }
     if (Bambubus_need_to_save)
     {
-        Bambubus_save();
-        time_set = get_time64() + 1000;
-        Bambubus_need_to_save = false;
-        my_printf("(bmcu) Bambubus已保存");
+        if (save_count == 0 && !bmcu_onprint)
+        {
+            Bambubus_save();
+            time_set = get_time64() + 1000;
+            my_printf("(bmcu) Bambubus已保存");
+        }
+        else 
+        {
+            save_count++;
+        }
+
     }
     // HAL_UART_Transmit(&use_Serial.handle,&s,1,1000);
 
     // NFC_detect_run();
+    //bambu_stu = stu;
     return stu;
 }
 
@@ -1582,9 +1594,6 @@ String Bmcu_set_json(int ams_num, int i)
         meters = 0.0f;
     }
     sprintf(meterBuf, "%6.1f", meters);
-    String json = ("{\"name\":\"%s\",\"color\":\"%s\",\"meter\":\"%s\"}",
-                   name.c_str(),
-                   colorBuf,
-                   meterBuf);
+    String json = ("{\"name\":\"" + name + "\",\"color\":\"" + (String)colorBuf + "\",\"meter\":\"" + (String)meterBuf + "\"}");
     return json;
 }

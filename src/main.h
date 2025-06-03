@@ -20,6 +20,7 @@ extern const char *host_name;
 extern int save_count;
 extern int catch_key; // 抓包开关
 extern bool catch_mode;             // 抓包模式
+extern bool server_key;
 #define EN_log true                          // 日志开关
 
 

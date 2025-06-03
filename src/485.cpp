@@ -14,7 +14,7 @@
 
 void send_bambu_uart(const unsigned char *data, size_t length)
 {
-    if ((get_time64() < 20000)) 
+    if ((get_time64() < 40000)) 
     {
         Serial0.flush(); // 等待串口0可用
         return; // 如果串口0不可用，则不发送数据
@@ -50,6 +50,13 @@ void BMCU_UART_Init()
     Serial1.setMode(UART_MODE_RS485_HALF_DUPLEX);
 }
 
+void RS485_init()
+{
+    BambuBUS_UART_Init();
+    BMCU_UART_Init();
+    //delay(100);
+    //start_rs485_task();
+}
 
 
 
