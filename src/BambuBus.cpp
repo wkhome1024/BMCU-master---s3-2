@@ -1269,7 +1269,7 @@ void send_for_long_packge_version(unsigned char *buf, int length)
     case 0x402:
 
         AMS_num = printer_data_long.datas[33];
-        serial_number[5] = AMS_num;
+        serial_number[5] = AMS_num + 1;
         long_packge_version_serial_number[0] = sizeof(serial_number);
         memcpy(long_packge_version_serial_number + 1, serial_number, sizeof(serial_number));
         data.datas = long_packge_version_serial_number;

@@ -16,7 +16,7 @@ int save_count = 0;
 int postMsgId = 0;              // 消息ID初始值为0
 int catch_key = 0;              // 抓包计数
 bool catch_mode = false;        // 抓包模式
-bool server_key = true;         // HTTP服务器开关
+bool server_key = false;         // HTTP服务器开关
 WiFiClient espclient;           // 创建一个WiFiClient对象
 PubSubClient client(espclient); // 创建一个PubSubClient对象
 
@@ -47,7 +47,7 @@ void setup()
   //  Serial.println("尝试连接已保存的WiFi...");
   checkConnect(Config_read()); // 检查配置Wi-Fi连接
   // 等待连接成功
-  ESP_LOGE("setup","wifi_sever_init");
+
 
   if (WiFi.status() == WL_CONNECTED)
   {
@@ -144,11 +144,16 @@ void loop()
             uint8_t ams_num = postMsgId / 4;
             uint8_t tay_num = postMsgId % 4;
             ESP_LOGE("memory", "RAM可使用大小: %d", ESP.getFreeHeap());
-            // my_printf("(memory) RAM可使用大小: %d", ESP.getFreeHeap());
-            static const char *tay_prefix[] = {"tay1", "tay2", "tay3", "tay4"};
-            char json[256];
-            snprintf(json, sizeof(json), "{\"%s\":%s}", tay_prefix[tay_num], Bmcu_set_json(ams_num, tay_num));
-            client.publish(topic[ams_num], json);
+            String temp;
+            if (tay_num == 0)
+              temp = ("{\"tay1\":" + Bmcu_set_json(ams_num, tay_num) + "}");
+            if (tay_num == 1)
+              temp = ("{\"tay2\":" + Bmcu_set_json(ams_num, tay_num) + "}");
+            if (tay_num == 2)
+              temp = ("{\"tay3\":" + Bmcu_set_json(ams_num, tay_num) + "}");
+            if (tay_num == 3)
+              temp = ("{\"tay4\":" + Bmcu_set_json(ams_num, tay_num) + "}");
+            client.publish(topic[ams_num], temp.c_str());
             postMsgId++;
             if (postMsgId > ((get_AMS_num_max() * 4) - 1))
             {
