@@ -137,7 +137,6 @@ void Switch_save()
     //Flash_saves(&switch_save, sizeof(switch_save), use_flash_addr + sizeof(switch_save));
     if(!Flash_saves(&switch_save, sizeof(switch_save), switch_addr))  ESP_LOGE("FLASH", "switch保存失败");
     switch_need_to_save = false;
-    save_count++;
 }
 bool Switch_need_to_save()
 {
@@ -164,7 +163,7 @@ String get_filament_map() {
 
         String key = "tay" + String(i + 1);
 
-        json += "\"" + key + "\":\"b" + String(row) + "-" + String(col) + "\"";
+        json += "\"" + key + "\":\"bmcu" + String(row) + "-" + String(col) + "\"";
 
         if (i != 3) {
             json += ","; 

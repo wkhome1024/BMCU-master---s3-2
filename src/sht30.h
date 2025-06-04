@@ -12,7 +12,7 @@ extern void Sht30_init();
 extern std::pair<float, float> Sht30_read();
 extern String Sht30_read_mqtt();
 extern void tft_init();
-extern void tft_print();
+extern void tft_print(bool flag);
 
 
 /*

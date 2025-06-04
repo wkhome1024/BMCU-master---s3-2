@@ -47,6 +47,7 @@
         "istream": "cpp",
         "limits": "cpp",
         "stdexcept": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "regex": "cpp"
     }
 }

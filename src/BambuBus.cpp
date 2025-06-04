@@ -5,7 +5,7 @@
 CRC16 crc_16;
 CRC8 crc_8;
 
-package_type bambu_stu = BambuBus_package_NONE;
+package_type bambu_stu = BambuBus_package_ERROR;
 uint8_t BambuBus_data_buf[500];
 int BambuBus_have_data = 0;
 uint16_t BambuBus_address = 0;
@@ -60,6 +60,7 @@ bool Bambubus_need_to_save = false;
 void Bambubus_set_need_to_save()
 {
     Bambubus_need_to_save = true;
+    save_count++;
 }
 void Bambubus_save()
 {
@@ -1378,7 +1379,10 @@ void send_for_set_filament(unsigned char *buf, int length)
         Bmcu_package_send_with_crc(filament_res, sizeof(filament_res));
     }
 }
-
+package_type BambuBus_stu()
+{
+    return bambu_stu;
+}
 package_type BambuBus_run()
 {
     package_type stu = BambuBus_package_NONE;
@@ -1410,7 +1414,7 @@ package_type BambuBus_run()
                 break;
             case BambuBus_package_filament_motion_short:
                 send_for_motion_short(buf_X, data_length);
-                time_motion = timex + 5000;
+                time_motion = timex + 1000;
                 break;
             case BambuBus_package_filament_motion_long:
                 // DEBUG_num(buf_X, data_length);
@@ -1418,7 +1422,6 @@ package_type BambuBus_run()
                 time_long_motion = timex + 1000;
                 break;
             case BambuBus_package_online_detect:
-
                 send_for_online_detect(buf_X, data_length);
                 break;
             case BambuBus_package_REQx6:
@@ -1508,8 +1511,8 @@ package_type BambuBus_run()
     if (timex > time_long_motion)
     {
         set_filament_motion(get_now_filament_num(), idle);
-        //if (timex < time_set)
-            //my_printf("(bmcu) Bambubus已检测到DXX回应超时!!!");
+        if (timex < time_set)
+            my_printf("(bmcu) Bambubus已检测到DXX回应超时!!!");
         /*for(auto i:data_save.filament)
         {
             i->motion_set=idle;
@@ -1532,7 +1535,7 @@ package_type BambuBus_run()
     // HAL_UART_Transmit(&use_Serial.handle,&s,1,1000);
 
     // NFC_detect_run();
-    //bambu_stu = stu;
+    bambu_stu = stu;
     return stu;
 }
 

@@ -102,7 +102,7 @@ size_t my_log(const char *format)
     if (!EN_log || !L_data) return 0;
 
     char hexStr[256]; // 固定大小缓冲区，避免 String 的开销
-    sprintf(hexStr, "<br />%08d : > %s", millis(), format);
+    sprintf(hexStr, "<br />%08d : > %s\n", millis(), format);
 
     int len = strlen(hexStr);
     if (log_count + len >= BUFFER_SIZE)

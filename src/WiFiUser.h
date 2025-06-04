@@ -39,7 +39,7 @@ extern String mqtt_password;                 //mqtt密码
 //===========需要调用的函数===========
 extern void checkConnect(bool reConnect);    //检测wifi是否已经连接
 extern void restoreWiFi();                   //删除保存的wifi信息
-//extern void checkDNS_HTTP();                 //检测客户端DNS&HTTP请求
+extern bool WIFI_needsave();               
 extern void connectToWiFi(int timeOut_s);    //连接WiFi
 extern void Config_save();                  //保存配置数据
 extern bool Config_read();                  //读取配置数据

@@ -47,6 +47,7 @@ extern "C"
     };
     extern void BambuBus_init();
     extern package_type BambuBus_run();
+    extern package_type BambuBus_stu();
 #define max_filament_num 4
     extern bool Bambubus_read();
     extern void Bambu_readuart();
@@ -64,7 +65,8 @@ extern "C"
     extern bool BambuBus_if_on_print();
     extern String Bmcu_set_json(int ams_num ,int i);
     extern int get_AMS_num_max();
-    extern void Bmcu_reset();
+    extern void RX_IRQ(unsigned char _RX_IRQ_data);
+    extern void RX_BMCU(unsigned char inChar);
     extern bool Bambu_onprint();
     extern uint16_t get_tay_color(uint8_t num);
 #ifdef __cplusplus

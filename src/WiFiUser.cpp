@@ -66,12 +66,17 @@ bool Config_read()
 
   return false;
 }
+bool wifi_needsave = false;
+bool WIFI_needsave()
+{
+  return wifi_needsave;
+}
 void Config_save()
 {
   if (!Flash_saves(&config_save, sizeof(config_save), config_addr))
     ESP_LOGE("FLASH", "wifi保存失败");
 
-  save_count++;
+  wifi_needsave = false;
 }
 
 // DNSServer dnsServer;                       //创建dnsServer实例
@@ -414,7 +419,7 @@ void WebHandler::handleConfigWifi(AsyncWebServerRequest *request) {
                       "<br />已取得WiFi信息,正在尝试连接,请手动关闭此页面。";
 
     config_save.resetcheck = false;
-    Config_save();
+    wifi_needsave = true;
     request->send(200, "text/html", response);
     delay(100);
   if (WiFi.status() == WL_CONNECTED && WiFi.getMode() == WIFI_STA)
@@ -496,7 +501,7 @@ void WebHandler::handleLog(AsyncWebServerRequest *request) {
     else if (len > 1024 * 32) p += 1024 * 32;
     else if (len > 1024 * 16) p += 1024 * 16;
 
-    String html = "<!DOCTYPE html><html lang=\"zh\"><head><meta charset=\"UTF-8\"></head><body>" + String(p) + "</body></html>";
+    String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>日志</title></head><body>" + String(p) + "</body></html>";
     request->send(200, "text/html", html);
 }
 
@@ -602,13 +607,6 @@ void initDNS()
 /*
  * 初始化WebServer
  */
-void initWebServer()
-{
-  WebHandler::registerRoutes(server);
-  server.begin();
-  // Serial.println("WebServer started!");
-}
-
 
 void stopWebServer()
 {
@@ -720,7 +718,7 @@ void connectToWiFi(int timeOut_s)
     config_save.resetcheck = false; // 如果wifi连接成功，则将resetcheck设置为false
     // Config_save();
     if (millis() > 600000 && server_key)
-        server.begin();
+        initWebServer();
     // MDNS.end(); // 停止DNS服务器
     //  server.stop();                            //停止开发板所建立的网络服务器。
   }
@@ -730,11 +728,46 @@ void connectToWiFi(int timeOut_s)
  * 配置配网功能
  */
 
+void initWebServer()
+{
+  server.reset();
+  WebHandler::registerRoutes(server);
+  server.begin();
+  // Serial.println("WebServer started!");
+}
+
+ void webServerTask(void *parameter)
+{
+  bool task_flag = true;
+  while (true)
+  {
+    if (server_key)
+    {
+      if (task_flag)
+      {
+        task_flag = false;
+        initWebServer();
+      }
+    }
+    else
+    {
+      if (!task_flag)
+      {
+        task_flag = true;
+        server.end();
+      }
+    }
+
+
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
+}
 // 在 setup() 中启动任务
 void webtask_setup()
 {
-  initWebServer();
-  //xTaskCreatePinnedToCore(webServerTask, "WebServer", 8192 * 2, NULL, 0, NULL, 0);
+  //server.reset();
+  //initWebServer();
+  xTaskCreate(webServerTask, "WebServer", 8192, NULL, 0, NULL);
 }
 
 void wifiConfig()

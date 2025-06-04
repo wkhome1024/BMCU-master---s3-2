@@ -7,9 +7,30 @@
 #define BMCU_TX_PIN 17
 #define BMCU_RTS_PIN 16
 
+#define TASK_STACK_SIZE (8192 * 2)
+#define RX_BUFFER_SIZE 512
+MyRingBuffer rxBuffer0(RX_BUFFER_SIZE);
+MyRingBuffer rxBuffer1(RX_BUFFER_SIZE);
 
+void serialTask(void *parameter)
+{
+    for (;;)
+    {
+        while (rxBuffer0.available())
+        {
+            uint8_t c = rxBuffer0.read();
+            RX_IRQ(c);
+        }
+        BambuBus_run();
+        while (rxBuffer1.available())
+        {
+            uint8_t c = rxBuffer1.read();
+            RX_BMCU(c);
+        }
 
-
+        vTaskDelay(pdMS_TO_TICKS(2)); // 每2ms调用一次
+    }
+}
 
 
 void send_bambu_uart(const unsigned char *data, size_t length)
@@ -32,6 +53,12 @@ void BambuBUS_UART_Init()
     }
     Serial0.setPins(-1, -1, -1, Bambu_RTS_PIN);
     Serial0.setMode(UART_MODE_RS485_HALF_DUPLEX);
+
+    Serial0.onReceive([](){
+    while (Serial0.available()) {
+        uint8_t c = Serial0.read();
+        rxBuffer0.write(c);
+    } });
 }
 
 
@@ -48,14 +75,37 @@ void BMCU_UART_Init()
     }
     Serial1.setPins(-1, -1, -1, BMCU_RTS_PIN);
     Serial1.setMode(UART_MODE_RS485_HALF_DUPLEX);
+    Serial1.onReceive([](){
+    while (Serial1.available()) {
+        uint8_t c = Serial1.read();
+        rxBuffer1.write(c);
+    } });
 }
 
+
+void start_rs485_task()
+{
+
+    BaseType_t serialResult = xTaskCreate(serialTask, "Serial Task", TASK_STACK_SIZE, NULL, 2, NULL);
+    if (serialResult != pdPASS)
+    {
+        ESP_LOGE("(rs485)", "Failed to create Serial Task");
+    }
+
+    //BaseType_t bambuBusResult = xTaskCreate(bambuBusTask, "BambuBus Task", TASK_STACK_SIZE, NULL, 1, NULL);
+    //if (bambuBusResult != pdPASS)
+    //{
+    //    ESP_LOGE("(rs485)", "Failed to create bambuBus Task");
+    //}
+}
 void RS485_init()
 {
     BambuBUS_UART_Init();
     BMCU_UART_Init();
-    //delay(100);
-    //start_rs485_task();
+    //Serial0.onReceive(Bambu_readuart); // 串口回调；
+    //Serial1.onReceive(Bmcu_readuart);  // 串口回调；
+    delay(100);
+    start_rs485_task();
 }
 
 

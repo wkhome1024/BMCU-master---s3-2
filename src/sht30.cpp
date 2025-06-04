@@ -29,7 +29,6 @@ Sht30State sht30_state = Sht30State::IDLE;
 float Temp = 0;
 float Humidity = 0;
 
-
 void Sht30_init()
 {
   Wire.begin(SDA_PIN, SCL_PIN, 100000);
@@ -113,23 +112,36 @@ void tft_init()
   tft.println("Hello,I'm Bmcu-hub");
 }
 
-void tft_print()
+void tft_print(bool flag)
 {
-  tft.setCursor(0, 32);
-  tft.fillScreen(ST7735_CYAN);
-  tft.setTextSize(2);
-  tft.setTextColor(get_tay_color(0));
-  tft.println(get_tay_map(0));
-  tft.setCursor(0, 52);
-  tft.setTextColor(get_tay_color(1));
-  tft.println(get_tay_map(1));
-  tft.setCursor(0, 72);
-  tft.setTextColor(get_tay_color(2));
-  tft.println(get_tay_map(2));
-  tft.setCursor(0, 92);
-  tft.setTextColor(get_tay_color(3));
-  tft.println(get_tay_map(3));
-  tft.setCursor(0, 122);
-  tft.setTextColor(ST7735_BLACK);
-  tft.println(Sht30_tft());
+  if (flag)
+  {
+    tft.fillScreen(ST7735_CYAN);
+    tft.setTextSize(2);
+    tft.setTextColor(ST7735_RED);
+    tft.setCursor(12, 60);
+    tft.println("Bmcu-hub");
+    tft.setCursor(2, 82);
+    tft.println("catch mode");
+  }
+  else
+  {
+    tft.setCursor(0, 32);
+    tft.fillScreen(ST7735_CYAN);
+    tft.setTextSize(2);
+    tft.setTextColor(get_tay_color(0));
+    tft.println(get_tay_map(0));
+    tft.setCursor(0, 52);
+    tft.setTextColor(get_tay_color(1));
+    tft.println(get_tay_map(1));
+    tft.setCursor(0, 72);
+    tft.setTextColor(get_tay_color(2));
+    tft.println(get_tay_map(2));
+    tft.setCursor(0, 92);
+    tft.setTextColor(get_tay_color(3));
+    tft.println(get_tay_map(3));
+    tft.setCursor(0, 122);
+    tft.setTextColor(ST7735_BLACK);
+    tft.println(Sht30_tft());
+  }
 }
