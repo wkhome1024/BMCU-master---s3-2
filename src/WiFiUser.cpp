@@ -22,7 +22,7 @@ String mqtt_password = "11";          // 暂时存储mqtt密码
 
 // char L_data[20] = "test1234567890"; // test
 // char C_data[20] = "test1234567890";
-
+AsyncWebServer server(80);
 const char *config_addr = "wificonfig";
 
 struct alignas(4) config_struct
@@ -75,7 +75,7 @@ void Config_save()
 }
 
 // DNSServer dnsServer;                       //创建dnsServer实例
-WebServer server(webPort); // 开启web服务, 创建TCP SERVER,参数: 端口号,最大连接数
+//WebServer server(webPort); // 开启web服务, 创建TCP SERVER,参数: 端口号,最大连接数
 
 // 上下两段HTML代码
 const char ROOT_HTML_1[] PROGMEM = R"rawliteral(
@@ -334,121 +334,89 @@ const char upload_html[] PROGMEM = R"rawliteral(
 /*
  * 处理网站根目录的访问请求
  */
-void handleRoot()
-{
-  htmlBuf[0] = '\0'; // 清空缓冲区
 
-  if (WiFi.getMode() != WIFI_STA) // 如果没有连接wifi
-  {
-    strcpy_P(htmlBuf, ROOT_HTML_1);
-    strcpy(htmlBuf, scanNetworksID.c_str());
-    strcpy_P(htmlBuf, ROOT_HTML_2);
-  }
-  else if (WiFi.status() == WL_CONNECTED) // 如果已连接wifi
-  {
-    strcpy_P(htmlBuf, root2_html);
-  }
+void WebHandler::handleRoot(AsyncWebServerRequest *request) {
+    htmlBuf[0] = '\0'; // 清空缓冲区
 
-  server.send(200, "text/html", htmlBuf);
+    if (WiFi.getMode() != WIFI_STA) {
+        strcpy_P(htmlBuf, ROOT_HTML_1);
+        strcat(htmlBuf, scanNetworksID.c_str());
+        strcat_P(htmlBuf, ROOT_HTML_2);
+    } else if (WiFi.status() == WL_CONNECTED) {
+        strcpy_P(htmlBuf, root2_html);
+    }
+
+    request->send(200, "text/html", htmlBuf);
 }
 
-/*
- * 提交数据后的提示页面
- */
-void handleConfigWifi() // 返回http状态
-{
-  if (server.hasArg("ssid")) // 判断是否有账号参数
-  {
-    // Serial.print("got ssid:");
-    wifi_ssid = server.arg("ssid");                                       // 获取html表单输入框name名为"ssid"的内容
-    wifi_ssid.trim();                                                     // 去除前后空格
-    memcpy(config_save.wifi_ssid, wifi_ssid.c_str(), wifi_ssid.length()); // 将wifi_ssid的内容复制到config_save.wifi_ssid中
-    // Serial.println(wifi_ssid);
-  }
-  else // 没有参数
-  {
-    // Serial.println("error, not found ssid");
-    server.send(200, "text/html", "<meta charset='UTF-8'>error, not found ssid"); // 返回错误页面
-    return;
-  }
-  // 密码与账号同理
-  if (server.hasArg("password"))
-  {
-    // Serial.print("got password:");
-    wifi_pass = server.arg("password");                                       // 获取html表单输入框name名为"password"的内容
-    wifi_pass.trim();                                                         // 去除前后空格
-    memcpy(config_save.wifi_password, wifi_pass.c_str(), wifi_pass.length()); // 将wifi_pass的内容复制到config_save.wifi_password中
-    // Serial.println(wifi_pass);
-  }
-  else
-  {
-    // Serial.println("error, not found password");
-    server.send(200, "text/html", "<meta charset='UTF-8'>error, not found password");
-    return;
-  }
+void WebHandler::handleConfigWifi(AsyncWebServerRequest *request) {
 
-  if (server.hasArg("mqtt_server"))
-  {
-    // Serial.print("got mqtt_server:");
-    mqtt_server = server.arg("mqtt_server");                                    // 获取html表单输入框name名为"mqtt_server"的内容
-    mqtt_server.trim();                                                         // 去除前后空格
-    memcpy(config_save.mqtt_server, mqtt_server.c_str(), mqtt_server.length()); // 将mqtt_server的内容复制到config_save.mqtt_server中
-    // Serial.println(mqtt_server);
-  }
-  else
-  {
-    // Serial.println("error, not found mqtt_server");
-    server.send(200, "text/html", "<meta charset='UTF-8'>error, not found mqtt_server");
-    return;
-  }
 
-  if (server.hasArg("mqtt_port"))
-  {
-    // Serial.print("got mqtt_port:");
-    String s_port = server.arg("mqtt_port"); // 获取html表单输入框name名为"mqtt_port"的内容
-    s_port.trim();                           // 去除前后空格
-    mqtt_port = s_port.toInt();              // 将字符串转换为整数
-    config_save.mqtt_port = mqtt_port;       // 将mqtt_port的内容复制到config_save.mqtt_port中
-    // Serial.println(mqtt_port);
-  }
-  else
-  {
-    // Serial.println("error, not found mqtt_port");
-    server.send(200, "text/html", "<meta charset='UTF-8'>error, not found mqtt_port");
-    return;
-  }
-  if (server.hasArg("mqtt_username"))
-  {
-    // Serial.print("got mqtt_username:");
-    mqtt_username = server.arg("mqtt_username");                                      // 获取html表单输入框name名为"mqtt_username"的内容
-    mqtt_username.trim();                                                             // 去除前后空格
-    memcpy(config_save.mqtt_username, mqtt_username.c_str(), mqtt_username.length()); // 将mqtt_username的内容复制到config_save.mqtt_username中
-    // Serial.println(mqtt_username);
-  }
-  else
-  {
-    // Serial.println("error, not found mqtt_username");
-    server.send(200, "text/html", "<meta charset='UTF-8'>error, not found mqtt_username");
-    return;
-  }
-  if (server.hasArg("mqtt_password"))
-  {
-    // Serial.print("got mqtt_password:");
-    mqtt_password = server.arg("mqtt_password");                                      // 获取html表单输入框name名为"mqtt_password"的内容
-    mqtt_password.trim();                                                             // 去除前后空格
-    memcpy(config_save.mqtt_password, mqtt_password.c_str(), mqtt_password.length()); // 将mqtt_password的内容复制到config_save.mqtt_password中
-    // Serial.println(mqtt_password);
-  }
-  else
-  {
-    // Serial.println("error, not found mqtt_password");
-    server.send(200, "text/html", "<meta charset='UTF-8'>error, not found mqtt_password");
-    return;
-  }
-  server.send(200, "text/html", "<meta charset='UTF-8'>SSID:" + wifi_ssid + "<br />password:" + wifi_pass + "<br />mqtt_server:" + mqtt_server + "<br />mqtt_port:" + String(mqtt_port) + "<br />mqtt_username:" + mqtt_username + "<br />mqtt_password:" + mqtt_password + "<br />已取得WiFi信息,正在尝试连接,请手动关闭此页面。"); // 返回保存成功页面
-  config_save.resetcheck = false;
-  Config_save(); // 保存配置
-  delay(1000);
+    if (request->hasParam("ssid", true)) {
+        wifi_ssid = request->getParam("ssid", true)->value();
+        wifi_ssid.trim();
+        memcpy(config_save.wifi_ssid, wifi_ssid.c_str(), wifi_ssid.length());
+    } else {
+        request->send(200, "text/html", "<meta charset='UTF-8'>error, not found ssid");
+        return;
+    }
+
+    if (request->hasParam("password", true)) {
+        wifi_pass = request->getParam("password", true)->value();
+        wifi_pass.trim();
+        memcpy(config_save.wifi_password, wifi_pass.c_str(), wifi_pass.length());
+    } else {
+        request->send(200, "text/html", "<meta charset='UTF-8'>error, not found password");
+        return;
+    }
+
+    if (request->hasParam("mqtt_server", true)) {
+        mqtt_server = request->getParam("mqtt_server", true)->value();
+        mqtt_server.trim();
+        memcpy(config_save.mqtt_server, mqtt_server.c_str(), mqtt_server.length());
+    } else {
+        request->send(200, "text/html", "<meta charset='UTF-8'>error, not found mqtt_server");
+        return;
+    }
+
+    if (request->hasParam("mqtt_port", true)) {
+        mqtt_port = request->getParam("mqtt_port", true)->value().toInt();
+        config_save.mqtt_port = mqtt_port;
+    } else {
+        request->send(200, "text/html", "<meta charset='UTF-8'>error, not found mqtt_port");
+        return;
+    }
+
+    if (request->hasParam("mqtt_username", true)) {
+        mqtt_username = request->getParam("mqtt_username", true)->value();
+        mqtt_username.trim();
+        memcpy(config_save.mqtt_username, mqtt_username.c_str(), mqtt_username.length());
+    } else {
+        request->send(200, "text/html", "<meta charset='UTF-8'>error, not found mqtt_username");
+        return;
+    }
+
+    if (request->hasParam("mqtt_password", true)) {
+        mqtt_password = request->getParam("mqtt_password", true)->value();
+        mqtt_password.trim();
+        memcpy(config_save.mqtt_password, mqtt_password.c_str(), mqtt_password.length());
+    } else {
+        request->send(200, "text/html", "<meta charset='UTF-8'>error, not found mqtt_password");
+        return;
+    }
+
+    String response = "<meta charset='UTF-8'>SSID:" + wifi_ssid +
+                      "<br />password:" + wifi_pass +
+                      "<br />mqtt_server:" + mqtt_server +
+                      "<br />mqtt_port:" + String(mqtt_port) +
+                      "<br />mqtt_username:" + mqtt_username +
+                      "<br />mqtt_password:" + mqtt_password +
+                      "<br />已取得WiFi信息,正在尝试连接,请手动关闭此页面。";
+
+    config_save.resetcheck = false;
+    Config_save();
+    request->send(200, "text/html", response);
+    delay(100);
   if (WiFi.status() == WL_CONNECTED && WiFi.getMode() == WIFI_STA)
   {
     WiFi.disconnect(false, true);
@@ -458,7 +426,7 @@ void handleConfigWifi() // 返回http状态
   else
   {
     WiFi.softAPdisconnect(true); // 参数设置为true，设备将直接关闭接入点模式，即关闭设备所建立的WiFi网络。
-    server.close();              // 关闭web服务
+    server.end();              // 关闭web服务
     WiFi.softAPdisconnect();     // 在不输入参数的情况下调用该函数,将关闭接入点模式,并将当前配置的AP热点网络名和密码设置为空值.
     // Serial.println("WiFi Connect SSID:" + wifi_ssid + "  PASS:" + wifi_pass);
   }
@@ -468,160 +436,136 @@ void handleConfigWifi() // 返回http状态
     // Serial.println("开始调用连接函数connectToWiFi()..");
     connectToWiFi(connectTimeOut_s);
   }
-
-  // Config_save(); //保存配置
 }
 
-void handleUpdateWifi() // 返回http状态
-{
-  scanWiFi();
-  htmlBuf[0] = '\0'; // 清空缓冲区
-  strcpy_P(htmlBuf, ROOT_HTML_1);
-  strcpy(htmlBuf, scanNetworksID.c_str());
-  strcpy_P(htmlBuf, ROOT_HTML_2);
-  server.send(200, "text/html", htmlBuf);
+void WebHandler::handleUpdateWifi(AsyncWebServerRequest *request) {
+    scanWiFi();
+    htmlBuf[0] = '\0'; // 清空缓冲区
 
-  // server.send(200, "text/html", ROOT_HTML_1 + scanNetworksID + ROOT_HTML_2); // scanNetWprksID是扫描到的wifi
+    strcpy_P(htmlBuf, ROOT_HTML_1);
+    strcat(htmlBuf, scanNetworksID.c_str());
+    strcat_P(htmlBuf, ROOT_HTML_2);
 
-  // scanWiFi();
-  // server.send(200, "text/html", ROOT_HTML_1 + scanNetworksID + ROOT_HTML_2);
-  /*
-  server.send(200, "text/html", "<meta charset='UTF-8'>即将断开连接,请手动切换到bmcu-hub-ap进行wifi配置,配置模式持续120s"); // 返回保存成功页面
-  WiFi.disconnect();                                                                                                        // 断开当前连接的WiFi
-  delay(500);
-  wifiConfig();                                             // 调用wifiConfig函数，配置WiFi信息
-  int count = 0;                                            // 计数器
-  while (WiFi.status() != WL_CONNECTED && count < 120 * 10) // 等待WiFi连接成功或超时120s
-  {
-    delay(100);
-    count++;
-    // Serial.println("等待WiFi连接成功...");
-    checkDNS_HTTP(); // 检查DNS和HTTP请求
-  }
-  if (WiFi.status() == WL_CONNECTED) // 如果WiFi连接成功
-  {
-    // server.send(200, "text/html", "<meta charset='UTF-8'>WiFi连接成功!<br />IP地址: " + WiFi.localIP().toString()); //返回连接成功页面
-    my_printf("(http) Bambu-hub更新wifi+mqtt参数成功");
-  }
-  else // 如果WiFi连接失败
-  {
-    // server.send(200, "text/html", "<meta charset='UTF-8'>WiFi连接失败，请检查配置参数是否正确。"); //返回连接失败页面
-    my_printf("(http) Bambu-hub更新wifi+mqtt参数失败");
-    WiFi.softAPdisconnect();
-    WiFi.mode(WIFI_STA);                                          // 设置WiFi为STA模式
-    WiFi.begin(config_save.wifi_ssid, config_save.wifi_password); // 重新开始WiFi连接
-  }*/
-  // ESP.restart();                   //重启设备
+    request->send(200, "text/html", htmlBuf);
 }
 
-/*
- * 处理404情况的函数'handleNotFound'
- */
-void handleNotFound() // 当浏览器请求的网络资源无法在服务器找到时通过此自定义函数处理
-{
-  handleRoot(); // 访问不存在目录则返回配置页面
-  //   server.send(404, "text/plain", "404: Not found");
-}
-
-void handleConfig()
-{
-  server.send(200, "text/html", "config_HTML");
-}
-
-void handleUpload()
-{
-  htmlBuf[0] = '\0'; // 清空缓冲区
-  strcpy_P(htmlBuf, upload_html);
-  server.send(200, "text/html", htmlBuf);
-  // server.send(200, "text/html", upload_html);
-}
-
-void handleUpdate()
-{
-  server.send(200, "text/html", "update_html");
-}
-
-void handleota()
-{
-  server.send(200, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>OTA Update</title></head><body><h1>OTA Update Page</h1><p>OTA update online</p></body></html>");
-  // Serial.println("OTA update page requested, but not implemented yet.");
-  // OTA_key = true; // 设置OTA开关为true
-  // my_log("<br />(http) Bambu-hub开启OTA");
-}
-
-void handlelog()
-{
-  if (L_data[0] == '\0')
-  {
-    server.send(200, "text/plain", "no log data");
-    return;
-  }
-  char *p = L_data;
-  int len = strlen(L_data);
-  if (len > 1024 * 48)
-  {
-    p = p + 1024 * 48;
-  }
-  else if (len > 1024 * 32)
-  {
-    p = p + 1024 * 32;
-  }
-  else if (len > 1024 * 16)
-  {
-    p = p + 1024 * 16;
-  }
-
-  server.send(200, "text/html", "<!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"UTF-8\"> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"> <title>日志</title> </head> <body>" + String(p) + "</body> </html>");
-  // server.sendContent("<meta charset='UTF-8'>LOG:<br />"  + String(L_data) + "</body> </html>");
-  // server.sendContent(L_data);
-  // server.sendContent("</body> </html>");
-}
-
-void handleData()
-{
-  if (server.hasArg("catchkey")) // 判断是否有抓包参数
-  {
-    String catchkey = server.arg("catchkey"); // 获取html表单输入框name名为"catchkey"的内容
-    // catchkey.trim();                          // 去除前后空格
-    if (catchkey == "open") // 如果抓包参数为"开启抓包"
-    {
-      catch_key = 1; // 开启抓包
-      my_printf("(http) Bambu-hub开启抓包");
-      server.send(200, "text/plain", "open catch");
-      return;
+void WebHandler::handleData(AsyncWebServerRequest *request) {
+    if (!request->hasParam("catchkey")) {
+        request->send(200, "text/plain", "no catch data");
+        return;
     }
-    else if (catchkey == "close") // 如果抓包参数为"关闭抓包"
-    {
-      catch_key = 0; // 关闭抓包
-      my_printf("(http) Bambu-hub关闭抓包");
-      server.send(200, "text/plain", "close catch");
-      return;
-    }
-    else if (catchkey == "catch_mode") // 如果抓包参数为"catch_mode"
-    {
-      catch_mode = true; // 设置为抓包模式
-      my_printf("(http) Bambu-hub设置为抓包模式--屏蔽输出");
-      server.send(200, "text/plain", "catch mode");
-      return;
-    }
-    else if (catchkey == "normal_mode") // 如果抓包参数为"normal_mode"
-    {
-      catch_mode = false; // 设置为normal模式
-      my_printf("(http) Bambu-hub设置为normal模式--抓包数据包含bmcu数据");
-      server.send(200, "text/plain", "normal mode");
-      return;
-    }
-    // server.send(200, "text/plain", catchkey); // 返回错误页面
-  }
 
-  if (C_data[0] == '\0')
+    String catchkey = request->getParam("catchkey")->value();
+    if (catchkey == "open") {
+        catch_key = 1;
+        my_printf("(http) Bambu-hub开启抓包");
+        request->send(200, "text/plain", "open catch");
+    } else if (catchkey == "close") {
+        catch_key = 0;
+        my_printf("(http) Bambu-hub关闭抓包");
+        request->send(200, "text/plain", "close catch");
+    } else if (catchkey == "catch_mode") {
+        catch_mode = true;
+        my_printf("(http) Bambu-hub设置为抓包模式--屏蔽输出");
+        request->send(200, "text/plain", "catch mode");
+    } else if (catchkey == "normal_mode") {
+        catch_mode = false;
+        my_printf("(http) Bambu-hub设置为normal模式--抓包数据包含bmcu数据");
+        request->send(200, "text/plain", "normal mode");
+    } else {
+        request->send(400, "text/plain", "unknown command");
+    }
+      if (C_data[0] == '\0')
   {
-    server.send(200, "text/plain", "no catch data");
+    request->send(200, "text/plain", "no catch data");
     return;
   }
   else
-    server.send(200, "text/plain", C_data);
-  // server.sendContent("<br />");
+    request->send(200, "text/plain", C_data);
+}
+
+void WebHandler::handleLog(AsyncWebServerRequest *request) {
+    if (L_data[0] == '\0') {
+        request->send(200, "text/plain", "no log data");
+        return;
+    }
+
+    char* p = L_data;
+    int len = strlen(L_data);
+    if (len > 1024 * 48) p += 1024 * 48;
+    else if (len > 1024 * 32) p += 1024 * 32;
+    else if (len > 1024 * 16) p += 1024 * 16;
+
+    String html = "<!DOCTYPE html><html lang=\"zh\"><head><meta charset=\"UTF-8\"></head><body>" + String(p) + "</body></html>";
+    request->send(200, "text/html", html);
+}
+
+void WebHandler::handleUpload(AsyncWebServerRequest *request) {
+    htmlBuf[0] = '\0'; // 清空缓冲区
+    strcpy_P(htmlBuf, upload_html);
+    request->send(200, "text/html", htmlBuf);
+}
+
+void WebHandler::handleUpdate(AsyncWebServerRequest *request) {
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+    response->addHeader("Connection", "close");
+    request->send(response);
+    delay(1000);
+    ESP.restart();
+}
+
+void WebHandler::handleOTA(AsyncWebServerRequest *request) {
+    request->send(200, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>OTA Update</title></head><body><h1>OTA Update Page</h1><p>OTA update online</p></body></html>");
+}
+
+void WebHandler::handleNotFound(AsyncWebServerRequest *request) {
+    handleRoot(request); // 返回根页面
+}
+
+void WebHandler::registerRoutes(AsyncWebServer &server) {
+    server.on("/", HTTP_GET, WebHandler::handleRoot);
+    server.on("/configwifi", HTTP_POST, WebHandler::handleConfigWifi);
+    server.on("/updatewifi", HTTP_POST, WebHandler::handleUpdateWifi);
+    server.on("/data", HTTP_POST, WebHandler::handleData);
+    server.on("/log", HTTP_POST, WebHandler::handleLog);
+    server.on("/upload", HTTP_POST, WebHandler::handleUpload);
+    //server.on("/update", HTTP_POST, WebHandler::handleUpdate);
+    //server.on("/ota", HTTP_GET, WebHandler::handleOTA);
+    server.onNotFound(WebHandler::handleNotFound);
+    // 处理静态资源请求
+    server.on("/.*\\.ico", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(404, "text/plain", "Not Found");       
+    });
+    // OTA 文件上传
+    server.on("/update", HTTP_POST,
+        [](AsyncWebServerRequest *request){
+            request->send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+            delay(1000);
+            ESP.restart();
+        },
+        [](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final){
+            if (!index) {
+                Serial.printf("Update: %s\n", filename.c_str());
+                if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+                    Update.printError(Serial);
+                }
+            }
+
+            if (len) {
+                if (Update.write(data, len) != len) {
+                    Update.printError(Serial);
+                }
+            }
+
+            if (final) {
+                if (Update.end(true)) {
+                    Serial.println("OTA Success");
+                } else {
+                    Update.printError(Serial);
+                }
+            }
+        }
+    );
 }
 /*
  * 进入AP模式
@@ -660,56 +604,15 @@ void initDNS()
  */
 void initWebServer()
 {
-
-  server.on("/", HTTP_POST, handleRoot);
-
-  // server.on("/", HTTP_GET, handleRoot);                      //  当浏览器请求服务器根目录(网站首页)时调用自定义函数handleRoot处理，设置主页回调函数，必须添加第二个参数HTTP_GET，否则无法强制门户
-  server.on("/configwifi", HTTP_POST, handleConfigWifi); //  当浏览器请求服务器/configwifi(表单字段)目录时调用自定义函数handleConfigWifi处理
-  // server.on("/config", HTTP_POST, handleConfig);
-  server.on("/data", HTTP_POST, handleData);
-  server.on("/log", HTTP_POST, handlelog);
-  // server.on("/update", HTTP_POST, handleUpdate);
-  server.on("/upload", HTTP_POST, handleUpload);
-  server.on("/updatewifi", HTTP_POST, handleUpdateWifi); //  当浏览器请求服务器/updatewifi(表单字段)目录时调用自定义函数handleUpdateWifi处理
-  server.onNotFound(handleNotFound);                     // 当浏览器请求的网络资源无法在服务器找到时调用自定义函数handleNotFound处理
-  server.on("/.*\\.ico", HTTP_GET, []()
-            {
-              server.send(404, "text/plain", "Not Found"); // 忽略所有静态资源请求
-            });
-  server.on("/update", HTTP_POST, []()
-            {
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-    delay(1000);
-    ESP.restart(); }, []()
-            {
-    HTTPUpload& upload = server.upload();
-    if (upload.status == UPLOAD_FILE_START) {
-      ESP_LOGE("Update","Update: %s\n", upload.filename.c_str());
-      if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
-        Update.printError(Serial);
-      }
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
-      /* flashing firmware to ESP*/
-      if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-        Update.printError(Serial);
-      }
-    } else if (upload.status == UPLOAD_FILE_END) {
-      if (Update.end(true)) { //true to set the size to the current progress
-        ESP_LOGE("Update","Update Success: %u\nRebooting...\n", upload.totalSize);
-      } else {
-        Update.printError(Serial);
-      }
-    } });
-
-  server.begin(); // 启动TCP SERVER
-
+  WebHandler::registerRoutes(server);
+  server.begin();
   // Serial.println("WebServer started!");
 }
 
+
 void stopWebServer()
 {
-  server.stop(); // 停止web服务
+  server.end(); // 停止web服务
   // ESP.restart();                                          //重启设备
   // dnsServer.stop();                                        //停止dns服务
   // Serial.println("WebServer stopped!");
@@ -761,7 +664,7 @@ void connectToWiFi(int timeOut_s)
   WiFi.setHostname(host_name); // 设置设备名
   // Serial.println("进入connectToWiFi()函数");
   WiFi.mode(WIFI_STA); // 设置为STA模式并连接WIFI
-  // WiFi.setAutoConnect(true); // 设置自动连接
+  WiFi.setAutoConnect(true); // 设置自动连接
 
   if (wifi_ssid != "") // wifi_ssid不为空，意味着从网页或存储读取到wifi
   {
@@ -816,7 +719,7 @@ void connectToWiFi(int timeOut_s)
     // my_log("<br />(http) Bambu-hub配置WiFi成功");
     config_save.resetcheck = false; // 如果wifi连接成功，则将resetcheck设置为false
     // Config_save();
-    if (millis() > 60000 && server_key)
+    if (millis() > 600000 && server_key)
         server.begin();
     // MDNS.end(); // 停止DNS服务器
     //  server.stop();                            //停止开发板所建立的网络服务器。
@@ -826,39 +729,12 @@ void connectToWiFi(int timeOut_s)
 /*
  * 配置配网功能
  */
-void webServerTask(void *parameter)
-{
-  bool task_flag = true;
-  while (true)
-  {
-    if (server_key)
-    {
-      if (task_flag)
-      {
-        task_flag = false;
-        initWebServer();
-      }
-      server.handleClient();
-    }
-    else
-    {
-      if (!task_flag)
-      {
-        task_flag = true;
-        server.stop();
-      }
-    }
-
-
-    vTaskDelay(pdMS_TO_TICKS(200));
-  }
-}
 
 // 在 setup() 中启动任务
 void webtask_setup()
 {
-  //initWebServer();
-  xTaskCreatePinnedToCore(webServerTask, "WebServer", 8192 * 2, NULL, 0, NULL, 0);
+  initWebServer();
+  //xTaskCreatePinnedToCore(webServerTask, "WebServer", 8192 * 2, NULL, 0, NULL, 0);
 }
 
 void wifiConfig()
@@ -907,9 +783,3 @@ void checkConnect(bool reConnect)
 /*
  * 检测客户端DNS&HTTP请求
  */
-void checkDNS_HTTP()
-{
-
-  // dnsServer.processNextRequest();   //检查客户端DNS请求
-  server.handleClient(); // 检查客户端(浏览器)http请求
-}
