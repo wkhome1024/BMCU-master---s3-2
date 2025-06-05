@@ -78,6 +78,7 @@ void get_C_data(uint8_t *buf_X, int data_length)
     catch_key++;
     if (catch_key > 501) // 500个数据包后关闭抓包
     {
+        my_printf("(http) Bambu-hub抓包结束");
         catch_key = 0;
     }
 }

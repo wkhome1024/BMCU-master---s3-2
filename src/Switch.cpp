@@ -64,7 +64,7 @@ std::pair<uint8_t, uint8_t> get_bmcu_and_channel(uint8_t num) {
     }
     else 
     {
-        return {11, num};  
+        return {0, num};  
     }
 
 }
@@ -82,7 +82,7 @@ uint8_t Switch_set_filament(unsigned char *buf, int length, uint8_t AMS_num, uin
                 if (memcmp(buf + 17, &hacheck, 1) == 0)
                 {
                     switch_save.filament_map_to[read_num] = i;
-                    my_printf("(switch)Filament %d map to %d", read_num, i);
+                    my_printf("(switch)Filament %d map to %d-%d", read_num, i/4 + 1, i%4 + 1);
                     Switch_set_need_to_save();
                     return 0xEE;
                 }

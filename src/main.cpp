@@ -261,7 +261,7 @@ void loop()
     }
     if (server_time == 0 && !server_key) // 如果WebServer未开启
     {
-      server_time = time_now + 300000; // 5分钟后开启WebServer
+      server_time = time_now + 120000; // 2分钟后开启WebServer
       // initWebServer();                  // 开启WebServer
       // my_printf("(web) WebServer已开启");
     }

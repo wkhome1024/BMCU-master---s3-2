@@ -7,7 +7,7 @@
 #define BMCU_TX_PIN 17
 #define BMCU_RTS_PIN 16
 
-#define TASK_STACK_SIZE (8192 * 2)
+#define TASK_STACK_SIZE (8192)
 #define RX_BUFFER_SIZE 512
 MyRingBuffer rxBuffer0(RX_BUFFER_SIZE);
 MyRingBuffer rxBuffer1(RX_BUFFER_SIZE);
@@ -21,24 +21,35 @@ void serialTask(void *parameter)
             uint8_t c = rxBuffer0.read();
             RX_IRQ(c);
         }
-        BambuBus_run();
+        //BambuBus_run();
         while (rxBuffer1.available())
         {
             uint8_t c = rxBuffer1.read();
             RX_BMCU(c);
+        }
+        vTaskDelay(pdMS_TO_TICKS(2)); // 每2ms调用一次        
+    }
+}
+void bambuBusTask(void *parameter)
+{
+    for (;;)
+    {
+        package_type stu = BambuBus_run();
+        if (stu != BambuBus_package_NONE)
+        {
+            // ESP_LOGE("BambuBus", "Processing package type: %d", stu);
         }
 
         vTaskDelay(pdMS_TO_TICKS(2)); // 每2ms调用一次
     }
 }
 
-
 void send_bambu_uart(const unsigned char *data, size_t length)
 {
-    if ((get_time64() < 40000)) 
+    if ((get_time64() < 10000) && catch_mode) 
     {
         //Serial0.flush(); // 等待串口0可用
-        return; // 如果串口0不可用，则不发送数据
+        return; 
     }
     Serial0.write(data, length);
     if (catch_key > 200 && !catch_mode)
@@ -64,6 +75,7 @@ void BambuBUS_UART_Init()
 
 void send_bmcu_uart(const unsigned char *data, size_t length)
 {
+    vTaskDelay(pdMS_TO_TICKS(1));         //延迟2ms发送  错开时序
     Serial1.write(data, length);
 }
 
@@ -92,11 +104,11 @@ void start_rs485_task()
         ESP_LOGE("(rs485)", "Failed to create Serial Task");
     }
 
-    //BaseType_t bambuBusResult = xTaskCreate(bambuBusTask, "BambuBus Task", TASK_STACK_SIZE, NULL, 1, NULL);
-    //if (bambuBusResult != pdPASS)
-    //{
-    //    ESP_LOGE("(rs485)", "Failed to create bambuBus Task");
-    //}
+    BaseType_t bambuBusResult = xTaskCreate(bambuBusTask, "BambuBus Task", TASK_STACK_SIZE, NULL, 2, NULL);
+    if (bambuBusResult != pdPASS)
+    {
+        ESP_LOGE("(bambuBus)", "Failed to create bambuBus Task");
+    }
 }
 void RS485_init()
 {
