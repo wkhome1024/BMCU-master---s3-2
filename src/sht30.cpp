@@ -145,3 +145,83 @@ void tft_print(bool flag)
     tft.println(Sht30_tft());
   }
 }
+
+
+
+bool Temp_read(int temp1)
+{
+  if (temp1 < int(Temp))
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+
+bool ENable24 = false;
+
+bool enable_24()
+{
+    return ENable24;
+}
+void set_24(bool enable)
+{
+    ENable24 = enable;
+    if (enable)
+    {
+        digitalWrite(EN_24, HIGH);
+    }
+    else
+    {
+        digitalWrite(EN_24, LOW);
+    }
+}
+void set_out1(bool enable)
+{
+    if (enable)
+    {
+        digitalWrite(OUT_1, HIGH);
+    }
+    else
+    {
+        digitalWrite(OUT_1, LOW);
+    }
+}
+void IO_init()
+{
+  pinMode(EN_24, OUTPUT);
+  digitalWrite(EN_24, LOW);
+  pinMode(OUT_1, OUTPUT);
+  digitalWrite(OUT_1, LOW);
+
+
+  pinMode(ONline_1, INPUT);
+  pinMode(ONline_2, INPUT);
+  pinMode(ONline_3, INPUT);
+  pinMode(ONline_4, INPUT);
+}
+
+uint8_t sw_read()
+{
+  uint8_t sw = 0;
+  if (digitalRead(ONline_1) == LOW)
+  {
+    sw |= 0x01;
+  }
+  if (digitalRead(ONline_2) == LOW)
+  {
+    sw |= 0x02;
+  }
+  if (digitalRead(ONline_3) == LOW)
+  {
+    sw |= 0x04;
+  }
+  if (digitalRead(ONline_4) == LOW)
+  {
+    sw |= 0x08;
+  }
+  return sw;
+}

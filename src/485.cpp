@@ -46,7 +46,7 @@ void bambuBusTask(void *parameter)
 
 void send_bambu_uart(const unsigned char *data, size_t length)
 {
-    if ((get_time64() < 10000) && catch_mode) 
+    if (catch_mode) 
     {
         //Serial0.flush(); // 等待串口0可用
         return; 

@@ -244,6 +244,18 @@ void loop()
     {
       if (save_time != 0)
       {
+        if (!enable_24())
+        {
+          set_24(true);
+        }
+        if (Temp_read(30))
+        {
+          set_out1(true);
+        }
+        else if (!Temp_read(25))
+        {
+          set_out1(false);
+        }
         publishLogOverMQTT();
         if (Switch_need_to_save())
         {
