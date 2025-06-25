@@ -8,7 +8,7 @@
 // #define TFT_DC   6
 // #define TFT_CS   7
 //______TFT_BL   不接
-#define TFT_MOSI 13 // In some display driver board, it might be written as "SDA" and so on.
+#define TFT_MOSI 11 // In some display driver board, it might be written as "SDA" and so on.
 #define TFT_SCLK 12
 #define TFT_CS 10  // Chip select control pin
 #define TFT_DC 9   // Data Command control pin
@@ -73,8 +73,8 @@ std::pair<float, float> Sht30_read()
     }
     else
     {
-      Temp = ((((sht30_data[0] * 256.0) + sht30_data[1]) * 175.0) / 65535.0) - 55;
-      Humidity = ((((sht30_data[3] * 256.0) + sht30_data[4]) * 100.0) / 65535.0) + 10;
+      Temp = ((((sht30_data[0] * 256.0) + sht30_data[1]) * 175.0) / 65535.0) - 45;
+      Humidity = ((((sht30_data[3] * 256.0) + sht30_data[4]) * 100.0) / 65535.0);
     }
     sht30_state = Sht30State::IDLE; // 下次再循环
     break;
@@ -159,9 +159,21 @@ bool Temp_read(int temp1)
     return false;
   }
 }
+void set_fan(int temp1)
+{
+  if (temp1 - 5 > int(Temp))
+  {
+    digitalWrite(OUT_1, LOW);
+  }
+  else if (temp1 < int(Temp))
+  {
+    int dutyCycle = 0;
+    dutyCycle = map(int(Temp), temp1, temp1 + 30, 100, 255);
+    analogWrite(OUT_1, dutyCycle);
+  }
+}
 
-
-bool ENable24 = false;
+bool ENable24 = true;
 
 bool enable_24()
 {
@@ -193,15 +205,16 @@ void set_out1(bool enable)
 void IO_init()
 {
   pinMode(EN_24, OUTPUT);
-  digitalWrite(EN_24, LOW);
+  ENable24 = true;
+  digitalWrite(EN_24, HIGH);
   pinMode(OUT_1, OUTPUT);
   digitalWrite(OUT_1, LOW);
+  //analogWrite(OUT_1, 0);
 
-
-  pinMode(ONline_1, INPUT);
-  pinMode(ONline_2, INPUT);
-  pinMode(ONline_3, INPUT);
-  pinMode(ONline_4, INPUT);
+  //pinMode(ONline_1, INPUT);
+  //pinMode(ONline_2, INPUT);
+  //pinMode(ONline_3, INPUT);
+  //pinMode(ONline_4, INPUT);
 }
 
 uint8_t sw_read()

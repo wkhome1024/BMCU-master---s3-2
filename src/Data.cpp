@@ -39,7 +39,7 @@ void RESET_DATA(char *data)
 
 void get_C_data(uint8_t *buf_X, int data_length)
 {
-    if (catch_key <= 0)
+    if (catch_key == 0)
         return;
 
     // 边界检查

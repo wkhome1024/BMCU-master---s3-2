@@ -6,9 +6,12 @@
 #define BMCU_RX_PIN 18
 #define BMCU_TX_PIN 17
 #define BMCU_RTS_PIN 16
-
+//#define Bambu_RTS_PIN 2
+//#define BMCU_RX_PIN 15
+//#define BMCU_TX_PIN 16
+//#define BMCU_RTS_PIN 1
 #define TASK_STACK_SIZE (8192)
-#define RX_BUFFER_SIZE 512
+#define RX_BUFFER_SIZE 256
 MyRingBuffer rxBuffer0(RX_BUFFER_SIZE);
 MyRingBuffer rxBuffer1(RX_BUFFER_SIZE);
 
@@ -21,7 +24,7 @@ void serialTask(void *parameter)
             uint8_t c = rxBuffer0.read();
             RX_IRQ(c);
         }
-        //BambuBus_run();
+        BambuBus_run();
         while (rxBuffer1.available())
         {
             uint8_t c = rxBuffer1.read();
@@ -40,7 +43,7 @@ void bambuBusTask(void *parameter)
             // ESP_LOGE("BambuBus", "Processing package type: %d", stu);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(2)); // 每2ms调用一次
+        vTaskDelay(pdMS_TO_TICKS(2)); // 每3ms调用一次
     }
 }
 
@@ -75,7 +78,7 @@ void BambuBUS_UART_Init()
 
 void send_bmcu_uart(const unsigned char *data, size_t length)
 {
-    vTaskDelay(pdMS_TO_TICKS(1));         //延迟2ms发送  错开时序
+    vTaskDelay(pdMS_TO_TICKS(1));         //延迟1ms发送  错开时序
     Serial1.write(data, length);
 }
 
@@ -103,12 +106,13 @@ void start_rs485_task()
     {
         ESP_LOGE("(rs485)", "Failed to create Serial Task");
     }
-
+    /*
     BaseType_t bambuBusResult = xTaskCreate(bambuBusTask, "BambuBus Task", TASK_STACK_SIZE, NULL, 2, NULL);
     if (bambuBusResult != pdPASS)
     {
         ESP_LOGE("(bambuBus)", "Failed to create bambuBus Task");
-    }
+    }    
+    */
 }
 void RS485_init()
 {

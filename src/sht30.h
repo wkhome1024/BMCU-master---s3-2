@@ -24,6 +24,7 @@ extern String Sht30_read_mqtt();
 extern void tft_init();
 extern void tft_print(bool flag);
 extern bool Temp_read(int temp1);
+extern void set_fan(int temp1);
 extern void IO_init();
 extern uint8_t sw_read(); 
 extern void set_24(bool t);

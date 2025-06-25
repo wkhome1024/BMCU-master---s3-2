@@ -42,7 +42,8 @@ void hub_msg()
   }
   else
   {
-    client.publish(ha_topic, get_filament_map().c_str());
+    if (!client.publish(ha_topic, get_filament_map().c_str()))
+      client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
     sw_send = !sw_send;
   }
 }
@@ -74,7 +75,7 @@ void publishLogOverMQTT()
     client.publish(logTopic, "START");
     start_log = true;
     offset = 0;
-    return; 
+    return;
   }
   int chunkSize = (remaining > CHUNK_SIZE) ? CHUNK_SIZE : remaining;
   char payload[chunkSize];
@@ -92,6 +93,7 @@ void setup()
   Sht30_init();
   LED_init();
   tft_init();
+  IO_init();
   // 检查是否有保存的Wi-Fi配置信息
 
   // WiFi.setHostname(host_name);
@@ -192,7 +194,7 @@ void loop()
             mqtt_time = time_now + 5000; // 5秒延迟
             uint8_t ams_num = postMsgId / 4;
             uint8_t tay_num = postMsgId % 4;
-            ESP_LOGE("memory", "RAM可使用大小: %d", ESP.getFreeHeap());
+            // ESP_LOGE("memory", "RAM可使用大小: %d", ESP.getFreeHeap());
             String temp;
             if (tay_num == 0)
               temp = ("{\"tay1\":" + Bmcu_set_json(ams_num, tay_num) + "}");
@@ -268,8 +270,12 @@ void loop()
         }
       }
       save_time = time_now + 60000; // 60 秒一次
-      if (save_count)
-        save_count--;
+      if (save_count >= 40)
+      {
+        Bambubus_set_need_to_save();
+        save_count = 0;
+      }
+      save_count++;
     }
     if (server_time == 0 && !server_key) // 如果WebServer未开启
     {
@@ -293,6 +299,6 @@ void loop()
       }
     }
   }
-  vTaskDelay(pdMS_TO_TICKS(2));  //控速
+  //vTaskDelay(pdMS_TO_TICKS(2)); // 控速
   // delay(1);
 }
