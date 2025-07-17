@@ -33,7 +33,8 @@ extern "C"
         BambuBus_package_NFC_detect,
         BambuBus_package_set_filament,
         BambuBus_long_package_MC_online,
-        BambuBus_longe_package_filament,
+        BambuBus_long_package_filament,
+        BambuBus_long_package_set_filament,
         BambuBus_long_package_version,
         BambuBus_package_heartbeat,
         BambuBus_package_ETC,
@@ -48,6 +49,7 @@ extern "C"
     extern void BambuBus_init();
     extern package_type BambuBus_run();
     extern package_type BambuBus_stu();
+    extern uint8_t Bmcu_have_data;
 #define max_filament_num 4
     extern bool Bambubus_read();
     extern void Bambu_readuart();
@@ -67,7 +69,6 @@ extern "C"
     extern int get_AMS_num_max();
     extern void RX_IRQ(unsigned char _RX_IRQ_data);
     extern void RX_BMCU(unsigned char inChar);
-    extern bool Bambu_onprint();
     extern uint16_t get_tay_color(uint8_t num);
 #ifdef __cplusplus
 }

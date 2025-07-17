@@ -34,7 +34,7 @@ void LED_init()
 bool sw_send = true;
 void hub_msg()
 {
-  tft_print(catch_mode);
+  // tft_print(catch_mode);
   if (sw_send)
   {
     client.publish(ha_topic, Sht30_read_mqtt().c_str());
@@ -92,7 +92,7 @@ void setup()
   Switch_init();
   Sht30_init();
   LED_init();
-  tft_init();
+  // tft_init();
   IO_init();
   // 检查是否有保存的Wi-Fi配置信息
 
@@ -125,180 +125,169 @@ void setup()
   my_printf("(memory) PSRAM可使用大小: %d", ESP.getFreePsram());
   webtask_setup();
 }
-uint64_t error_time = 0;
-uint64_t offline_time = 0;
-uint64_t mqtt_time = 0;
-uint64_t led_time = 0;
-uint64_t server_time = 0;
-uint64_t save_time = 0;
-uint64_t switch_time = 0;
+uint32_t error_time = 0;
+uint32_t offline_time = 0;
+uint32_t mqtt_time = 0;
+uint32_t led_time = 0;
+uint32_t server_time = 0;
+uint32_t save_time = 0;
+uint32_t switch_time = 0;
 void loop()
 {
-  // Bambu_readuart();
-
   package_type stu = BambuBus_stu();
-  // Bmcu_readuart();
-  //  int stu =-1;
-  uint64_t time_now = get_time64();
-  if (stu != BambuBus_package_NONE) // have data/offline
+  //package_type stu = BambuBus_run();
+  //  Bmcu_readuart();
+  //   int stu =-1;
+  uint32_t time_now = get_time32();
+
+  if (stu == BambuBus_package_ERROR) // offline
   {
-    if (stu == BambuBus_package_ERROR) // offline
+    // SYS_RGB.set_RGB(0x30, 0x00, 0x00, 0);
+    SYS_leds.clear();
+    if (error_time < (time_now - 1000))
     {
-      // SYS_RGB.set_RGB(0x30, 0x00, 0x00, 0);
-      SYS_leds.clear();
-      if (error_time < (time_now - 1000))
-      {
-        error_time = time_now + 1000;
-      }
-      else if (error_time > time_now)
-        SYS_leds.setPixelColor(0, 0x30, 0x00, 0x00);
-      else if (error_time < time_now)
-        SYS_leds.setPixelColor(2, 0x30, 0x00, 0x00);
-
-      if (WiFi.status() == WL_CONNECTED)
-      {
-        SYS_leds.setPixelColor(1, 0x10, 0xD0, 0x30);
-        if (mqtt_time < time_now)
-        {
-          mqtt_time = time_now + 20000;
-          hub_msg();
-          my_printf("(bambus) bambus连接中...");
-        }
-      }
+      error_time = time_now + 1000;
     }
-    else // have data
-    {
-      if (stu == BambuBus_package_heartbeat)
-      {
-        SYS_leds.clear();
-        if (error_time < (time_now - 2000))
-        {
-          error_time = time_now + 2000;
-          // Sht30_read();
-        }
-        else if (error_time > time_now)
-        {
-          SYS_leds.setPixelColor(0, 0x10, 0xD0, 0x30);
-        }
-        else if (error_time < time_now)
-        {
-          SYS_leds.setPixelColor(0, 0x00, 0x00, 0x00);
-        }
+    else if (error_time > time_now)
+      SYS_leds.setPixelColor(0, 0x30, 0x00, 0x00);
+    else if (error_time < time_now)
+      SYS_leds.setPixelColor(2, 0x30, 0x00, 0x00);
 
-        if (WiFi.status() == WL_CONNECTED)
-        {
-          SYS_leds.setPixelColor(1, 0x10, 0xD0, 0x30);
-
-          if (mqtt_time < time_now)
-          {
-            mqtt_time = time_now + 5000; // 5秒延迟
-            uint8_t ams_num = postMsgId / 4;
-            uint8_t tay_num = postMsgId % 4;
-            // ESP_LOGE("memory", "RAM可使用大小: %d", ESP.getFreeHeap());
-            String temp;
-            if (tay_num == 0)
-              temp = ("{\"tay1\":" + Bmcu_set_json(ams_num, tay_num) + "}");
-            if (tay_num == 1)
-              temp = ("{\"tay2\":" + Bmcu_set_json(ams_num, tay_num) + "}");
-            if (tay_num == 2)
-              temp = ("{\"tay3\":" + Bmcu_set_json(ams_num, tay_num) + "}");
-            if (tay_num == 3)
-              temp = ("{\"tay4\":" + Bmcu_set_json(ams_num, tay_num) + "}");
-            client.publish(topic[ams_num], temp.c_str());
-            postMsgId++;
-            if (postMsgId > ((get_AMS_num_max() * 4) - 1))
-            {
-              postMsgId = 0;
-              hub_msg();
-              my_printf("(mqtt) 发送数据成功");
-              SYS_leds.setPixelColor(2, 0x00, 0x00, 0x30);
-            }
-            else
-            {
-              SYS_leds.setPixelColor(2, 0x10, 0xD0, 0x30);
-            }
-          }
-        }
-        else if (!Bambu_onprint() && offline_time < time_now)
-        {
-
-          offline_time = time_now + 300000; // 300秒后重连
-          if (WiFi.reconnect())
-          {
-            client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
-          }
-        }
-        // SYS_leds.show();
-      }
-
-      if (Switch_need_refresh())
-      {
-        if (switch_time == 0)
-          switch_time = time_now + 2000; // 强制刷新耗材信息
-        else if (switch_time < time_now && switch_time != 0)
-        {
-          Switch_set_refresh(false);
-          switch_time = 0;
-        }
-      }
-    }
-    if (save_time < time_now)
+    if (WiFi.status() == WL_CONNECTED)
     {
-      if (save_time != 0)
+      SYS_leds.setPixelColor(1, 0x10, 0xD0, 0x30);
+      if (mqtt_time < time_now)
       {
-        if (!enable_24())
-        {
-          set_24(true);
-        }
-        if (Temp_read(30))
-        {
-          set_out1(true);
-        }
-        else if (!Temp_read(25))
-        {
-          set_out1(false);
-        }
-        publishLogOverMQTT();
-        if (Switch_need_to_save())
-        {
-          tft_print(catch_mode);
-          Switch_save();
-        }
-        else if (WIFI_needsave())
-        {
-          Config_save();
-        }
-      }
-      save_time = time_now + 60000; // 60 秒一次
-      if (save_count >= 40)
-      {
-        Bambubus_set_need_to_save();
-        save_count = 0;
-      }
-      save_count++;
-    }
-    if (server_time == 0 && !server_key) // 如果WebServer未开启
-    {
-      server_time = time_now + 120000; // 2分钟后开启WebServer
-      // initWebServer();                  // 开启WebServer
-      // my_printf("(web) WebServer已开启");
-    }
-    else if (server_time < time_now && server_time != 1)
-    {
-      server_key = true;
-      // stopWebServer();    // 关闭WebServer
-      my_printf("(web) WebServer已开启");
-      server_time = 1; // 防止重复执行
-    }
-    if (led_time < time_now)
-    {
-      led_time = time_now + 500;
-      if (SYS_leds.canShow())
-      {
-        SYS_leds.show();
+        mqtt_time = time_now + 20000;
+        hub_msg();
+        my_printf("(bambus) bambus连接中...");
       }
     }
   }
-  //vTaskDelay(pdMS_TO_TICKS(2)); // 控速
+  else if (stu == BambuBus_package_heartbeat) // have data
+  {
+
+    SYS_leds.clear();
+    if (error_time < (time_now - 2000))
+    {
+      error_time = time_now + 2000;
+      // Sht30_read();
+    }
+    else if (error_time > time_now)
+    {
+      SYS_leds.setPixelColor(0, 0x10, 0xD0, 0x30);
+    }
+    else if (error_time < time_now)
+    {
+      SYS_leds.setPixelColor(0, 0x00, 0x00, 0x00);
+    }
+
+    if (WiFi.status() == WL_CONNECTED)
+    {
+      SYS_leds.setPixelColor(1, 0x10, 0xD0, 0x30);
+
+      if (mqtt_time < time_now)
+      {
+        mqtt_time = time_now + 5000; // 5秒延迟
+        uint8_t ams_num = postMsgId / 4;
+        uint8_t tay_num = postMsgId % 4;
+        // ESP_LOGE("memory", "RAM可使用大小: %d", ESP.getFreeHeap());
+        String temp;
+        if (tay_num == 0)
+          temp = ("{\"tay1\":" + Bmcu_set_json(ams_num, tay_num) + "}");
+        if (tay_num == 1)
+          temp = ("{\"tay2\":" + Bmcu_set_json(ams_num, tay_num) + "}");
+        if (tay_num == 2)
+          temp = ("{\"tay3\":" + Bmcu_set_json(ams_num, tay_num) + "}");
+        if (tay_num == 3)
+          temp = ("{\"tay4\":" + Bmcu_set_json(ams_num, tay_num) + "}");
+        client.publish(topic[ams_num], temp.c_str());
+        postMsgId++;
+        if (postMsgId > ((get_AMS_num_max() * 4) - 1))
+        {
+          postMsgId = 0;
+          hub_msg();
+          my_printf("(mqtt) 发送数据成功");
+          SYS_leds.setPixelColor(2, 0x00, 0x00, 0x30);
+        }
+        else
+        {
+          SYS_leds.setPixelColor(2, 0x10, 0xD0, 0x30);
+        }
+      }
+    }
+    else if (!BambuBus_if_on_print() && offline_time < time_now)
+    {
+
+      offline_time = time_now + 300000; // 300秒后重连
+      if (WiFi.reconnect())
+      {
+        client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
+      }
+    }
+    // SYS_leds.show();
+
+    if (Switch_need_refresh())
+    {
+      if (switch_time == 0)
+        switch_time = time_now + 2000; // 强制刷新耗材信息
+      else if (switch_time < time_now && switch_time != 0)
+      {
+        Switch_set_refresh(false);
+        switch_time = 0;
+      }
+    }
+  }
+  if (save_time < time_now)
+  {
+    if (save_time != 0)
+    {
+      if (!enable_24())
+      {
+        set_24(true);
+      }
+      set_fan(30); // 30度开启风扇
+      publishLogOverMQTT();
+      if (Switch_need_to_save())
+      {
+        // tft_print(catch_mode);
+        Switch_save();
+      }
+      else if (WIFI_needsave())
+      {
+        Config_save();
+      }
+    }
+    save_time = time_now + 60000; // 60 秒一次
+    if (save_count >= 40)
+    {
+      Bambubus_set_need_to_save();
+      save_count = 0;
+    }
+    save_count++;
+  }
+  if (server_time == 0 && !server_key) // 如果WebServer未开启
+  {
+    server_time = time_now + 20000; // 20秒后开启WebServer
+    // initWebServer();                  // 开启WebServer
+    // my_printf("(web) WebServer已开启");
+  }
+  else if (server_time < time_now && server_time != 1)
+  {
+    server_key = true;
+    // stopWebServer();    // 关闭WebServer
+    my_printf("(web) WebServer已开启");
+    server_time = 1; // 防止重复执行
+  }
+  if (led_time < time_now)
+  {
+    led_time = time_now + 500;
+    if (SYS_leds.canShow())
+    {
+      SYS_leds.show();
+    }
+  }
+
+  vTaskDelay(pdMS_TO_TICKS(5)); // 控速
   // delay(1);
 }

@@ -125,69 +125,6 @@ const char ROOT_HTML_2[] PROGMEM = R"rawliteral(
 </body>
 </html>
 )rawliteral";
-/*
-String config_HTML = R"(
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width">
-  <title>BMCU设置</title>
-  <style>
-    body {background:#e5e9f2;margin:0;display:grid;place-items:center;min-height:100vh;font-family:sans-serif}
-    .card {width:min(90vw,300px);padding:2rem;background:#f7f7f7;border-radius:1rem;box-shadow:0 .5rem 1rem rgba(0,0,0,.3);text-align:center}
-    h1 {color:#1383c6;margin-bottom:1.5rem}h1 span {color:#f26721}
-    .btn {width:100%;padding:.75rem;margin:.5rem 0;background:#4d90fe;color:#fff;border:none;border-radius:.5rem;font-size:1rem;font-weight:600;cursor:pointer;position:relative;overflow:hidden}
-    .btn:hover {background:#357ae8}.btn:disabled {opacity:.6;cursor:not-allowed}
-    .btn.progress::after {content:'';position:absolute;bottom:0;left:0;height:3px;background:#4CAF50;width:var(--progress,0%);transition:width 2s linear}
-    .btn.active {background:#4CAF50;box-shadow:0 0 10px rgba(76,175,80,.5)}
-    .divider {margin:1.5rem 0;border-top:1px solid #d9d9d9}
-    .status-text {font-size:.8em;color:#666;margin-top:.5rem;height:1.2em}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>BMCU-HUB</h1>
-    <form action="/upload" method="POST"><button class="btn">固件更新</button></form>
-    <div class="divider"></div>
-    <form action="/updatewifi" method="POST">
-      <button id="wifiBtn" class="btn" disabled>更新wifi+mqtt参数</button>
-      <div class="status-text" id="statusText"></div>
-    </form>
-  </div>
-  <script>
-    const wifiBtn = document.getElementById('wifiBtn');
-    const statusText = document.getElementById('statusText');
-    let hoverTimer;
-    wifiBtn.addEventListener('mouseenter', () => {
-      if (wifiBtn.disabled) {
-        wifiBtn.classList.add('progress');
-        wifiBtn.style.setProperty('--progress', '100%');
-        statusText.textContent = '激活中...';
-        hoverTimer = setTimeout(() => {
-          wifiBtn.disabled = false;
-          wifiBtn.classList.remove('progress');
-          wifiBtn.classList.add('active');
-          statusText.textContent = '按钮已激活';
-        }, 2000);
-      }
-    });
-    wifiBtn.addEventListener('mouseleave', () => {
-      if (wifiBtn.disabled) {
-        clearTimeout(hoverTimer);
-        wifiBtn.classList.remove('progress');
-        wifiBtn.style.removeProperty('--progress');
-        statusText.textContent = '';
-      }
-    });
-  </script>
-</body>
-</html>
-)";
-*/
-// String ROOT_HTML_2 = "</form> </body></html>";
-// String ROOT_HTML_3 = "<meta charset='UTF-8'>error, not found ssid";
-// String ROOT_HTML_4 = "<meta charset='UTF-8'>error, not found ssid";
 
 const char root2_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>

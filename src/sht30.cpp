@@ -15,7 +15,7 @@
 #define TFT_RST 14 // Reset pin (could connect to Arduino RESET pin)
 #define TFT_BL 21  // LED back-light control pin
 
-Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
+//Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
 enum class Sht30State
 {
@@ -98,6 +98,7 @@ String Sht30_tft()
   sprintf(HumiBuf, "%4.1f", Humidity);
   return "Temp: " + String(tempBuf) + "Humi: " + String(HumiBuf);
 }
+/*
 
 void tft_init()
 {
@@ -145,6 +146,8 @@ void tft_print(bool flag)
     tft.println(Sht30_tft());
   }
 }
+*/
+
 
 
 
@@ -164,12 +167,14 @@ void set_fan(int temp1)
   if (temp1 - 5 > int(Temp))
   {
     digitalWrite(OUT_1, LOW);
+    //analogWrite(OUT_1, 0);
   }
   else if (temp1 < int(Temp))
   {
     int dutyCycle = 0;
-    dutyCycle = map(int(Temp), temp1, temp1 + 30, 100, 255);
-    analogWrite(OUT_1, dutyCycle);
+    dutyCycle = int(Temp) + 150;
+    //analogWrite(OUT_1, dutyCycle);
+    digitalWrite(OUT_1, HIGH);
   }
 }
 
@@ -209,8 +214,8 @@ void IO_init()
   digitalWrite(EN_24, HIGH);
   pinMode(OUT_1, OUTPUT);
   digitalWrite(OUT_1, LOW);
-  //analogWrite(OUT_1, 0);
-
+  //analogWriteFrequency(2000); // 2kHz
+  //analogWrite(OUT_1, 0);  
   //pinMode(ONline_1, INPUT);
   //pinMode(ONline_2, INPUT);
   //pinMode(ONline_3, INPUT);
