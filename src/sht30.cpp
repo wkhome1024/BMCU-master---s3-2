@@ -172,9 +172,10 @@ void set_fan(int temp1)
   else if (temp1 < int(Temp))
   {
     int dutyCycle = 0;
-    dutyCycle = int(Temp) + 150;
+    dutyCycle = (int(Temp) * 2) + 100;
     //analogWrite(OUT_1, dutyCycle);
-    digitalWrite(OUT_1, HIGH);
+    ledcWrite(OUT_1_channel, dutyCycle);
+    //digitalWrite(OUT_1, HIGH);
   }
 }
 
@@ -212,10 +213,11 @@ void IO_init()
   pinMode(EN_24, OUTPUT);
   ENable24 = true;
   digitalWrite(EN_24, HIGH);
-  pinMode(OUT_1, OUTPUT);
-  digitalWrite(OUT_1, LOW);
-  //analogWriteFrequency(2000); // 2kHz
-  //analogWrite(OUT_1, 0);  
+  //pinMode(OUT_1, OUTPUT);
+  //digitalWrite(OUT_1, LOW);
+  ledcSetup(OUT_1_channel, 4000, 8); // 4kHz, 8-bit
+  ledcAttachPin(OUT_1, OUT_1_channel); // 将OUT_1引脚连接到通道7
+  ledcWrite(OUT_1_channel, 0); // 初始占空比为 0
   //pinMode(ONline_1, INPUT);
   //pinMode(ONline_2, INPUT);
   //pinMode(ONline_3, INPUT);

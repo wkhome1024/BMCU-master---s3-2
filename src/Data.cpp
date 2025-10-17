@@ -109,6 +109,7 @@ size_t my_log(const char *format)
     if (log_count + len >= BUFFER_SIZE)
     {
         log_count = 0;
+        memset(L_data, 0, BUFFER_SIZE);
     }
 
     memcpy(L_data + log_count, hexStr, len);

@@ -15,7 +15,7 @@ uint8_t AMS_num_max = 4;
 bool bambus_onflush = false;
 bool bambus_error = false;
 _filament_motion_state_set motion_temp[4][4];
-
+uint8_t statu_temp[4][4];
 struct _filament
 {
     // AMS statu
@@ -686,8 +686,8 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                     }
                     data_save.BambuBus_now_filament_num = numx;
                 }
-                data_save.filament[AMS_num][read_num].motion_set = need_send_out;
-                data_save.filament[AMS_num][read_num].pressure = 0x4700;
+                //data_save.filament[AMS_num][read_num].motion_set = need_send_out;
+                //data_save.filament[AMS_num][read_num].pressure = 0x4700;
                 meters_virtual_count = 0;
             }
             else if ((statu_flags == 0x09)) // 09 A5 / 09 3F
@@ -932,17 +932,14 @@ void send_for_motion_short(unsigned char *buf, int length)
     }
     else
     {
-        package_send_with_crc(Cxx_res, sizeof(Cxx_res));
+        //package_send_with_crc(Cxx_res, sizeof(Cxx_res));
+        Bmcu_package_send_with_crc(Motion_res, sizeof(Motion_res)); // 重写amsnum 转发bmcu
     }
     if (package_num < 7)
         package_num++;
     else
         package_num = 0;
 
-    if (package_num % 3 == 0)
-    {
-        Bmcu_package_send_with_crc(Motion_res, sizeof(Motion_res)); // 重写amsnum 转发bmcu
-    }
 }
 /*
 0x00, 0x00, 0x00, 0xFF, // 0x0C...
@@ -1601,9 +1598,16 @@ void Bmcu_run()
                     motion_temp[AMS_num][i] = on_use;
                 }
                 if ((bmcu_online & (0x01 << (2 * i))) && !Switch_need_refresh())
-                    data_save.filament[AMS_num][i].statu = online;
+                {
+                    data_save.filament[AMS_num][i].statu = online;  
+                    statu_temp[AMS_num][i] = 0;                  
+                }
                 else
-                    data_save.filament[AMS_num][i].statu = offline;
+                {
+                    if (statu_temp[AMS_num][i] > 2)
+                        data_save.filament[AMS_num][i].statu = offline;    
+                    statu_temp[AMS_num][i] += 1; // 离线状态计数             
+                }
             }
             if (read_num < 4)
             {

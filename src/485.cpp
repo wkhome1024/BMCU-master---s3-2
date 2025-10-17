@@ -43,7 +43,7 @@ void bmcuTask(void *parameter)
             // ESP_LOGE("BambuBus", "Processing package type: %d", stu);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(2)); // 每2ms调用一次
+        vTaskDelay(pdMS_TO_TICKS(1)); // 每1ms调用一次
         
     }
 }
@@ -69,11 +69,11 @@ void send_bambu_uart(const unsigned char *data, size_t length)
         return; 
     }
     //digitalWrite(Bambu_RTS_PIN, HIGH); // 设置RTS引脚为高
-    vTaskDelay(pdMS_TO_TICKS(1) / 10);         // 延迟0.1ms发送
+    //vTaskDelay(pdMS_TO_TICKS(1) / 10);         // 延迟0.1ms发送
     //Serial0.write("12345");
     Serial0.write(data, length);
     Serial0.flush(); // 等待串口0发送完成
-    vTaskDelay(pdMS_TO_TICKS(1) / 10);       //延迟0.1ms发送  错开时序
+    vTaskDelay(pdMS_TO_TICKS(1));       //延迟0.1ms发送  错开时序
     //digitalWrite(Bambu_RTS_PIN, LOW);  // 设置RTS引脚为低
     if (catch_key > 200 && !catch_mode)
        get_C_data((uint8_t *)data, length);
@@ -112,7 +112,7 @@ void send_bmcu_uart(const unsigned char *data, size_t length)
 
 void BMCU_UART_Init()
 {
-    Serial1.begin(256000,SERIAL_8E1,BMCU_RX_PIN,BMCU_TX_PIN);    //  RX1  18  TX1  17
+    Serial1.begin(512000,SERIAL_8E1,BMCU_RX_PIN,BMCU_TX_PIN);    //  RX1  18  TX1  17
     while (!Serial1) {
         delay(10);
     }

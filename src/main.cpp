@@ -66,6 +66,12 @@ void publishLogOverMQTT()
   {
     remaining = logLength - offset;
   }
+  else if (offset > 63*1024 && logLength < 1024) // 如果偏移量超过64KB且日志长度小于1KB
+  {
+    my_printf("(LOG) 日志缓冲已重置，重置偏移量");
+    offset = 0; // 重置偏移量
+    remaining = logLength;
+  }
   else
   {
     return;
@@ -288,6 +294,6 @@ void loop()
     }
   }
 
-  vTaskDelay(pdMS_TO_TICKS(5)); // 控速
+  vTaskDelay(pdMS_TO_TICKS(4)); // 控速
   // delay(1);
 }

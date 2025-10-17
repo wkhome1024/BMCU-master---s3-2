@@ -10,6 +10,7 @@
 
 #define EN_24  5
 #define OUT_1  4
+#define OUT_1_channel  7
 #define ONline_1  39
 #define ONline_2  40
 #define ONline_3  41
