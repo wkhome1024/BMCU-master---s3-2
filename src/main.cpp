@@ -5,14 +5,14 @@
 
 // const char *mqtt_server1 = "192.168.10.10"; // MQTT服务器地址
 // const int mqtt_port1 = 1883;                // MQTT服务器端口
-const char *ha_topic = "bmcu-hub";
-const char *logTopic = "bmcu-hub/log";
-const char *topic[8] = {"bmcu1", "bmcu2", "bmcu3", "bmcu4", "bmcu5", "bmcu6", "bmcu7", "bmcu8"};
+const char *ha_topic = "bmcu-hub1";
+const char *logTopic = "bmcu-hub1/log";
+const char *topic[8] = {"bmcu11", "bmcu12", "bmcu13", "bmcu14", "bmcu15", "bmcu16", "bmcu17", "bmcu18"};
 // const char *mqtt_username1 = "";
 // const char *mqtt_password1 = "";
-const char *host_name = "bmcu-hub-s3"; // 设备主机名
-#define product_id "bmcu-hub"          // 产品ID
-#define device_id "s3"                 // 设备ID
+const char *host_name = "bmcu-hub-s3-2"; // 设备主机名
+#define product_id "bmcu-hub1"          // 产品ID
+#define device_id "s3-2"                 // 设备ID
 char mqtt_id[20];
 int save_count = 0;
 int postMsgId = 0;              // 消息ID初始值为0
