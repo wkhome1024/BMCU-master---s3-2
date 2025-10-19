@@ -515,9 +515,20 @@ package_type get_packge_type(unsigned char *buf, int length)
     {
         if (buf[1] == 0x05)
             my_printf("(bambu) CRC16 check failed:%02X %02X %02X", buf[1], buf[11], buf[12]);
-        else
+        else if (buf[4] == 0x20)
+        {
+            //my_printf("(bambu) CRC16 check failed:%02X %02X", buf[1], buf[4]);
+            if (buf[1] == 0xC0 || buf[1] == 0xC8 || buf[1] == 0xE0 || buf[1] == 0xE8 || buf[1] == 0xF0 || buf[1] == 0xF8)
+                return BambuBus_package_heartbeat;
+        }
+        else 
             my_printf("(bambu) CRC16 check failed:%02X %02X", buf[1], buf[4]);
         return BambuBus_package_NONE;
+    }
+    if (buf[4] == 0x20)
+    {
+        if (buf[1] == 0xC0 || buf[1] == 0xC8 || buf[1] == 0xE0 || buf[1] == 0xE8 || buf[1] == 0xF0 || buf[1] == 0xF8)
+            return BambuBus_package_heartbeat;
     }
     if (buf[1] == 0xC5)
     {
@@ -542,7 +553,7 @@ package_type get_packge_type(unsigned char *buf, int length)
             return BambuBus_package_ETC;
         }
     }
-    else if (buf[1] == 0x05)
+    else if (buf[1] == 0x05 || buf[1] == 0x04)
     {
         Bambubus_long_package_analysis(buf, length, &printer_data_long);
         if (printer_data_long.target_address == BambuBus_AMS)
