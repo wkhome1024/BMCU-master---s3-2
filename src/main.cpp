@@ -17,7 +17,7 @@ char mqtt_id[20];
 int save_count = 0;
 int postMsgId = 0;              // 消息ID初始值为0
 int catch_key = 0;              // 抓包计数
-bool catch_mode = false;        // 抓包模式
+bool catch_mode = true;        // 抓包模式
 bool server_key = false;        // HTTP服务器开关
 WiFiClient espclient;           // 创建一个WiFiClient对象
 PubSubClient client(espclient); // 创建一个PubSubClient对象

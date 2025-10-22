@@ -5,7 +5,7 @@
 Preferences preferences;
 char *C_data = NULL;
 char *L_data = NULL;
-
+bool EN_catch = false;
 
 void INIT_DATA()
 {
@@ -21,20 +21,34 @@ void INIT_DATA()
     //    return;
     //}
     //my_log("LittleFS 初始化成功");
-    C_data = (char *)heap_caps_malloc(BUFFER_SIZE, MALLOC_CAP_SPIRAM);
+    if (catch_mode)
+    {
+        EN_catch = true;        
+        C_data = (char *)heap_caps_malloc(BUFFER_SIZE * 64, MALLOC_CAP_SPIRAM);
+        memset(C_data, 0, BUFFER_SIZE * 64);
+    }
+    else
+    {
+        EN_catch = false;
+        C_data = (char *)heap_caps_malloc(BUFFER_SIZE, MALLOC_CAP_SPIRAM);   
+        memset(L_data, 0, BUFFER_SIZE);     
+    }
     L_data = (char *)heap_caps_malloc(BUFFER_SIZE, MALLOC_CAP_SPIRAM);
 
     if (!C_data || !L_data) {
         ESP_LOGE("(ERROR)", "Failed to allocate memory for buffers");
         //while (1) {} // 死循环，防止继续运行
     }
-    memset(C_data, 0, BUFFER_SIZE);
+    //memset(C_data, 0, BUFFER_SIZE);
     memset(L_data, 0, BUFFER_SIZE);
 
 }
 void RESET_DATA(char *data)
 {
-    memset(data, 0, BUFFER_SIZE);
+    if (strlen(data) <= BUFFER_SIZE)
+        memset(data, 0, BUFFER_SIZE);
+    else
+        memset(data, 0, BUFFER_SIZE * 64);
 }
 
 void get_C_data(uint8_t *buf_X, int data_length)
@@ -49,6 +63,10 @@ void get_C_data(uint8_t *buf_X, int data_length)
         return;
     }
 
+    if (buf_X[1] == 0x05 || buf_X[1] == 0x00) // 心跳包或长包不记录
+    {
+        return;
+    }
     // 静态缓冲区用于构建日志内容（根据实际需求调整大小）
     const int maxBufSize = 256;
     char logBuffer[maxBufSize];
@@ -76,7 +94,7 @@ void get_C_data(uint8_t *buf_X, int data_length)
     WriteData(logBuffer);
 
     catch_key++;
-    if (catch_key > 501) // 500个数据包后关闭抓包
+    if ((catch_key > 501 && !EN_catch) || catch_key > 40000) // 500个数据包后关闭抓包
     {
         my_printf("(http) Bambu-hub抓包结束");
         catch_key = 0;
@@ -89,7 +107,7 @@ void WriteData(const char *data)
     if (!data || !C_data) return;
 
     int len = strlen(data);
-    if (data_count + len >= BUFFER_SIZE)
+    if ((data_count + len >= BUFFER_SIZE && !EN_catch) || (data_count + len >= BUFFER_SIZE * 64 && EN_catch))
     {
         data_count = 0;
     }

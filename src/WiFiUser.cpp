@@ -453,8 +453,35 @@ void WebHandler::handleData(AsyncWebServerRequest *request)
     request->send(200, "text/plain", "no catch data");
     return;
   }
-  else
+  else if (!EN_catch)
     request->send(200, "text/plain", C_data);
+  else if (EN_catch)
+  {
+    char *dataPtr = C_data;
+    int dataLen = strlen(C_data);
+    // 使用 chunked response 发送数据
+    AsyncWebServerResponse *response = request->beginChunkedResponse("text/plain", [dataPtr, dataLen](uint8_t *buffer, size_t maxLen, size_t index) -> size_t
+                                                                     {
+        size_t bytesToSend = min(maxLen, (size_t)(dataLen - index));
+        if (bytesToSend > 0) {
+            memcpy(buffer, dataPtr + index, bytesToSend);
+        }
+        return bytesToSend; });
+
+    // 生成带时间戳的文件名
+    char filename[64];
+    time_t now = time(nullptr);
+    strftime(filename, sizeof(filename), "bmcu_capture_%Y%m%d_%H%M%S.txt", localtime(&now));
+
+    // 添加下载相关的HTTP头
+    response->addHeader("Content-Disposition", String("attachment; filename=\"") + filename + "\"");
+    response->addHeader("Cache-Control", "no-cache");
+
+    request->send(response);
+
+    // 记录日志
+    my_printf("(http) C_data downloaded, size: %d bytes", dataLen);
+  }
 }
 
 void WebHandler::handleLog(AsyncWebServerRequest *request)

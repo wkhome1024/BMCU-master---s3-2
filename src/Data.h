@@ -8,6 +8,7 @@
 
 extern char *C_data;
 extern char *L_data;
+extern bool EN_catch;
 extern bool Flash_saves(void*buf,uint16_t length,const char *address);
 extern bool Flash_read(void*buf,uint16_t length,const char *address);
 extern void get_C_data(uint8_t *buf_X, int data_length);
