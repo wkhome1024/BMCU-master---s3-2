@@ -63,7 +63,7 @@ void Readuart()
 
 void send_bambu_uart(const unsigned char *data, size_t length)
 {
-    if (catch_mode) 
+    if (catch_mode || Switch_need_refresh()) 
     {
         //Serial0.flush(); // 等待串口0可用
         return; 

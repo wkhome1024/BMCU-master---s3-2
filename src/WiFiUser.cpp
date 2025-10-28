@@ -156,6 +156,7 @@ const char root2_html[] PROGMEM = R"rawliteral(
           <option value="close">关闭抓包</option>
           <option value="catch_mode">开启抓包模式</option>
           <option value="normal_mode">关闭抓包模式</option>
+          <option value="refresh">强制刷新</option>
         </select>
         <button type="submit">抓包设置</button>
       </div>
@@ -446,6 +447,16 @@ void WebHandler::handleData(AsyncWebServerRequest *request)
     catch_mode = false;
     my_printf("(http) Bambu-hub设置为normal模式--抓包数据包含bmcu数据");
     request->send(200, "text/plain", "normal mode");
+  }
+  else if (catchkey == "refresh")
+  {
+    if (!Bambus_onflush())
+    {
+      Switch_set_refresh(true);
+      request->send(200, "text/plain", "success");
+    }
+    else
+      request->send(200, "text/plain", "error, print is onuse");
   }
 
   if (C_data[0] == '\0')

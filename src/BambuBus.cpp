@@ -726,7 +726,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                     meters_virtual_count = 0;
                     data_save.filament[AMS_num][read_num].pressure = 0x3700;
                 }
-                else if (meters_virtual_count < 10000 && meters_virtual_count > 1000) // 10s virtual data
+                else if (meters_virtual_count < 3500) // 10s virtual data
                 {
                     data_save.filament[AMS_num][read_num].meters += (float)time_used / 100000; // 10mm/s
                     meters_virtual_count += time_used;
@@ -1277,7 +1277,8 @@ void send_for_long_packge_MC_online(unsigned char *buf, int length)
     {
         return;
     }
-
+    if (printer_data_long.target_address != BambuBus_address)
+        return;
     data.datas = long_packge_MC_online;
     data.datas[0] = AMS_num;
     data.data_length = sizeof(long_packge_MC_online);
@@ -1343,18 +1344,18 @@ void send_for_long_packge_filament(unsigned char *buf, int length)
     data.target_address = printer_data_long.source_address;
     Bambubus_long_package_send(&data);
 }
-unsigned char serial_number[] = {"STUDY1ONLY"};
-unsigned char long_packge_version_serial_number[] = {9, // length
-                                                     'S', 'T', 'U', 'D', 'Y', 'O', 'N', 'L', 'Y', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+unsigned char serial_number[] = {"03919D492302599"}; //03919D492302599
+unsigned char long_packge_version_serial_number[] = {16, // length
+                                                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                                      0x0E, 0x7D, 0x32, 0x31, 0x31, 0x38, 0x15, 0x00, // serial_number#2
                                                      0x36, 0x39, 0x37, 0x33,
                                                      0xFF, 0xFF, 0xFF, 0xFF,
                                                      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xBB, 0x44, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
 
-unsigned char long_packge_version_version_and_name_AMS_lite[] = {0x00, 0x00, 0x00, 0x00, // verison number
+unsigned char long_packge_version_version_and_name_AMS_lite[] = {0x3E, 0x06, 0x01, 0x00, // verison number
                                                                  0x41, 0x4D, 0x53, 0x5F, 0x46, 0x31, 0x30, 0x32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-unsigned char long_packge_version_version_and_name_AMS08[] = {0x00, 0x00, 0x00, 0x00, // verison number
+unsigned char long_packge_version_version_and_name_AMS08[] = {0x3E, 0x06, 0x01, 0x00, // verison number
                                                               0x41, 0x4D, 0x53, 0x30, 0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 void send_for_long_packge_version(unsigned char *buf, int length)
@@ -1376,13 +1377,14 @@ void send_for_long_packge_version(unsigned char *buf, int length)
     {
         return;
     }
-
+    if (printer_data_long.target_address != BambuBus_address)
+        return;
     switch (printer_data_long.type)
     {
     case 0x402:
 
         AMS_num = printer_data_long.datas[33];
-        serial_number[5] = AMS_num + 1;
+        serial_number[14] = AMS_num + 1;
         long_packge_version_serial_number[0] = sizeof(serial_number);
         memcpy(long_packge_version_serial_number + 1, serial_number, sizeof(serial_number));
         if (printer_data_long.target_address == BambuBus_AMS)
@@ -1631,7 +1633,7 @@ void Bmcu_run()
                     }
                     motion_temp[AMS_num][i] = on_use;
                 }
-                if ((bmcu_online & (0x01 << (2 * i))) && !Switch_need_refresh())
+                if (bmcu_online & (0x01 << (2 * i)))
                 {
                     data_save.filament[AMS_num][i].statu = online;
                     statu_temp[AMS_num][i] = 0;

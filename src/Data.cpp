@@ -25,13 +25,13 @@ void INIT_DATA()
     {
         EN_catch = true;        
         C_data = (char *)heap_caps_malloc(BUFFER_SIZE * 64, MALLOC_CAP_SPIRAM);
-        memset(C_data, 0, BUFFER_SIZE * 64);
+        //memset(C_data, 0, BUFFER_SIZE * 64);
     }
     else
     {
         EN_catch = false;
         C_data = (char *)heap_caps_malloc(BUFFER_SIZE, MALLOC_CAP_SPIRAM);   
-        memset(L_data, 0, BUFFER_SIZE);     
+        //memset(L_data, 0, BUFFER_SIZE);     
     }
     L_data = (char *)heap_caps_malloc(BUFFER_SIZE, MALLOC_CAP_SPIRAM);
 
@@ -39,7 +39,7 @@ void INIT_DATA()
         ESP_LOGE("(ERROR)", "Failed to allocate memory for buffers");
         //while (1) {} // 死循环，防止继续运行
     }
-    //memset(C_data, 0, BUFFER_SIZE);
+    memset(C_data, 0, BUFFER_SIZE);
     memset(L_data, 0, BUFFER_SIZE);
 
 }
@@ -65,7 +65,7 @@ void get_C_data(uint8_t *buf_X, int data_length)
 
     if (buf_X[1] == 0x05 || buf_X[1] == 0x00) // 心跳包或长包不记录
     {
-        return;
+        //return;
     }
     // 静态缓冲区用于构建日志内容（根据实际需求调整大小）
     const int maxBufSize = 256;

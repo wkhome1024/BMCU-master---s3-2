@@ -91,13 +91,16 @@ uint8_t Switch_set_filament(unsigned char *buf, int length, uint8_t AMS_num, uin
         }
         else if(memcmp(buf + 15, reset_bmcu_channel_color, 4) == 0)
         {
-            switch_save.filament_map_to[0] = read_num * 4;
-            switch_save.filament_map_to[1] = read_num * 4 + 1;
-            switch_save.filament_map_to[2] = read_num * 4 + 2;
-            switch_save.filament_map_to[3] = read_num * 4 + 3;
-            my_printf("(switch)reset_map_to bmcu-%d" ,read_num);
-            Switch_set_refresh(true);
-            Switch_set_need_to_save();
+            //switch_save.filament_map_to[0] = read_num * 4;
+            //switch_save.filament_map_to[1] = read_num * 4 + 1;
+            //switch_save.filament_map_to[2] = read_num * 4 + 2;
+            //switch_save.filament_map_to[3] = read_num * 4 + 3;
+            //my_printf("(switch)reset_map_to bmcu-%d" ,read_num);
+            if (!Bambus_onflush())
+            {
+                Switch_set_refresh(true);                
+            }
+            //Switch_set_need_to_save();
             return 0x0D;
         }
         else if(memcmp(buf + 15, reset_bmcu_meter_color, 4) == 0)

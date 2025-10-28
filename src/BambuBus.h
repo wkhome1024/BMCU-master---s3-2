@@ -57,14 +57,14 @@ extern "C"
     extern void Bambubus_set_need_to_save();
     extern int get_now_filament_num();
     //extern uint16_t get_now_BambuBus_device_type();
-    extern void reset_filament_meters(int num);
+    extern void reset_filament_meters(uint8_t AMS_num, uint8_t read_num);
     extern void add_filament_meters(int num, float meters);
     extern float get_filament_meters(int num);
     extern void set_filament_online(int num, bool if_online);
     extern bool get_filament_online(int num);
     _filament_motion_state_set get_filament_motion(int num);
     extern void set_filament_motion(int num, _filament_motion_state_set motion);
-    extern bool BambuBus_if_on_print();
+    extern bool Bambus_onflush();
     extern String Bmcu_set_json(int ams_num ,int i);
     extern int get_AMS_num_max();
     extern void RX_IRQ(unsigned char _RX_IRQ_data);
