@@ -5,14 +5,13 @@
 
 // const char *mqtt_server1 = "192.168.10.10"; // MQTT服务器地址
 // const int mqtt_port1 = 1883;                // MQTT服务器端口
-const char *ha_topic = "bmcu-hub1";
-const char *logTopic = "bmcu-hub1/log";
-const char *topic[8] = {"bmcu11", "bmcu12", "bmcu13", "bmcu14", "bmcu15", "bmcu16", "bmcu17", "bmcu18"};
-// const char *mqtt_username1 = "";
-// const char *mqtt_password1 = "";
-const char *host_name = "bmcu-hub-s3-2"; // 设备主机名
-#define product_id "bmcu-hub1"          // 产品ID
-#define device_id "s3-2"                 // 设备ID
+char ha_topic[20] = "bmcu-hub-1"; // Home Assistant 发现主题
+char logTopic[20] = "bmcu-hub-1/log";
+char topic[8][8] = {"bmcu1-1", "bmcu1-2", "bmcu1-3", "bmcu1-4", "bmcu1-5", "bmcu1-6", "bmcu1-7", "bmcu1-8"};
+char host_name[20] = "bmcu-hub-1"; // 设备主机名
+#define product_id "bmcu-hub"          // 产品ID
+#define device_id "s3"                 // 设备ID
+uint8_t hub_num = 1;              // 集线器编号
 char mqtt_id[20];
 int save_count = 0;
 int postMsgId = 0;              // 消息ID初始值为0
@@ -37,13 +36,14 @@ void hub_msg()
   // tft_print(catch_mode);
   if (sw_send)
   {
-    client.publish(ha_topic, Sht30_read_mqtt().c_str());
+    if (!client.publish(ha_topic, Sht30_read_mqtt().c_str()))
+        client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
     sw_send = !sw_send;
   }
   else
   {
-    if (!client.publish(ha_topic, get_filament_map().c_str()))
-      client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
+    //if (!client.publish(ha_topic, get_filament_map().c_str()))
+      //client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
     sw_send = !sw_send;
   }
 }
@@ -105,6 +105,7 @@ void setup()
   // WiFi.setHostname(host_name);
   //  WiFi.begin(ssid, password); // 尝试自动连接上次保存的Wi-Fi
   //   Serial.println("尝试连接已保存的WiFi...");
+  host_name[9] += (hub_num - 1); // 修改主机名以包含集线器编号
   checkConnect(Config_read()); // 检查配置Wi-Fi连接
   // 等待连接成功
 
@@ -113,6 +114,12 @@ void setup()
     uint8_t mac_ad[6];
     WiFi.macAddress(mac_ad);
     sprintf(mqtt_id, "%s-%02X%02X", host_name, mac_ad[4], mac_ad[5]);
+    ha_topic[9] += (hub_num - 1);  // 修改发现主题以包含集线器编号
+    logTopic[9] += (hub_num - 1); // 修改日志主题以包含集线器编号
+    for (int i = 0; i < 8; i++)
+    {
+      topic[i][4] += (hub_num - 1); // 添加集线器编号到主题中
+    }
     client.setServer(mqtt_server.c_str(), mqtt_port); // 设置MQTT服务器地址和端口
     client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
     client.publish(ha_topic, "Hi, I'm ESP32 ^^");
@@ -194,7 +201,7 @@ void loop()
 
       if (mqtt_time < time_now)
       {
-        mqtt_time = time_now + 5000; // 5秒延迟
+        mqtt_time = time_now + 20000; // 20秒延迟
         uint8_t ams_num = postMsgId / 4;
         uint8_t tay_num = postMsgId % 4;
         // ESP_LOGE("memory", "RAM可使用大小: %d", ESP.getFreeHeap());

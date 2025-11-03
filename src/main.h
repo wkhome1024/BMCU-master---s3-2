@@ -14,7 +14,8 @@
 
 #include "WiFiUser.h"
 //#include <ArduinoOTA.h>
-extern const char *host_name;
+extern char host_name[20];
+extern uint8_t hub_num;
 #define SYS_RGB 8    // RGB灯针脚
 #define ledPixels 3  //led数量
 extern int save_count;
