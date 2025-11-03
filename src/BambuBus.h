@@ -1,7 +1,6 @@
 #pragma once
 #include <main.h>
 
-
 #define Bambubus_version 6
 
 #ifdef __cplusplus
@@ -38,13 +37,18 @@ extern "C"
         BambuBus_long_package_version,
         BambuBus_package_heartbeat,
         BambuBus_package_ETC,
+
+        BambuBus_read_cert,
+        BambuBus_send_cert_verify,
+        BambuBus_cert_datas_sync,
+
         __BambuBus_package_packge_type_size
     };
     enum BambuBus_device_type
     {
-        BambuBus_none=0x0000,
-        BambuBus_AMS=0x0700,
-        BambuBus_AMS_lite=0x1200,
+        BambuBus_none = 0x0000,
+        BambuBus_AMS = 0x0700,
+        BambuBus_AMS_lite = 0x1200,
     };
     extern void BambuBus_init();
     extern package_type BambuBus_run();
@@ -56,7 +60,7 @@ extern "C"
     extern void Bmcu_readuart();
     extern void Bambubus_set_need_to_save();
     extern int get_now_filament_num();
-    //extern uint16_t get_now_BambuBus_device_type();
+    // extern uint16_t get_now_BambuBus_device_type();
     extern void reset_filament_meters(uint8_t AMS_num, uint8_t read_num);
     extern void add_filament_meters(int num, float meters);
     extern float get_filament_meters(int num);
@@ -65,7 +69,7 @@ extern "C"
     _filament_motion_state_set get_filament_motion(int num);
     extern void set_filament_motion(int num, _filament_motion_state_set motion);
     extern bool Bambus_onflush();
-    extern String Bmcu_set_json(int ams_num ,int i);
+    extern String Bmcu_set_json(int ams_num, int i);
     extern int get_AMS_num_max();
     extern void RX_IRQ(unsigned char _RX_IRQ_data);
     extern void RX_BMCU(unsigned char inChar);

@@ -564,6 +564,7 @@ package_type get_packge_type(unsigned char *buf, int length)
                 BambuBus_address = BambuBus_AMS;
             }
         }
+        /*
         else if (printer_data_long.target_address == BambuBus_AMS_lite)
         {
             if (BambuBus_address == BambuBus_none)
@@ -571,7 +572,9 @@ package_type get_packge_type(unsigned char *buf, int length)
                 my_printf("(bambu) Bambubus工作模式: AMS_lite");
                 BambuBus_address = BambuBus_AMS_lite;
             }
-        }
+        }        
+        */
+
 
         switch (printer_data_long.type)
         {
@@ -589,8 +592,12 @@ package_type get_packge_type(unsigned char *buf, int length)
             return BambuBus_package_heartbeat; // 未知
         case 0x23C:
             return BambuBus_package_heartbeat; // 未知
+        case 0x40D:
+            return BambuBus_read_cert;
+        case 0x40E:
+            return BambuBus_send_cert_verify;
         case 0x411:
-            return BambuBus_package_heartbeat; // 未知
+            return BambuBus_cert_datas_sync;
         default:
             return BambuBus_package_ETC;
         }
@@ -605,19 +612,12 @@ uint8_t get_filament_left_char(uint8_t AMS_num)
     uint8_t data = 0;
     for (int i = 0; i < 4; i++)
     {
-        auto number1 = get_bmcu_and_channel(i);
-        uint8_t AMS_num1 = number1.first;
-        uint8_t read_num1 = number1.second;
-        if (BambuBus_address == BambuBus_AMS)
-        {
-            AMS_num1 = AMS_num;
-            read_num1 = i;
-        }
-        if (data_save.filament[AMS_num1][read_num1].statu == online)
+
+        if (data_save.filament[AMS_num][i].statu == online)
         {
             data |= (0x1 << i) << i; // 1<<(2*i)
             if (BambuBus_address == BambuBus_AMS)
-                if (data_save.filament[AMS_num1][read_num1].motion_set != idle)
+                if (data_save.filament[AMS_num][i].motion_set != idle)
                 {
                     data |= (0x2 << i) << i; // 2<<(2*i)
                 }
@@ -626,12 +626,12 @@ uint8_t get_filament_left_char(uint8_t AMS_num)
     return data;
 }
 
-void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigned char read_num, unsigned char read_num2, unsigned char statu_flags)
+void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigned char read_num, unsigned char statu_flags)
 {
     // static uint8_t last_AMS_num = 0xFF;
     // static uint8_t last_read_num = 0xFF;
-    static uint32_t last_time = 0;
-    uint32_t now_time = get_time32();
+    //static uint32_t last_time = 0;
+    //uint32_t now_time = get_time32();
     float meters = 0;
     uint16_t pressure = 0xFFFF;
     uint8_t motion_flag = 0x00;
@@ -641,12 +641,12 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
         // if (BambuBus_address == BambuBus_AMS)
         // meters = -meters;
         //pressure = data_save.filament[AMS_num][read_num].pressure;
-        if ((data_save.filament[AMS_num][read_num].motion_set == idle) || (data_save.filament[AMS_num][read_num].motion_set == need_pull_back)) // idle or pull back
+        if ((data_save.filament[AMS_num][read_num].motion_set == idle)) // idle
         {
             motion_flag = 0x00;
-            pressure = 0x4700;
+            pressure = 0xFFFF;
         }
-        else if ((data_save.filament[AMS_num][read_num].motion_set == need_send_out)) // sending
+        else if ((data_save.filament[AMS_num][read_num].motion_set == need_send_out)  || (data_save.filament[AMS_num][read_num].motion_set == need_pull_back)) // sending or pull back
         {
             motion_flag = 0x02;
             pressure = 0x4700;
@@ -656,40 +656,29 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
             motion_flag = 0x04;
             pressure = data_save.filament[AMS_num][read_num].pressure;
         }
-        if (statu_flags == 0x07)
-            last_time = now_time;
+        //if (statu_flags == 0x07)
+            //last_time = now_time;
     }
-    else if (read_num == 0xFF && last_time + 2000 > now_time && statu_flags == 0x03) // ams退料状态保持2秒
+    else if (read_num == 0xFF && statu_flags == 0x03) // ams退料状态更新
     {
-        if (BambuBus_address == BambuBus_AMS && AMS_num == data_save.BambuBus_now_filament_num / 4 && 0)
+        if (BambuBus_address == BambuBus_AMS && data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].motion_set == need_pull_back)
         {
-            if (data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].motion_set != need_send_out)
-            {
-                motion_flag = 0x02;
-                pressure = 0x3700;
-            }
-            meters = data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].meters;
-            read_num2 = data_save.BambuBus_now_filament_num % 4;
+            motion_flag = 0x02;
+            pressure = 0x4700;
+            meters = data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].meters;
+            //AMS_num = data_save.BambuBus_now_filament_num / 4;
+            read_num = data_save.BambuBus_now_filament_num % 4;
         }
     }
 
     set_buf[0] = AMS_num; // A1 ams_num
     set_buf[1] = 0x00;
     set_buf[2] = motion_flag;
-    set_buf[3] = read_num2; // filament number or maybe using number
+    set_buf[3] = read_num; // filament number or maybe using number
     memcpy(set_buf + 4, &meters, sizeof(float));
     memcpy(set_buf + 8, &pressure, sizeof(uint16_t));
     set_buf[24] = get_filament_left_char(AMS_num);
-    if (statu_flags == 0x09)
-    {
-        //set_buf[12] = 0x66;
-        //set_buf[13] = 0x02;
-    }
-    else
-    {
-        //set_buf[12] = 0x36;
-        //set_buf[13] = 0x00;
-    }
+
 }
 bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char statu_flags, unsigned char fliment_motion_flag)
 {
@@ -765,53 +754,6 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                     data_save.filament[AMS_num][i].pressure = 0xFFFF;
                 }
             }
-        }
-    }
-    else if (BambuBus_address == BambuBus_AMS_lite) // AMS lite
-    {
-        if (read_num < 4)
-        {
-            if ((statu_flags == 0x03) && (fliment_motion_flag == 0x3F)) // 03 3F
-            {
-                // data_save.filament[AMS_num][read_num].motion_set = need_pull_back;
-            }
-            else if ((statu_flags == 0x03) && (fliment_motion_flag == 0xBF)) // 03 BF
-            {
-                data_save.BambuBus_now_filament_num = AMS_num * 4 + read_num;
-                if (data_save.filament[AMS_num][read_num].motion_set != need_send_out)
-                {
-                    for (int i = 0; i < 4; i++)
-                    {
-                        // data_save.filament[AMS_num][i].motion_set = idle;
-                    }
-                }
-                // data_save.filament[AMS_num][read_num].motion_set = need_send_out;
-            }
-            else if ((statu_flags == 0x07) && (fliment_motion_flag == 0x00)) // 07 00
-            {
-                data_save.BambuBus_now_filament_num = AMS_num * 4 + read_num;
-                if (data_save.filament[AMS_num][read_num].motion_set == need_send_out)
-                {
-                    // data_save.filament[AMS_num][read_num].motion_set = on_use;
-                    //  data_save.filament[AMS_num][read_num].meters_virtual_count = 0;
-                }
-                /*else if (data_save.filament[AMS_num][read_num].meters_virtual_count < 10000) // 10s virtual data
-                {
-                    data_save.filament[AMS_num][read_num].meters += (float)time_used / 300000; // 3.333mm/s
-                    data_save.filament[AMS_num][read_num].meters_virtual_count += time_used;
-                }*/
-                /*if (data_save.filament[AMS_num][read_num].motion_set == need_pull_back)
-                    data_save.filament[AMS_num][read_num].motion_set = idle;*/
-            }
-        }
-        else if ((read_num == 0xFF) && (statu_flags == 0x01))
-        {
-            _filament_motion_state_set motion = data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].motion_set;
-            if (motion != on_use)
-                for (int i = 0; i < 4; i++)
-                {
-                    data_save.filament[AMS_num][i].motion_set = idle;
-                }
         }
     }
     else if (BambuBus_address == BambuBus_none) // none
@@ -896,10 +838,10 @@ void send_for_Hit(unsigned char *buf, int length)
 // 04 01 79 30 61 BE 00 00 03 00 44 00 12 00 FF FF FF FF 00 00 44 00 54 C1 F4 EE E7 01 01 01 01 00 00 00 00 FA 35
 #define C_test 0x00, 0x00, 0x00, 0x00, \
                0x00, 0x00, 0x80, 0xBF, \
-               0x00, 0x00, 0x66, 0x00, \
-               0xFF, 0xFF, 0x00, 0x00, \
+               0x00, 0x00, 0xFF, 0xFF, \
+               0x36, 0x00, 0x00, 0x00, \
                0x00, 0x00, 0x00, 0x00, \
-               0x00, 0x00, 0x66, 0x00, \
+               0x00, 0x00, 0x27, 0x00, \
                0x55,                   \
                0xFF, 0xFF, 0xFF, 0xFF, \
                0xFF, 0xFF, 0xFF, 0xFF,
@@ -939,26 +881,21 @@ void send_for_motion_short(unsigned char *buf, int length)
     unsigned char read_num = buf[7];
     unsigned char fliment_motion_flag = buf[8];
 
-    auto number = get_bmcu_and_channel(read_num);
-    uint8_t AMS_num4 = number.first;
-    uint8_t read_num4 = number.second;
-
-    if (BambuBus_address == BambuBus_AMS)
-    {
-        AMS_num4 = AMS_num;
-        read_num4 = read_num;
-    }
 
     Motion_res[2] = 0x03;
-    Motion_res[3] = AMS_num4;
-    Motion_res[4] = read_num4;
+    Motion_res[3] = AMS_num;
+    Motion_res[4] = read_num;
     Motion_res[5] = statu_flags;
     Motion_res[6] = fliment_motion_flag;
 
-    if (!set_motion(AMS_num4, read_num4, statu_flags, fliment_motion_flag))
+    if (!set_motion(AMS_num, read_num, statu_flags, fliment_motion_flag))
         return;
-
-    set_motion_res_datas(Cxx_res + 5, AMS_num4, read_num4, read_num, statu_flags);
+    Cxx_res[38] = read_num;
+    if (statu_flags == 0x03 && read_num == 0xFF)
+    {
+        Cxx_res[38] = data_save.BambuBus_now_filament_num % 4;
+    }
+    set_motion_res_datas(Cxx_res + 5, AMS_num, read_num, statu_flags);
 
     if (package_num % 2 == 0)
     {
@@ -1015,43 +952,27 @@ void send_for_motion_long(unsigned char *buf, int length)
     unsigned char fliment_motion_flag = buf[7];
     unsigned char read_num = buf[9];
 
-    auto number = get_bmcu_and_channel(read_num);
-    uint8_t AMS_num4 = number.first;
-    uint8_t read_num4 = number.second;
-    if (BambuBus_address == BambuBus_AMS)
-    {
-        AMS_num4 = AMS_num;
-        read_num4 = read_num;
-    }
 
     Motion_long_res[2] = 0x04;
-    Motion_long_res[3] = AMS_num4;
-    Motion_long_res[4] = read_num4;
+    Motion_long_res[3] = AMS_num;
+    Motion_long_res[4] = read_num;
     Motion_long_res[5] = statu_flags;
     Motion_long_res[6] = fliment_motion_flag;
 
     for (auto i = 0; i < 4; i++)
     {
         // filament[i].meters;
-        auto number1 = get_bmcu_and_channel(i);
-        uint8_t AMS_num1 = number1.first;
-        uint8_t read_num1 = number1.second;
-        if (BambuBus_address == BambuBus_AMS)
-        {
-            AMS_num1 = AMS_num;
-            read_num1 = i;
-        }
-        if (data_save.filament[AMS_num1][read_num1].statu == online)
+        if (data_save.filament[AMS_num][i].statu == online)
         {
             filament_flag_on |= 1 << i;
         }
-        else if (data_save.filament[AMS_num1][read_num1].statu == NFC_waiting)
+        else if (data_save.filament[AMS_num][i].statu == NFC_waiting)
         {
             filament_flag_on |= 1 << i;
             filament_flag_NFC |= 1 << i;
         }
     }
-    if (!set_motion(AMS_num4, read_num4, statu_flags, fliment_motion_flag))
+    if (!set_motion(AMS_num, read_num, statu_flags, fliment_motion_flag))
         return;
     /*if (need_res_for_06)
     {
@@ -1076,7 +997,7 @@ void send_for_motion_long(unsigned char *buf, int length)
     Dxx_res[12] = read_num;
     Dxx_res[13] = filament_flag_NFC;
 
-    set_motion_res_datas(Dxx_res + 17, AMS_num4, read_num4, read_num, statu_flags);
+    set_motion_res_datas(Dxx_res + 17, AMS_num, read_num, statu_flags);
 
     if (last_detect != 0)
     {
@@ -1311,29 +1232,21 @@ void send_for_long_packge_filament(unsigned char *buf, int length)
     long_packge_filament[0] = AMS_num;
     long_packge_filament[1] = filament_num;
 
-    auto number = get_bmcu_and_channel(filament_num);
-    uint8_t AMS_num4 = number.first;
-    uint8_t read_num4 = number.second;
 
     if (filament_num > 3)
     {
         my_printf("(bambu) 错误的通道耗材长包裹数据");
         return;
     }
-    if (BambuBus_address == BambuBus_AMS)
-    {
-        AMS_num4 = AMS_num;
-        read_num4 = filament_num;
-    }
 
-    memcpy(long_packge_filament + 19, data_save.filament[AMS_num4][read_num4].ID, sizeof(data_save.filament[AMS_num4][read_num4].ID));
-    memcpy(long_packge_filament + 27, data_save.filament[AMS_num4][read_num4].name, sizeof(data_save.filament[AMS_num4][read_num4].name));
-    long_packge_filament[59] = data_save.filament[AMS_num4][read_num4].color_R;
-    long_packge_filament[60] = data_save.filament[AMS_num4][read_num4].color_G;
-    long_packge_filament[61] = data_save.filament[AMS_num4][read_num4].color_B;
-    long_packge_filament[62] = data_save.filament[AMS_num4][read_num4].color_A;
-    memcpy(long_packge_filament + 79, &data_save.filament[AMS_num4][read_num4].temperature_max, 2);
-    memcpy(long_packge_filament + 81, &data_save.filament[AMS_num4][read_num4].temperature_min, 2);
+    memcpy(long_packge_filament + 19, data_save.filament[AMS_num][filament_num].ID, sizeof(data_save.filament[AMS_num][filament_num].ID));
+    memcpy(long_packge_filament + 27, data_save.filament[AMS_num][filament_num].name, sizeof(data_save.filament[AMS_num][filament_num].name));
+    long_packge_filament[59] = data_save.filament[AMS_num][filament_num].color_R;
+    long_packge_filament[60] = data_save.filament[AMS_num][filament_num].color_G;
+    long_packge_filament[61] = data_save.filament[AMS_num][filament_num].color_B;
+    long_packge_filament[62] = data_save.filament[AMS_num][filament_num].color_A;
+    memcpy(long_packge_filament + 79, &data_save.filament[AMS_num][filament_num].temperature_max, 2);
+    memcpy(long_packge_filament + 81, &data_save.filament[AMS_num][filament_num].temperature_min, 2);
 
     data.datas = long_packge_filament;
     data.data_length = sizeof(long_packge_filament);
@@ -1355,7 +1268,7 @@ unsigned char long_packge_version_serial_number[] = {16, // length
 
 unsigned char long_packge_version_version_and_name_AMS_lite[] = {0x3E, 0x06, 0x01, 0x00, // verison number
                                                                  0x41, 0x4D, 0x53, 0x5F, 0x46, 0x31, 0x30, 0x32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-unsigned char long_packge_version_version_and_name_AMS08[] = {0x3E, 0x06, 0x01, 0x00, // verison number
+unsigned char long_packge_version_version_and_name_AMS08[] = {0x3E, 0x06, 0x01, 0x03, // verison number
                                                               0x41, 0x4D, 0x53, 0x30, 0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 void send_for_long_packge_version(unsigned char *buf, int length)
@@ -1433,16 +1346,6 @@ void send_for_set_filament(unsigned char *buf, int length)
     uint8_t AMS_num = read_num / 4;
     read_num = read_num % 4;
 
-    auto number = get_bmcu_and_channel(read_num);
-    uint8_t AMS_num1 = number.first;
-    uint8_t read_num1 = number.second;
-
-    if (BambuBus_address == BambuBus_AMS)
-    {
-        AMS_num1 = AMS_num;
-        read_num1 = read_num;
-    }
-
     uint8_t sw2 = Switch_set_filament(buf, length, AMS_num, read_num);
 
     filament_res[5] = 0x00;
@@ -1450,16 +1353,16 @@ void send_for_set_filament(unsigned char *buf, int length)
 
     if (!sw2)
     {
-        memcpy(data_save.filament[AMS_num1][read_num1].ID, buf + 7, sizeof(data_save.filament[AMS_num1][read_num1].ID));
+        memcpy(data_save.filament[AMS_num][read_num].ID, buf + 7, sizeof(data_save.filament[AMS_num][read_num].ID));
 
-        data_save.filament[AMS_num1][read_num1].color_R = buf[15];
-        data_save.filament[AMS_num1][read_num1].color_G = buf[16];
-        data_save.filament[AMS_num1][read_num1].color_B = buf[17];
-        data_save.filament[AMS_num1][read_num1].color_A = buf[18];
+        data_save.filament[AMS_num][read_num].color_R = buf[15];
+        data_save.filament[AMS_num][read_num].color_G = buf[16];
+        data_save.filament[AMS_num][read_num].color_B = buf[17];
+        data_save.filament[AMS_num][read_num].color_A = buf[18];
 
-        memcpy(&data_save.filament[AMS_num1][read_num1].temperature_min, buf + 19, 2);
-        memcpy(&data_save.filament[AMS_num1][read_num1].temperature_max, buf + 21, 2);
-        memcpy(data_save.filament[AMS_num1][read_num1].name, buf + 23, sizeof(data_save.filament[AMS_num1][read_num1].name));
+        memcpy(&data_save.filament[AMS_num][read_num].temperature_min, buf + 19, 2);
+        memcpy(&data_save.filament[AMS_num][read_num].temperature_max, buf + 21, 2);
+        memcpy(data_save.filament[AMS_num][read_num].name, buf + 23, sizeof(data_save.filament[AMS_num][read_num].name));
 
         package_send_with_crc(Set_filament_res, sizeof(Set_filament_res));
         Bambubus_set_need_to_save();
@@ -1467,35 +1370,35 @@ void send_for_set_filament(unsigned char *buf, int length)
     else
     {
         filament_res[2] = 0x08;
-        filament_res[3] = AMS_num1;
-        filament_res[4] = read_num1;
+        filament_res[3] = AMS_num;
+        filament_res[4] = read_num;
         filament_res[5] = 0xE0; // bmcu_reset
 
         if (sw2 == 0xD1)
         {
             filament_res[6] = 0xD1; // reset meter       白色
-            reset_filament_meters(AMS_num1, read_num1);
-            my_printf("(bmcu) 重置耗材里程: Bmcu%d-%d_reset_meter", AMS_num1, read_num1);
+            reset_filament_meters(AMS_num, read_num);
+            my_printf("(bmcu) 重置耗材里程: Bmcu%d-%d_reset_meter", AMS_num, read_num);
         }
         else if (sw2 == 0xD3)
         {
             filament_res[6] = 0xD3; // 棕色  --电机退料时间设定
-            my_printf("(bmcu) 电机退料时间设定: Bmcu%d-%d_motor_time = %ds", AMS_num1, read_num1, motor_time[read_num1]);
+            my_printf("(bmcu) 电机退料时间设定: Bmcu%d-%d_motor_time = %ds", AMS_num, read_num, motor_time[read_num]);
         }
         else if (sw2 == 0xD5)
         {
             filament_res[6] = 0xD5; // 岩石灰  --电机pwm 设定
-            my_printf("(bmcu) 电机pwm设定: Bmcu%d-%d_pwm_zero = %d", AMS_num1, read_num1, (pwm_zero[read_num1] * 10));
+            my_printf("(bmcu) 电机pwm设定: Bmcu%d-%d_pwm_zero = %d", AMS_num, read_num, (pwm_zero[read_num] * 10));
         }
         else if (sw2 == 0xD7)
         {
             filament_res[6] = 0xD7; // 灰色  --电机pwm 自动标定
-            my_printf("(bmcu) 电机pwm自动标定");
+            my_printf("(bmcu) 电机pwm设定: Bmcu%d-%d_pwm_zero = %d", AMS_num, read_num, (pwm_zero[read_num] * 10));
         }
         else if (sw2 == 0xD9)
         {
             filament_res[6] = 0xD9; // 选中激活为onuse    黑色
-            my_printf("(bmcu) 选中激活为onuse: Bmcu%d-%d_onuse", AMS_num1, read_num1);
+            my_printf("(bmcu) 选中激活为onuse: Bmcu%d-%d_onuse", AMS_num, read_num);
         }
         Bmcu_package_send_with_crc(filament_res, sizeof(filament_res));
     }
@@ -1815,13 +1718,12 @@ String Bmcu_set_json(int ams_num, int i)
 }*/
 uint16_t get_tay_color(uint8_t num)
 {
-    auto number = get_bmcu_and_channel(num);
-    uint8_t AMS_num4 = number.first;
-    uint8_t read_num4 = number.second;
+    uint8_t AMS_num = num / 4;
+    uint8_t read_num = num % 4;
     uint8_t r, g, b;
-    r = data_save.filament[AMS_num4][read_num4].color_R;
-    g = data_save.filament[AMS_num4][read_num4].color_G;
-    b = data_save.filament[AMS_num4][read_num4].color_B;
+    r = data_save.filament[AMS_num][read_num].color_R;
+    g = data_save.filament[AMS_num][read_num].color_G;
+    b = data_save.filament[AMS_num][read_num].color_B;
     return (uint16_t)((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 }
 
