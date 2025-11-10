@@ -22,46 +22,50 @@
 //Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 */
 
+#define sht30_en false
 
+// MotorMCPWMConfig hw{Motor_H_pin, Motor_L_pin, -1, MCPWM_UNIT_1, MCPWM_TIMER_0, MCPWM0A, MCPWM0B};
+// Motor motor;
 
-
-//MotorMCPWMConfig hw{Motor_H_pin, Motor_L_pin, -1, MCPWM_UNIT_1, MCPWM_TIMER_0, MCPWM0A, MCPWM0B};
-//Motor motor;
-
-PWM_Analyzer Buf_pwm(Bufio_pin);
+PWM_Analyzer Buf_pwm(Bufio_pin, 1); 
 float Buf_pwm_read()
 {
   float duty_cycle = Buf_pwm.Get_PWM_duty_cycle();
   return duty_cycle;
+}
+uint32_t Buf_pwm_frequency()
+{
+  uint32_t frequency = Buf_pwm.Get_PWM_frequency();
+  return frequency;
 }
 
 float pull_voltage = 0.0;
 float online_voltage = 0.0;
 void ADC_init()
 {
-  analogReadResolution(12); // 设置ADC分辨率为12位
+  analogReadResolution(12);       // 设置ADC分辨率为12位
   analogSetAttenuation(ADC_11db); // 设置衰减为11dB，适用于0-3.3V范围
   adcAttachPin(Pull_pin);
   adcAttachPin(Online_pin);
 }
 void ADC_read()
 {
-    // 定义ADC参考电压和最大值常量
-    const float REFERENCE_VOLTAGE = 3.3;
-    const float ADC_MAX_VALUE = 4095.0;
-    
-    // 读取拉力传感器ADC值
-    int pull_adc_value = analogRead(Pull_pin);
-    // 将ADC值转换为电压值
-    pull_voltage = (pull_adc_value / ADC_MAX_VALUE) * REFERENCE_VOLTAGE;
-    
-    // 读取在线状态传感器ADC值
-    int online_adc_value = analogRead(Online_pin);
-    // 将ADC值转换为电压值
-    online_voltage = (online_adc_value / ADC_MAX_VALUE) * REFERENCE_VOLTAGE;
-    
-    // 根据具体需求处理电压值
-    // my_printf("ADC Voltage: %.2f V\n", pull_voltage);
+  // 定义ADC参考电压和最大值常量
+  const float REFERENCE_VOLTAGE = 3.3;
+  const float ADC_MAX_VALUE = 4095.0;
+
+  // 读取拉力传感器ADC值
+  int pull_adc_value = analogRead(Pull_pin);
+  // 将ADC值转换为电压值
+  pull_voltage = (pull_adc_value / ADC_MAX_VALUE) * REFERENCE_VOLTAGE;
+
+  // 读取在线状态传感器ADC值
+  int online_adc_value = analogRead(Online_pin);
+  // 将ADC值转换为电压值
+  online_voltage = (online_adc_value / ADC_MAX_VALUE) * REFERENCE_VOLTAGE;
+
+  // 根据具体需求处理电压值
+  // my_printf("ADC Voltage: %.2f V\n", pull_voltage);
 }
 
 enum class Sht30State
@@ -78,6 +82,8 @@ float Humidity = 0;
 
 void Sht30_init()
 {
+  if (!sht30_en)
+    return;
   Wire.begin(SDA_PIN, SCL_PIN, 100000);
   Wire.beginTransmission(Addr_SHT30);
   Wire.write(0x2C);
@@ -88,6 +94,8 @@ void Sht30_init()
 
 std::pair<float, float> Sht30_read()
 {
+  if (!sht30_en)
+    return {0, 0};
   static uint8_t sht30_data[6];
   switch (sht30_state)
   {
@@ -195,9 +203,6 @@ void tft_print(bool flag)
 }
 */
 
-
-
-
 bool Temp_read(int temp1)
 {
   if (temp1 < int(Temp))
@@ -214,15 +219,15 @@ void set_fan(int temp1)
   if (temp1 - 5 > int(Temp))
   {
     digitalWrite(OUT_1, LOW);
-    //analogWrite(OUT_1, 0);
+    // analogWrite(OUT_1, 0);
   }
   else if (temp1 < int(Temp))
   {
     int dutyCycle = 0;
     dutyCycle = (int(Temp) * 2) + 100;
-    //analogWrite(OUT_1, dutyCycle);
+    // analogWrite(OUT_1, dutyCycle);
     ledcWrite(OUT_1_channel, dutyCycle);
-    //digitalWrite(OUT_1, HIGH);
+    // digitalWrite(OUT_1, HIGH);
   }
 }
 
@@ -230,43 +235,42 @@ bool ENable24 = true;
 
 bool enable_24()
 {
-    return ENable24;
+  return ENable24;
 }
 void set_24(bool enable)
 {
-    ENable24 = enable;
-    if (enable)
-    {
-        digitalWrite(EN_24, HIGH);
-    }
-    else
-    {
-        digitalWrite(EN_24, LOW);
-    }
+  ENable24 = enable;
+  if (enable)
+  {
+    digitalWrite(EN_24, HIGH);
+  }
+  else
+  {
+    digitalWrite(EN_24, LOW);
+  }
 }
 void set_out1(bool enable)
 {
-    if (enable)
-    {
-        digitalWrite(OUT_1, HIGH);
-    }
-    else
-    {
-        digitalWrite(OUT_1, LOW);
-    }
+  if (enable)
+  {
+    digitalWrite(OUT_1, HIGH);
+  }
+  else
+  {
+    digitalWrite(OUT_1, LOW);
+  }
 }
 void IO_init()
 {
   pinMode(EN_24, OUTPUT);
   ENable24 = true;
   digitalWrite(EN_24, HIGH);
-  //pinMode(OUT_1, OUTPUT);
-  //digitalWrite(OUT_1, LOW);
-  ledcSetup(OUT_1_channel, 4000, 8); // 4kHz, 8-bit
+  // pinMode(OUT_1, OUTPUT);
+  // digitalWrite(OUT_1, LOW);
+  ledcSetup(OUT_1_channel, 4000, 8);   // 4kHz, 8-bit
   ledcAttachPin(OUT_1, OUT_1_channel); // 将OUT_1引脚连接到通道7
-  ledcWrite(OUT_1_channel, 0); // 初始占空比为 0
+  ledcWrite(OUT_1_channel, 0);         // 初始占空比为 0
 
-  
   ADC_init();
 }
 
@@ -289,7 +293,7 @@ uint8_t sw_read()
   if (digitalRead(ONline_4) == LOW)
   {
     sw |= 0x08;
-  }  
+  }
   */
 
   return sw;

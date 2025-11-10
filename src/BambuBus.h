@@ -19,6 +19,7 @@ extern "C"
         need_pull_back,
         need_send_out,
         on_use,
+        pre_pull,
         idle
     };
     enum package_type

@@ -15,10 +15,7 @@
 #define OUT_1_channel  7
 
 #define Bufio_pin 38
-#define Motor_H_pin 17
-#define Motor_L_pin 18
-#define SCA_5600_pin 7
-#define SDL_5600_pin 6
+
 #define Pull_pin 5
 #define Online_pin 4
 
