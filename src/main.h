@@ -9,7 +9,7 @@
 #include "Data.h"
 #include "switch.h"
 #include <PubSubClient.h>
-#include <sht30.h>
+#include <IO_init.h>
 #include <Adafruit_NeoPixel.h>
 
 #include "WiFiUser.h"

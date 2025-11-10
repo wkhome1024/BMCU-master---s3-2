@@ -1,6 +1,7 @@
 
-#include <sht30.h>
+#include <IO_init.h>
 
+/*
 // TFT_eSPI tft = TFT_eSPI(); // Invoke custom library
 // #define TFT_SCLK 2  // Clock out
 // #define TFT_MOSI 3  // Data out
@@ -8,6 +9,9 @@
 // #define TFT_DC   6
 // #define TFT_CS   7
 //______TFT_BL   不接
+
+
+
 #define TFT_MOSI 11 // In some display driver board, it might be written as "SDA" and so on.
 #define TFT_SCLK 12
 #define TFT_CS 10  // Chip select control pin
@@ -16,6 +20,49 @@
 #define TFT_BL 21  // LED back-light control pin
 
 //Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
+*/
+
+
+
+
+//MotorMCPWMConfig hw{Motor_H_pin, Motor_L_pin, -1, MCPWM_UNIT_1, MCPWM_TIMER_0, MCPWM0A, MCPWM0B};
+//Motor motor;
+
+PWM_Analyzer Buf_pwm(Bufio_pin);
+float Buf_pwm_read()
+{
+  float duty_cycle = Buf_pwm.Get_PWM_duty_cycle();
+  return duty_cycle;
+}
+
+float pull_voltage = 0.0;
+float online_voltage = 0.0;
+void ADC_init()
+{
+  analogReadResolution(12); // 设置ADC分辨率为12位
+  analogSetAttenuation(ADC_11db); // 设置衰减为11dB，适用于0-3.3V范围
+  adcAttachPin(Pull_pin);
+  adcAttachPin(Online_pin);
+}
+void ADC_read()
+{
+    // 定义ADC参考电压和最大值常量
+    const float REFERENCE_VOLTAGE = 3.3;
+    const float ADC_MAX_VALUE = 4095.0;
+    
+    // 读取拉力传感器ADC值
+    int pull_adc_value = analogRead(Pull_pin);
+    // 将ADC值转换为电压值
+    pull_voltage = (pull_adc_value / ADC_MAX_VALUE) * REFERENCE_VOLTAGE;
+    
+    // 读取在线状态传感器ADC值
+    int online_adc_value = analogRead(Online_pin);
+    // 将ADC值转换为电压值
+    online_voltage = (online_adc_value / ADC_MAX_VALUE) * REFERENCE_VOLTAGE;
+    
+    // 根据具体需求处理电压值
+    // my_printf("ADC Voltage: %.2f V\n", pull_voltage);
+}
 
 enum class Sht30State
 {
@@ -218,15 +265,15 @@ void IO_init()
   ledcSetup(OUT_1_channel, 4000, 8); // 4kHz, 8-bit
   ledcAttachPin(OUT_1, OUT_1_channel); // 将OUT_1引脚连接到通道7
   ledcWrite(OUT_1_channel, 0); // 初始占空比为 0
-  //pinMode(ONline_1, INPUT);
-  //pinMode(ONline_2, INPUT);
-  //pinMode(ONline_3, INPUT);
-  //pinMode(ONline_4, INPUT);
+
+  
+  ADC_init();
 }
 
 uint8_t sw_read()
 {
   uint8_t sw = 0;
+  /*
   if (digitalRead(ONline_1) == LOW)
   {
     sw |= 0x01;
@@ -242,6 +289,8 @@ uint8_t sw_read()
   if (digitalRead(ONline_4) == LOW)
   {
     sw |= 0x08;
-  }
+  }  
+  */
+
   return sw;
 }

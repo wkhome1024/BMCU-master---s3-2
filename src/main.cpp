@@ -11,12 +11,12 @@ char topic[8][8] = {"bmcu1-1", "bmcu1-2", "bmcu1-3", "bmcu1-4", "bmcu1-5", "bmcu
 char host_name[20] = "bmcu-hub-1"; // 设备主机名
 #define product_id "bmcu-hub"          // 产品ID
 #define device_id "s3"                 // 设备ID
-uint8_t hub_num = 2;              // 集线器编号
+uint8_t hub_num = 3;              // 集线器编号
 char mqtt_id[20];
 int save_count = 0;
 int postMsgId = 0;              // 消息ID初始值为0
 int catch_key = 0;              // 抓包计数
-bool catch_mode = true;        // 抓包模式
+bool catch_mode = false;        // 抓包模式
 bool server_key = false;        // HTTP服务器开关
 WiFiClient espclient;           // 创建一个WiFiClient对象
 PubSubClient client(espclient); // 创建一个PubSubClient对象
@@ -36,14 +36,19 @@ void hub_msg()
   // tft_print(catch_mode);
   if (sw_send)
   {
-    if (!client.publish(ha_topic, Sht30_read_mqtt().c_str()))
-        client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
+    my_printf("(sht30) 缓冲区PWM值: %.2f", Buf_pwm_read());    
+    //if (!client.publish(ha_topic, Sht30_read_mqtt().c_str()))
+    //    client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
     sw_send = !sw_send;
   }
   else
   {
-    //if (!client.publish(ha_topic, get_filament_map().c_str()))
-      //client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
+    ADC_read();
+    //char payload[100];
+    //my_printf("{\"Pull_Voltage\":%.2f,\"Online_Voltage\":%.2f,\"Buf_PWM\":%.2f}",pull_voltage, online_voltage, Buf_pwm_read());
+    my_printf("(sht30) 拉力传感器电压: %.2f V", pull_voltage);
+    my_printf("(sht30) 在线传感器电压: %.2f V", online_voltage);
+
     sw_send = !sw_send;
   }
 }
@@ -171,7 +176,7 @@ void loop()
       SYS_leds.setPixelColor(1, 0x10, 0xD0, 0x30);
       if (mqtt_time < time_now)
       {
-        mqtt_time = time_now + 20000;
+        mqtt_time = time_now + 2000;
         hub_msg();
         my_printf("(bambus) bambus连接中...");
       }
