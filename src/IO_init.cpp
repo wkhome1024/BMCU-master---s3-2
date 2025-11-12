@@ -30,9 +30,9 @@
 #define test_pin 3
 #define test_pin2 45
 #define test_channel 5
-PWM_Analyzer Buf_pwm(Bufio_pin, 1); 
-//PWM_Analyzer Buf_pwm(test_pin2, 1); 
-//float buf_voltage = 0.0;
+PWM_Analyzer Buf_pwm(Bufio_pin, 1);
+// PWM_Analyzer Buf_pwm(test_pin2, 1);
+// float buf_voltage = 0.0;
 float Buf_pwm_read()
 {
   float duty_cycle = Buf_pwm.Get_PWM_duty_cycle();
@@ -44,16 +44,15 @@ uint32_t Buf_pwm_frequency()
   return frequency;
 }
 
-float pull_voltage = 0.0;
-float online_voltage = 0.0;
 void ADC_init()
 {
   analogReadResolution(12);       // 设置ADC分辨率为12位
   analogSetAttenuation(ADC_11db); // 设置衰减为11dB，适用于0-3.3V范围
   adcAttachPin(Pull_pin);
   adcAttachPin(Online_pin);
+  Buf_pwm.Restart();
 }
-void ADC_read()
+std::pair<float, float> ADC_read()
 {
   // 定义ADC参考电压和最大值常量
   const float REFERENCE_VOLTAGE = 3.3;
@@ -62,15 +61,17 @@ void ADC_read()
   // 读取拉力传感器ADC值
   int pull_adc_value = analogRead(Pull_pin);
   // 将ADC值转换为电压值
-  pull_voltage = (pull_adc_value / ADC_MAX_VALUE) * REFERENCE_VOLTAGE;
+  float pull_voltage = (pull_adc_value / ADC_MAX_VALUE) * REFERENCE_VOLTAGE;
 
   // 读取在线状态传感器ADC值
   int online_adc_value = analogRead(Online_pin);
   // 将ADC值转换为电压值
-  online_voltage = (online_adc_value / ADC_MAX_VALUE) * REFERENCE_VOLTAGE;
+  float online_voltage = (online_adc_value / ADC_MAX_VALUE) * REFERENCE_VOLTAGE;
 
-  //pinMode(Bufio_pin, INPUT);
-  //buf_voltage = digitalRead(Bufio_pin) ? REFERENCE_VOLTAGE : 0.0;
+  return {pull_voltage, online_voltage};
+
+  // pinMode(Bufio_pin, INPUT);
+  // buf_voltage = digitalRead(Bufio_pin) ? REFERENCE_VOLTAGE : 0.0;
 
   // 根据具体需求处理电压值
   // my_printf("ADC Voltage: %.2f V\n", pull_voltage);
@@ -222,20 +223,25 @@ bool Temp_read(int temp1)
     return false;
   }
 }
-void set_fan(int temp1)
+void Set_fan_t(int temp1)
 {
-  if (temp1 - 5 > int(Temp))
+  if (!sht30_en)
   {
-    digitalWrite(OUT_1, LOW);
-    // analogWrite(OUT_1, 0);
+    pinMode(FAN_PIN, OUTPUT);
+    Set_fan(true);
+  }
+  else if (temp1 - 5 > int(Temp))
+  {
+    digitalWrite(FAN_PIN, LOW);
+    // analogWrite(FAN_PIN, 0);
   }
   else if (temp1 < int(Temp))
   {
     int dutyCycle = 0;
     dutyCycle = (int(Temp) * 2) + 100;
-    // analogWrite(OUT_1, dutyCycle);
-    ledcWrite(OUT_1_channel, dutyCycle);
-    // digitalWrite(OUT_1, HIGH);
+    // analogWrite(FAN_PIN, dutyCycle);
+    ledcWrite(FAN_channel, dutyCycle);
+    // digitalWrite(FAN_PIN, HIGH);
   }
 }
 
@@ -245,7 +251,7 @@ bool enable_24()
 {
   return ENable24;
 }
-void set_24(bool enable)
+void Set_24(bool enable)
 {
   ENable24 = enable;
   if (enable)
@@ -257,15 +263,15 @@ void set_24(bool enable)
     digitalWrite(EN_24, LOW);
   }
 }
-void set_out1(bool enable)
+void Set_fan(bool enable)
 {
   if (enable)
   {
-    digitalWrite(OUT_1, HIGH);
+    digitalWrite(FAN_PIN, HIGH);
   }
   else
   {
-    digitalWrite(OUT_1, LOW);
+    digitalWrite(FAN_PIN, LOW);
   }
 }
 void IO_init()
@@ -273,11 +279,17 @@ void IO_init()
   pinMode(EN_24, OUTPUT);
   ENable24 = true;
   digitalWrite(EN_24, HIGH);
-  // pinMode(OUT_1, OUTPUT);
-  // digitalWrite(OUT_1, LOW);
-  ledcSetup(OUT_1_channel, 4000, 8);   // 4kHz, 8-bit
-  ledcAttachPin(OUT_1, OUT_1_channel); // 将OUT_1引脚连接到通道7
-  ledcWrite(OUT_1_channel, 0);         // 初始占空比为 0
+  if (!sht30_en)
+  {
+    pinMode(FAN_PIN, OUTPUT);
+    digitalWrite(FAN_PIN, LOW);
+  }
+  else
+  {
+    ledcSetup(FAN_channel, 4000, 8);     // 4kHz, 8-bit
+    ledcAttachPin(FAN_PIN, FAN_channel); // 将FAN_PIN引脚连接到通道7
+    ledcWrite(FAN_channel, 0);           // 初始占空比为 0
+  }
 
   ADC_init();
 }

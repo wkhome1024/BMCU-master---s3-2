@@ -9,20 +9,22 @@ char ha_topic[20] = "bmcu-hub-1"; // Home Assistant 发现主题
 char logTopic[20] = "bmcu-hub-1/log";
 char topic[8][8] = {"bmcu1-1", "bmcu1-2", "bmcu1-3", "bmcu1-4", "bmcu1-5", "bmcu1-6", "bmcu1-7", "bmcu1-8"};
 char host_name[20] = "bmcu-hub-1"; // 设备主机名
-#define product_id "bmcu-hub"          // 产品ID
-#define device_id "s3"                 // 设备ID
-uint8_t hub_num = 3;              // 集线器编号
+#define product_id "bmcu-hub"      // 产品ID
+#define device_id "s3"             // 设备ID
+uint8_t hub_num = 3;               // 集线器编号
 char mqtt_id[20];
 int save_count = 0;
 int postMsgId = 0;              // 消息ID初始值为0
 int catch_key = 0;              // 抓包计数
-bool catch_mode = true;        // 抓包模式
+bool catch_mode = true;         // 抓包模式
 bool server_key = false;        // HTTP服务器开关
+bool Motor_enable = false; // 电机使能状态
 WiFiClient espclient;           // 创建一个WiFiClient对象
 PubSubClient client(espclient); // 创建一个PubSubClient对象
 
+#define SYS_RGB 8    // RGB灯针脚
+#define ledPixels 3  //led数量
 Adafruit_NeoPixel SYS_leds(ledPixels, SYS_RGB, NEO_GRB + NEO_KHZ800);
-AS5600 as5600;
 void LED_init()
 {
   SYS_leds.begin();
@@ -31,6 +33,10 @@ void LED_init()
   SYS_leds.show();
 }
 
+void LED_setColor(uint8_t num, uint32_t color)
+{
+  SYS_leds.setPixelColor(num, color);
+}
 bool sw_send = true;
 void hub_msg()
 {
@@ -39,23 +45,23 @@ void hub_msg()
   {
     my_printf("(sensor) 缓冲区PWM值: %.2f", Buf_pwm_read());
     if (!client.publish(ha_topic, Sht30_read_mqtt().c_str()))
-        client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
+      client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
     sw_send = !sw_send;
   }
   else
   {
     ADC_read();
-    //char payload[100];
-    //my_printf("{\"Pull_Voltage\":%.2f,\"Online_Voltage\":%.2f,\"Buf_PWM\":%.2f}",pull_voltage, online_voltage, Buf_pwm_read());
-    //my_printf("(sensor) 拉力传感器电压: %.2f V", pull_voltage);
-    //my_printf("(sensor) 在线传感器电压: %.2f V", online_voltage);
-    uint16_t rawAngle = as5600.readRawAngle();
-    uint16_t angle = as5600.readAngle();
-    float angleDegrees = as5600.getAngleDegrees();
-    //my_printf("(sensor) 角度: %.2f°", angleDegrees);
-    //my_printf("(sensor) 原始角度值: %d", rawAngle);
-    //my_printf("(sensor) 处理后角度值: %d", angle);
-    
+    // char payload[100];
+    // my_printf("{\"Pull_Voltage\":%.2f,\"Online_Voltage\":%.2f,\"Buf_PWM\":%.2f}",pull_voltage, online_voltage, Buf_pwm_read());
+    // my_printf("(sensor) 拉力传感器电压: %.2f V", pull_voltage);
+    // my_printf("(sensor) 在线传感器电压: %.2f V", online_voltage);
+    // uint16_t rawAngle = as5600.readRawAngle();
+    // uint16_t angle = as5600.readAngle();
+    // float angleDegrees = as5600.getAngleDegrees();
+    // my_printf("(sensor) 角度: %.2f°", angleDegrees);
+    // my_printf("(sensor) 原始角度值: %d", rawAngle);
+    // my_printf("(sensor) 处理后角度值: %d", angle);
+
     sw_send = !sw_send;
   }
 }
@@ -78,7 +84,7 @@ void publishLogOverMQTT()
   {
     remaining = logLength - offset;
   }
-  else if (offset > 63*1024 && logLength < 1024) // 如果偏移量超过64KB且日志长度小于1KB
+  else if (offset > 63 * 1024 && logLength < 1024) // 如果偏移量超过64KB且日志长度小于1KB
   {
     my_printf("(LOG) 日志缓冲已重置，重置偏移量");
     offset = 0; // 重置偏移量
@@ -112,14 +118,13 @@ void setup()
   LED_init();
   // tft_init();
   IO_init();
-  as5600.begin();
   // 检查是否有保存的Wi-Fi配置信息
 
   // WiFi.setHostname(host_name);
   //  WiFi.begin(ssid, password); // 尝试自动连接上次保存的Wi-Fi
   //   Serial.println("尝试连接已保存的WiFi...");
   host_name[9] += (hub_num - 1); // 修改主机名以包含集线器编号
-  checkConnect(Config_read()); // 检查配置Wi-Fi连接
+  checkConnect(Config_read());   // 检查配置Wi-Fi连接
   // 等待连接成功
 
   if (WiFi.status() == WL_CONNECTED)
@@ -127,7 +132,7 @@ void setup()
     uint8_t mac_ad[6];
     WiFi.macAddress(mac_ad);
     sprintf(mqtt_id, "%s-%02X%02X", host_name, mac_ad[4], mac_ad[5]);
-    ha_topic[9] += (hub_num - 1);  // 修改发现主题以包含集线器编号
+    ha_topic[9] += (hub_num - 1); // 修改发现主题以包含集线器编号
     logTopic[9] += (hub_num - 1); // 修改日志主题以包含集线器编号
     for (int i = 0; i < 8; i++)
     {
@@ -146,6 +151,7 @@ void setup()
   }
 
   RS485_init();
+  Motion_control_init();
   // my_printf("(flash) SPIFFS总大小: %d, SPIFFS已使用大小: %d, Flash size: %d", LittleFS.totalBytes(), LittleFS.usedBytes(), ESP.getFlashChipSize());
   my_printf("(memory) RAM可使用大小: %d", ESP.getFreeHeap());
   my_printf("(memory) PSRAM可使用大小: %d", ESP.getFreePsram());
@@ -158,27 +164,20 @@ uint32_t led_time = 0;
 uint32_t server_time = 0;
 uint32_t save_time = 0;
 uint32_t switch_time = 0;
+bool error_flag = false;
 void loop()
 {
   package_type stu = BambuBus_stu();
-  //package_type stu = BambuBus_run();
-  //  Bmcu_readuart();
-  //   int stu =-1;
+  // package_type stu = BambuBus_run();
+  //   Bmcu_readuart();
+  //    int stu =-1;
   uint32_t time_now = get_time32();
 
   if (stu == BambuBus_package_ERROR) // offline
   {
     // SYS_RGB.set_RGB(0x30, 0x00, 0x00, 0);
     SYS_leds.clear();
-    if (error_time < (time_now - 1000))
-    {
-      error_time = time_now + 1000;
-    }
-    else if (error_time > time_now)
-      SYS_leds.setPixelColor(0, 0x30, 0x00, 0x00);
-    else if (error_time < time_now)
-      SYS_leds.setPixelColor(2, 0x30, 0x00, 0x00);
-
+    error_flag = true;
     if (WiFi.status() == WL_CONNECTED)
     {
       SYS_leds.setPixelColor(1, 0x10, 0xD0, 0x30);
@@ -194,23 +193,10 @@ void loop()
   {
 
     SYS_leds.clear();
-    if (error_time < (time_now - 2000))
-    {
-      error_time = time_now + 2000;
-      // sensor_read();
-    }
-    else if (error_time > time_now)
-    {
-      SYS_leds.setPixelColor(0, 0x10, 0xD0, 0x30);
-    }
-    else if (error_time < time_now)
-    {
-      SYS_leds.setPixelColor(0, 0x00, 0x00, 0x00);
-    }
-
+    error_flag = false;
     if (WiFi.status() == WL_CONNECTED)
     {
-      SYS_leds.setPixelColor(1, 0x10, 0xD0, 0x30);
+      SYS_leds.setPixelColor(1, 0x10, 0xD0, 0x30); // 绿色常亮表示在线
 
       if (mqtt_time < time_now)
       {
@@ -234,11 +220,11 @@ void loop()
           postMsgId = 0;
           hub_msg();
           my_printf("(mqtt) 发送数据成功");
-          SYS_leds.setPixelColor(2, 0x00, 0x00, 0x30);
-        }
-        else
-        {
-          SYS_leds.setPixelColor(2, 0x10, 0xD0, 0x30);
+          SYS_leds.setPixelColor(1, 0x00, 0x00, 0x30); // 发送数据成功后变为蓝色
+          if (SYS_leds.canShow())
+          {
+            SYS_leds.show();
+          }
         }
       }
     }
@@ -258,7 +244,7 @@ void loop()
       if (switch_time == 0)
       {
         switch_time = time_now + 8000; // 强制刷新
-        my_printf("(hub) AMS数据刷新成功");        
+        my_printf("(hub) AMS数据刷新成功");
       }
       else if (switch_time < time_now && switch_time != 0)
       {
@@ -273,9 +259,9 @@ void loop()
     {
       if (!enable_24())
       {
-        set_24(true);
+        Set_24(true);
       }
-      set_fan(30); // 30度开启风扇
+      Set_fan_t(30); // 30度开启风扇
       publishLogOverMQTT();
       if (Switch_need_to_save())
       {
@@ -317,7 +303,7 @@ void loop()
       SYS_leds.show();
     }
   }
-
+  Motion_control_run(error_flag);
   vTaskDelay(pdMS_TO_TICKS(4)); // 控速
   // delay(1);
 }

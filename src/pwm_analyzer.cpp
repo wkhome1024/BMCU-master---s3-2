@@ -10,10 +10,10 @@ bool IRAM_ATTR capture_isr(mcpwm_unit_t unit, mcpwm_capture_channel_id_t cap_cha
     else
         pwm->neg_edge = data->cap_value;
     pwm->value = pwm->pos_edge - pwm->neg_edge;
-    if(pwm->value > 0) {
-        pwm->high = pwm->value;
+    if(pwm->value < 0) {
+        pwm->high = -pwm->value;
     } else {
-        pwm->low = -pwm->value;
+        pwm->low = pwm->value;
     }
     return true;
 }

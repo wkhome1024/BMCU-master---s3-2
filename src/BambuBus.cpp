@@ -6,7 +6,7 @@ CRC16 crc_16;
 CRC8 crc_8;
 
 package_type bambu_stu = BambuBus_package_NONE;
-uint8_t BambuBus_data_buf[200];
+uint8_t BambuBus_data_buf[512];
 int BambuBus_have_data = 0;
 BambuBus_device_type BambuBus_address = BambuBus_none;
 uint8_t AMS_num_c = 0;
@@ -150,7 +150,7 @@ bool BambuBus_if_on_print()
     }
     return on_print;
 }
-uint8_t buf_X[200];
+uint8_t buf_X[512];
 CRC8 _RX_IRQ_crcx(0x39, 0x66, 0x00, false, false);
 void RX_IRQ(unsigned char _RX_IRQ_data)
 {
@@ -600,9 +600,9 @@ package_type get_packge_type(unsigned char *buf, int length)
         case 0x402:                                   // 04  02 04 版本信息
             return BambuBus_long_package_version;     
         case 0x237:
-            return BambuBus_package_heartbeat; // 未知
+            return BambuBus_package_test1; // 未知
         case 0x23C:
-            return BambuBus_package_heartbeat; // 未知
+            return BambuBus_package_test2; // 未知
         case 0x40D:
             return BambuBus_read_cert;
         case 0x40E:
@@ -832,6 +832,8 @@ void send_for_Hit(unsigned char *buf, int length)
     }
 
     Hit_res[5] = 0;                       // sw_read();               // 五通前端状态
+    Hit_res[5] = (uint8_t)MC_ONLINE_key_stu;
+    Hit_res[6] = (uint8_t)((MC_PULL_stu_raw - 1.0f) * 128); // 通道压力值
     if (BambuBus_address == BambuBus_AMS) // AMS08
     {
         Hit_res[5] |= 0x30; // 0x30
@@ -898,6 +900,8 @@ void send_for_motion_short(unsigned char *buf, int length)
     Motion_res[4] = read_num;
     Motion_res[5] = statu_flags;
     Motion_res[6] = fliment_motion_flag;
+    Motion_res[7] = (uint8_t)MC_ONLINE_key_stu;
+    Motion_res[8] = (uint8_t)((MC_PULL_stu_raw - 1.0f) * 128); // 通道压力值
 
     if (!set_motion(AMS_num, read_num, statu_flags, fliment_motion_flag))
         return;
@@ -969,6 +973,8 @@ void send_for_motion_long(unsigned char *buf, int length)
     Motion_long_res[4] = read_num;
     Motion_long_res[5] = statu_flags;
     Motion_long_res[6] = fliment_motion_flag;
+    Motion_long_res[7] = (uint8_t)MC_ONLINE_key_stu;
+    Motion_long_res[8] = (uint8_t)((MC_PULL_stu_raw - 1.0f) * 128); // 通道压力值
 
     for (auto i = 0; i < 4; i++)
     {

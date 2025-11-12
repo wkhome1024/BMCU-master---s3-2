@@ -38,7 +38,8 @@ extern "C"
         BambuBus_long_package_version,
         BambuBus_package_heartbeat,
         BambuBus_package_ETC,
-
+        BambuBus_package_test1,
+        BambuBus_package_test2,
         BambuBus_read_cert,
         BambuBus_send_cert_verify,
         BambuBus_cert_datas_sync,

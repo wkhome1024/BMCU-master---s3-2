@@ -17,7 +17,7 @@
 #endif // version
 
 #define TASK_STACK_SIZE (8192)
-#define RX_BUFFER_SIZE 512
+#define RX_BUFFER_SIZE 1024
 MyRingBuffer rxBuffer0(RX_BUFFER_SIZE);
 MyRingBuffer rxBuffer1(RX_BUFFER_SIZE);
 
