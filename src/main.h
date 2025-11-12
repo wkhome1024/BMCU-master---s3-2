@@ -11,7 +11,7 @@
 #include <PubSubClient.h>
 #include <IO_init.h>
 #include <Adafruit_NeoPixel.h>
-#include "soft_AS5600.h"
+
 #include <AS5600.h>
 #include "WiFiUser.h"
 //#include <ArduinoOTA.h>

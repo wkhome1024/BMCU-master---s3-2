@@ -37,7 +37,7 @@ void hub_msg()
   // tft_print(catch_mode);
   if (sw_send)
   {
-    my_printf("(sht30) 缓冲区PWM值: %.2f", Buf_pwm_read());    
+    my_printf("(sensor) 缓冲区PWM值: %.2f", Buf_pwm_read());
     if (!client.publish(ha_topic, Sht30_read_mqtt().c_str()))
         client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
     sw_send = !sw_send;
@@ -47,14 +47,14 @@ void hub_msg()
     ADC_read();
     //char payload[100];
     //my_printf("{\"Pull_Voltage\":%.2f,\"Online_Voltage\":%.2f,\"Buf_PWM\":%.2f}",pull_voltage, online_voltage, Buf_pwm_read());
-    //my_printf("(sht30) 拉力传感器电压: %.2f V", pull_voltage);
-    //my_printf("(sht30) 在线传感器电压: %.2f V", online_voltage);
+    //my_printf("(sensor) 拉力传感器电压: %.2f V", pull_voltage);
+    //my_printf("(sensor) 在线传感器电压: %.2f V", online_voltage);
     uint16_t rawAngle = as5600.readRawAngle();
     uint16_t angle = as5600.readAngle();
     float angleDegrees = as5600.getAngleDegrees();
-    //my_printf("(sht30) 角度: %.2f°", angleDegrees);
-    //my_printf("(sht30) 原始角度值: %d", rawAngle);
-    //my_printf("(sht30) 处理后角度值: %d", angle);
+    //my_printf("(sensor) 角度: %.2f°", angleDegrees);
+    //my_printf("(sensor) 原始角度值: %d", rawAngle);
+    //my_printf("(sensor) 处理后角度值: %d", angle);
     
     sw_send = !sw_send;
   }
@@ -197,7 +197,7 @@ void loop()
     if (error_time < (time_now - 2000))
     {
       error_time = time_now + 2000;
-      // Sht30_read();
+      // sensor_read();
     }
     else if (error_time > time_now)
     {

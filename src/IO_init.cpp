@@ -27,7 +27,12 @@
 // MotorMCPWMConfig hw{Motor_H_pin, Motor_L_pin, -1, MCPWM_UNIT_1, MCPWM_TIMER_0, MCPWM0A, MCPWM0B};
 // Motor motor;
 
+#define test_pin 3
+#define test_pin2 45
+#define test_channel 5
 PWM_Analyzer Buf_pwm(Bufio_pin, 1); 
+//PWM_Analyzer Buf_pwm(test_pin2, 1); 
+//float buf_voltage = 0.0;
 float Buf_pwm_read()
 {
   float duty_cycle = Buf_pwm.Get_PWM_duty_cycle();
@@ -63,6 +68,9 @@ void ADC_read()
   int online_adc_value = analogRead(Online_pin);
   // 将ADC值转换为电压值
   online_voltage = (online_adc_value / ADC_MAX_VALUE) * REFERENCE_VOLTAGE;
+
+  //pinMode(Bufio_pin, INPUT);
+  //buf_voltage = digitalRead(Bufio_pin) ? REFERENCE_VOLTAGE : 0.0;
 
   // 根据具体需求处理电压值
   // my_printf("ADC Voltage: %.2f V\n", pull_voltage);
