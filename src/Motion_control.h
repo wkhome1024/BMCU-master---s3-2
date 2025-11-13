@@ -7,6 +7,8 @@ extern void Motion_control_init();
 extern void Motion_control_set_PWM(int PWM);
 extern void Motion_control_run(int error);
 extern int MC_ONLINE_key_stu;
+extern float MC_ONLINE_key_stu_raw;
 extern int MC_PULL_stu;
 extern float MC_PULL_stu_raw;
-
+extern float H_PULL_stu_raw;
+extern float last_total_distance;

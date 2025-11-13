@@ -24,7 +24,7 @@ extern bool server_key;
 extern bool Motor_enable;
 #define EN_log true                          // 日志开关
 
-extern void LED_setColor(uint8_t num, uint32_t color);
+extern void LED_setColor(uint8_t num, uint8_t r, uint8_t g, uint8_t b);
 
 
 //extern void RGB_set(unsigned char CHx,unsigned char R, unsigned char G, unsigned char B);

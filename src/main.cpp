@@ -21,7 +21,7 @@ bool server_key = false;        // HTTP服务器开关
 bool Motor_enable = false; // 电机使能状态
 WiFiClient espclient;           // 创建一个WiFiClient对象
 PubSubClient client(espclient); // 创建一个PubSubClient对象
-
+bool error_flag = false;
 #define SYS_RGB 8    // RGB灯针脚
 #define ledPixels 3  //led数量
 Adafruit_NeoPixel SYS_leds(ledPixels, SYS_RGB, NEO_GRB + NEO_KHZ800);
@@ -33,9 +33,9 @@ void LED_init()
   SYS_leds.show();
 }
 
-void LED_setColor(uint8_t num, uint32_t color)
+void LED_setColor(uint8_t num, uint8_t r, uint8_t g, uint8_t b)
 {
-  SYS_leds.setPixelColor(num, color);
+  SYS_leds.setPixelColor(num, r, g, b);
 }
 bool sw_send = true;
 void hub_msg()
@@ -43,18 +43,19 @@ void hub_msg()
   // tft_print(catch_mode);
   if (sw_send)
   {
-    my_printf("(sensor) 缓冲区PWM值: %.2f", Buf_pwm_read());
     if (!client.publish(ha_topic, Sht30_read_mqtt().c_str()))
       client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
     sw_send = !sw_send;
   }
   else
   {
-    ADC_read();
+
     // char payload[100];
     // my_printf("{\"Pull_Voltage\":%.2f,\"Online_Voltage\":%.2f,\"Buf_PWM\":%.2f}",pull_voltage, online_voltage, Buf_pwm_read());
-    // my_printf("(sensor) 拉力传感器电压: %.2f V", pull_voltage);
-    // my_printf("(sensor) 在线传感器电压: %.2f V", online_voltage);
+    my_printf("(sensor) 拉力传感器电压: %.2f V", MC_PULL_stu_raw);
+    my_printf("(sensor) 在线传感器电压: %.2f V", MC_ONLINE_key_stu_raw);
+    my_printf("(sensor) 缓冲PWM状态: %.2f", H_PULL_stu_raw);
+    my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
     // uint16_t rawAngle = as5600.readRawAngle();
     // uint16_t angle = as5600.readAngle();
     // float angleDegrees = as5600.getAngleDegrees();
@@ -107,7 +108,22 @@ void publishLogOverMQTT()
   client.publish(logTopic, payload);
   offset += (chunkSize - 1);
 }
-
+void motorTask(void *pvParameters)
+{
+    while (1)
+    {
+        Motion_control_run(error_flag);
+        vTaskDelay(pdMS_TO_TICKS(10)); // 每10ms调用一次
+    }
+}
+void setup_motor_task()
+{
+    BaseType_t motorResult = xTaskCreate(motorTask, "Motor Task", 4096, NULL, 1, NULL);
+    if (motorResult != pdPASS)
+    {
+        ESP_LOGE("(rs485)", "Failed to create Motor Task");
+    }
+}
 void setup()
 {
 
@@ -156,6 +172,7 @@ void setup()
   my_printf("(memory) RAM可使用大小: %d", ESP.getFreeHeap());
   my_printf("(memory) PSRAM可使用大小: %d", ESP.getFreePsram());
   webtask_setup();
+  setup_motor_task();
 }
 uint32_t error_time = 0;
 uint32_t offline_time = 0;
@@ -164,7 +181,6 @@ uint32_t led_time = 0;
 uint32_t server_time = 0;
 uint32_t save_time = 0;
 uint32_t switch_time = 0;
-bool error_flag = false;
 void loop()
 {
   package_type stu = BambuBus_stu();
@@ -176,14 +192,14 @@ void loop()
   if (stu == BambuBus_package_ERROR) // offline
   {
     // SYS_RGB.set_RGB(0x30, 0x00, 0x00, 0);
-    SYS_leds.clear();
+    //SYS_leds.clear();
     error_flag = true;
     if (WiFi.status() == WL_CONNECTED)
     {
       SYS_leds.setPixelColor(1, 0x10, 0xD0, 0x30);
       if (mqtt_time < time_now)
       {
-        mqtt_time = time_now + 20000;
+        mqtt_time = time_now + 10000;
         hub_msg();
         my_printf("(bambus) bambus连接中...");
       }
@@ -192,7 +208,7 @@ void loop()
   else if (stu == BambuBus_package_heartbeat) // have data
   {
 
-    SYS_leds.clear();
+    //SYS_leds.clear();
     error_flag = false;
     if (WiFi.status() == WL_CONNECTED)
     {
@@ -200,7 +216,7 @@ void loop()
 
       if (mqtt_time < time_now)
       {
-        mqtt_time = time_now + 20000; // 20秒延迟
+        mqtt_time = time_now + 10000; // 10秒延迟
         uint8_t ams_num = postMsgId / 4;
         uint8_t tay_num = postMsgId % 4;
         // ESP_LOGE("memory", "RAM可使用大小: %d", ESP.getFreeHeap());
@@ -297,13 +313,13 @@ void loop()
   if (led_time < time_now)
   {
     led_time = time_now + 500;
-    hub_msg();
+    //hub_msg();
     if (SYS_leds.canShow())
     {
       SYS_leds.show();
     }
   }
-  Motion_control_run(error_flag);
+  //Motion_control_run(error_flag);
   vTaskDelay(pdMS_TO_TICKS(4)); // 控速
   // delay(1);
 }
