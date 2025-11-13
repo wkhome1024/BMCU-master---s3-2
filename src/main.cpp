@@ -7,23 +7,24 @@
 // const int mqtt_port1 = 1883;                // MQTT服务器端口
 char ha_topic[20] = "bmcu-hub-1"; // Home Assistant 发现主题
 char logTopic[20] = "bmcu-hub-1/log";
-char topic[8][8] = {"bmcu1-1", "bmcu1-2", "bmcu1-3", "bmcu1-4", "bmcu1-5", "bmcu1-6", "bmcu1-7", "bmcu1-8"};
-char host_name[20] = "bmcu-hub-1"; // 设备主机名
-#define product_id "bmcu-hub"      // 产品ID
-#define device_id "s3"             // 设备ID
-uint8_t hub_num = 3;               // 集线器编号
+// char topic[8][8] = {"bmcu1-1", "bmcu1-2", "bmcu1-3", "bmcu1-4", "bmcu1-5", "bmcu1-6", "bmcu1-7", "bmcu1-8"};
+char host_name[20] = "bmcu-hub-1";                   // 设备主机名
+char all_filament_topic[20] = "bmcu-hub-1/filament"; // 所有耗材信息的主题
+#define product_id "bmcu-hub"                        // 产品ID
+#define device_id "s3"                               // 设备ID
+uint8_t hub_num = 3;                                 // 集线器编号
 char mqtt_id[20];
 int save_count = 0;
 int postMsgId = 0;              // 消息ID初始值为0
 int catch_key = 0;              // 抓包计数
 bool catch_mode = true;         // 抓包模式
 bool server_key = false;        // HTTP服务器开关
-bool Motor_enable = false; // 电机使能状态
+bool Motor_enable = false;      // 电机使能状态
 WiFiClient espclient;           // 创建一个WiFiClient对象
 PubSubClient client(espclient); // 创建一个PubSubClient对象
 bool error_flag = false;
-#define SYS_RGB 8    // RGB灯针脚
-#define ledPixels 3  //led数量
+#define SYS_RGB 8   // RGB灯针脚
+#define ledPixels 3 // led数量
 Adafruit_NeoPixel SYS_leds(ledPixels, SYS_RGB, NEO_GRB + NEO_KHZ800);
 void LED_init()
 {
@@ -37,6 +38,7 @@ void LED_setColor(uint8_t num, uint8_t r, uint8_t g, uint8_t b)
 {
   SYS_leds.setPixelColor(num, r, g, b);
 }
+
 bool sw_send = true;
 void hub_msg()
 {
@@ -52,9 +54,9 @@ void hub_msg()
 
     // char payload[100];
     // my_printf("{\"Pull_Voltage\":%.2f,\"Online_Voltage\":%.2f,\"Buf_PWM\":%.2f}",pull_voltage, online_voltage, Buf_pwm_read());
-    my_printf("(sensor) 拉力传感器电压: %.2f V", MC_PULL_stu_raw);
-    my_printf("(sensor) 在线传感器电压: %.2f V", MC_ONLINE_key_stu_raw);
-    my_printf("(sensor) 缓冲PWM状态: %.2f", H_PULL_stu_raw);
+    // my_printf("(sensor) 拉力传感器电压: %.2f V", MC_PULL_stu_raw);
+    // my_printf("(sensor) 在线传感器电压: %.2f V", MC_ONLINE_key_stu_raw);
+    // my_printf("(sensor) 缓冲PWM状态: %.2f", H_PULL_stu_raw);
     my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
     // uint16_t rawAngle = as5600.readRawAngle();
     // uint16_t angle = as5600.readAngle();
@@ -63,6 +65,35 @@ void hub_msg()
     // my_printf("(sensor) 原始角度值: %d", rawAngle);
     // my_printf("(sensor) 处理后角度值: %d", angle);
 
+    uint8_t ams_num = postMsgId / 4;
+    uint8_t tay_num = postMsgId % 4;
+    String all_filament_data = "{";
+    // 为每个AMS创建一个对象
+    all_filament_data += "\"ams" + String(ams_num + 1) + "\":{";
+    // 添加4个托盘的数据
+    if (tay_num == 0)
+      all_filament_data += "\"tay1\":" + Bmcu_set_json(ams_num, tay_num);
+    if (tay_num == 1)
+      all_filament_data += "\"tay2\":" + Bmcu_set_json(ams_num, tay_num);
+    if (tay_num == 2)
+      all_filament_data += "\"tay3\":" + Bmcu_set_json(ams_num, tay_num);
+    if (tay_num == 3)
+      all_filament_data += "\"tay4\":" + Bmcu_set_json(ams_num, tay_num);
+    all_filament_data += "}";
+    all_filament_data += "}";
+    // 发布到统一的耗材主题
+    client.publish(all_filament_topic, all_filament_data.c_str());
+    postMsgId++;
+    if (postMsgId > ((get_AMS_num_max() * 4) - 1))
+    {
+      postMsgId = 0;
+      my_printf("(mqtt) 发送数据成功");
+      SYS_leds.setPixelColor(1, 0x00, 0x00, 0x30); // 发送数据成功后变为蓝色
+      if (SYS_leds.canShow())
+      {
+        SYS_leds.show();
+      }
+    }
     sw_send = !sw_send;
   }
 }
@@ -110,23 +141,22 @@ void publishLogOverMQTT()
 }
 void motorTask(void *pvParameters)
 {
-    while (1)
-    {
-        Motion_control_run(error_flag);
-        vTaskDelay(pdMS_TO_TICKS(10)); // 每10ms调用一次
-    }
+  while (1)
+  {
+    Motion_control_run(error_flag);
+    vTaskDelay(pdMS_TO_TICKS(10)); // 每10ms调用一次
+  }
 }
 void setup_motor_task()
 {
-    BaseType_t motorResult = xTaskCreate(motorTask, "Motor Task", 4096, NULL, 1, NULL);
-    if (motorResult != pdPASS)
-    {
-        ESP_LOGE("(rs485)", "Failed to create Motor Task");
-    }
+  BaseType_t motorResult = xTaskCreate(motorTask, "Motor Task", 4096, NULL, 1, NULL);
+  if (motorResult != pdPASS)
+  {
+    ESP_LOGE("(rs485)", "Failed to create Motor Task");
+  }
 }
 void setup()
 {
-
   INIT_DATA();
   BambuBus_init();
   Switch_init();
@@ -148,12 +178,9 @@ void setup()
     uint8_t mac_ad[6];
     WiFi.macAddress(mac_ad);
     sprintf(mqtt_id, "%s-%02X%02X", host_name, mac_ad[4], mac_ad[5]);
-    ha_topic[9] += (hub_num - 1); // 修改发现主题以包含集线器编号
-    logTopic[9] += (hub_num - 1); // 修改日志主题以包含集线器编号
-    for (int i = 0; i < 8; i++)
-    {
-      topic[i][4] += (hub_num - 1); // 添加集线器编号到主题中
-    }
+    ha_topic[9] += (hub_num - 1);
+    logTopic[9] += (hub_num - 1);
+    all_filament_topic[9] += (hub_num - 1);
     client.setServer(mqtt_server.c_str(), mqtt_port); // 设置MQTT服务器地址和端口
     client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
     client.publish(ha_topic, "Hi, I'm ESP32 ^^");
@@ -192,7 +219,7 @@ void loop()
   if (stu == BambuBus_package_ERROR) // offline
   {
     // SYS_RGB.set_RGB(0x30, 0x00, 0x00, 0);
-    //SYS_leds.clear();
+    // SYS_leds.clear();
     error_flag = true;
     if (WiFi.status() == WL_CONNECTED)
     {
@@ -208,7 +235,7 @@ void loop()
   else if (stu == BambuBus_package_heartbeat) // have data
   {
 
-    //SYS_leds.clear();
+    // SYS_leds.clear();
     error_flag = false;
     if (WiFi.status() == WL_CONNECTED)
     {
@@ -217,31 +244,7 @@ void loop()
       if (mqtt_time < time_now)
       {
         mqtt_time = time_now + 10000; // 10秒延迟
-        uint8_t ams_num = postMsgId / 4;
-        uint8_t tay_num = postMsgId % 4;
-        // ESP_LOGE("memory", "RAM可使用大小: %d", ESP.getFreeHeap());
-        String temp;
-        if (tay_num == 0)
-          temp = ("{\"tay1\":" + Bmcu_set_json(ams_num, tay_num) + "}");
-        if (tay_num == 1)
-          temp = ("{\"tay2\":" + Bmcu_set_json(ams_num, tay_num) + "}");
-        if (tay_num == 2)
-          temp = ("{\"tay3\":" + Bmcu_set_json(ams_num, tay_num) + "}");
-        if (tay_num == 3)
-          temp = ("{\"tay4\":" + Bmcu_set_json(ams_num, tay_num) + "}");
-        client.publish(topic[ams_num], temp.c_str());
-        postMsgId++;
-        if (postMsgId > ((get_AMS_num_max() * 4) - 1))
-        {
-          postMsgId = 0;
-          hub_msg();
-          my_printf("(mqtt) 发送数据成功");
-          SYS_leds.setPixelColor(1, 0x00, 0x00, 0x30); // 发送数据成功后变为蓝色
-          if (SYS_leds.canShow())
-          {
-            SYS_leds.show();
-          }
-        }
+        hub_msg();
       }
     }
     else if (!Bambus_onflush() && offline_time < time_now)
@@ -313,13 +316,13 @@ void loop()
   if (led_time < time_now)
   {
     led_time = time_now + 500;
-    //hub_msg();
+    // hub_msg();
     if (SYS_leds.canShow())
     {
       SYS_leds.show();
     }
   }
-  //Motion_control_run(error_flag);
+  // Motion_control_run(error_flag);
   vTaskDelay(pdMS_TO_TICKS(4)); // 控速
   // delay(1);
 }
