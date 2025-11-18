@@ -14,7 +14,7 @@ uint8_t Tay_num_c = 0;
 uint8_t AMS_num_max = 4;
 bool bambus_onflush = false;
 bool bambus_error = false;
-uint8_t motor_ready = 0;
+uint8_t motor_unready = 0;
 _filament_motion_state_set motion_temp[4][4];
 uint8_t statu_temp[4][4];
 struct _filament
@@ -713,7 +713,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                         data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].motion_set = idle;
                         data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].pressure = 0xFFFF;
                     }
-                    if (!motor_ready && MC_ONLINE_key_stu == 0)    //等待bmcu就绪
+                    if (!motor_unready && MC_ONLINE_key_stu == 0)    //等待bmcu就绪
                         data_save.BambuBus_now_filament_num = numx;
                 }
                 data_save.filament[AMS_num][read_num].motion_set = need_send_out;
@@ -834,7 +834,7 @@ void send_for_Hit(unsigned char *buf, int length)
     }
 
     Hit_res[5] = 0;                       // sw_read();               // 五通前端状态
-    Hit_res[6] = motor_ready ? 0x01 : 0x00;           // 电机准备状态
+    Hit_res[6] = motor_unready ? 0x01 : 0x00;           // 电机准备状态
     if (BambuBus_address == BambuBus_AMS) // AMS08
     {
         Hit_res[5] |= 0x30; // 0x30
@@ -902,8 +902,7 @@ void send_for_motion_short(unsigned char *buf, int length)
     Motion_res[5] = statu_flags;
     Motion_res[6] = fliment_motion_flag;
     Motion_res[7] = (uint8_t)MC_ONLINE_key_stu;
-    if (motor_ready)
-        Motion_res[7] |= 0x30;
+    Motion_res[7] = motor_unready ? 0x30 : 0x00;
     Motion_res[8] = (uint8_t)((MC_PULL_stu_raw - 1.0f) * 128); // 通道压力值
 
     if (!set_motion(AMS_num, read_num, statu_flags, fliment_motion_flag))
@@ -977,8 +976,7 @@ void send_for_motion_long(unsigned char *buf, int length)
     Motion_long_res[5] = statu_flags;
     Motion_long_res[6] = fliment_motion_flag;
     Motion_long_res[7] = (uint8_t)MC_ONLINE_key_stu;
-    if (motor_ready)
-        Motion_res[7] |= 0x30;
+    Motion_long_res[7] = motor_unready ? 0x30 : 0x00;
     Motion_long_res[8] = (uint8_t)((MC_PULL_stu_raw - 1.0f) * 128); // 通道压力值
 
     for (auto i = 0; i < 4; i++)
@@ -1569,11 +1567,11 @@ void Bmcu_run()
             }
             if (bmcu_online & 0xAA)
             {
-                motor_ready |= (0x01 << AMS_num);
+                motor_unready |= (0x01 << AMS_num);
             }
             else
             {
-                motor_ready &= ~(0x01 << AMS_num);
+                motor_unready &= ~(0x01 << AMS_num);
             }
             if (read_num < 4)
             {
