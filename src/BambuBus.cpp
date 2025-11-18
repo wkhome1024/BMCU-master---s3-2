@@ -902,7 +902,8 @@ void send_for_motion_short(unsigned char *buf, int length)
     Motion_res[5] = statu_flags;
     Motion_res[6] = fliment_motion_flag;
     Motion_res[7] = (uint8_t)MC_ONLINE_key_stu;
-    Motion_res[7] = motor_unready ? 0x30 : 0x00;
+    if (motor_unready)
+        Motion_res[7] |= 0x30;
     Motion_res[8] = (uint8_t)((MC_PULL_stu_raw - 1.0f) * 128); // 通道压力值
 
     if (!set_motion(AMS_num, read_num, statu_flags, fliment_motion_flag))
@@ -976,7 +977,8 @@ void send_for_motion_long(unsigned char *buf, int length)
     Motion_long_res[5] = statu_flags;
     Motion_long_res[6] = fliment_motion_flag;
     Motion_long_res[7] = (uint8_t)MC_ONLINE_key_stu;
-    Motion_long_res[7] = motor_unready ? 0x30 : 0x00;
+    if (motor_unready)
+        Motion_long_res[7] |= 0x30;
     Motion_long_res[8] = (uint8_t)((MC_PULL_stu_raw - 1.0f) * 128); // 通道压力值
 
     for (auto i = 0; i < 4; i++)
