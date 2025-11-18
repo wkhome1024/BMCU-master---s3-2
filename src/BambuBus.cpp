@@ -800,7 +800,7 @@ void Bmcu_package_send_with_crc(uint8_t *data, int data_length)
 
 unsigned char Hit_res[] = {0x9D, 0x0A, 0x20,
                            0x00, 0x00, // amsnum + taynum
-                           0x00, 0x00, // 控制位
+                           0x00, 0x00, // 在线检测+电机检测
                            0x00};      // crc8 校验
 void send_for_Hit(unsigned char *buf, int length)
 {
@@ -885,7 +885,7 @@ unsigned char Cxx_res[] = {0x3D, 0xE0, 0x2C, 0x1A, 0x03,
 unsigned char Motion_res[] = {0x9D, 0x0A, 0x03,
                               0x00, 0x00, // amsnum + taynum
                               0x00, 0x00, // statu_flags + fliment_motion
-                              0x00, 0x00, // 控制位
+                              0x00, 0x00, // 在线检测+缓冲
                               0x00};      // crc8 校验
 void send_for_motion_short(unsigned char *buf, int length)
 {
@@ -943,7 +943,7 @@ void send_for_motion_short(unsigned char *buf, int length)
 unsigned char Motion_long_res[] = {0x9D, 0x0A, 0x04,
                                    0x00, 0x00, // amsnum + taynum
                                    0x00, 0x00, // statu_flags + fliment_motion
-                                   0x00, 0x00, // 控制位
+                                   0x00, 0x00, // 在线检测+缓冲
                                    0x00};      // crc8 校验
 unsigned char Dxx_res[] = {0x3D, 0xE0, 0x3C, 0x1A, 0x04,
                            0x00, //[5]AMS num
