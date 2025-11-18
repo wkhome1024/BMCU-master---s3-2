@@ -292,6 +292,7 @@ void loop()
         Config_save();
       }
     }
+    //motor_test = false;
     save_time = time_now + 60000; // 60 秒一次
     if (save_count >= 40)
     {

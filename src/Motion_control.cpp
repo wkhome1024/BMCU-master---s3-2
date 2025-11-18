@@ -36,7 +36,6 @@ uint64_t Assist_send_time = 3000; // 仅触发外侧后，送料时长
 // float_t P1X_OUT_filament_meters = 200.0f;                  // 内置200mm 外置700mm
 float last_total_distance = 0.0f; // 初始化退料开始时的距离
 // bool filament_channel_inserted[4]={false,false,false,false};//通道是否插入
-
 void MC_IO_read()
 {
     static float MC_pull_old = 0;
@@ -214,7 +213,7 @@ public:
             set_filament_motion(CHx, idle);
         }
 
-        if (motion == 99 || motion == 0) // 刹车
+        if ((motion == 99 || motion == 0)) // 刹车
         {
             speed_set = 0;
             PID.clear();
@@ -248,7 +247,7 @@ public:
         }
         else if (motion == 66) // onuse pressure
         {
-            speed_set = (60 - H_PULL_stu_raw) * 0.75; // 线性压力反馈
+            speed_set = (70 - H_PULL_stu_raw) * 0.75; // 线性压力反馈
             if (speed_set < 0 && speed_set > -5)      // 防止电机抖动
                 speed_set = 0;
         }
@@ -258,8 +257,7 @@ public:
             if (speed_set < 15 && speed_set > 0)                         // 防止电机抖动
                 speed_set = 0;
         }
-
-        float x = PID.caculate(speed_as5600 - speed_set, (float)(time_now - time_last) / 1000);
+        float x = PID.caculate(speed_set - speed_as5600, (float)(time_now - time_last) / 1000);
         if (x > 5)
             x += pwm_zero;
         else if (x < -5)
@@ -289,35 +287,56 @@ void Motion_control_set_PWM(int PWM)
 {
     if (Motor_enable == false)
     {
+
+        //ledcWrite(1, 0);
+        //ledcWrite(3, 0);
         motor.setFreewheel();
         return;
     }
     if (PWM == 0)
     {
-        motor.setFreewheel();
+        //ledcWrite(1, 255);
+        //ledcWrite(3, 255);
+        motor.setHardBrake();
     }
     else if (PWM > 0)
     {
+        //ledcWrite(1, PWM / 4);
+        //ledcWrite(3, 0);
         motor.setSpeed(PWM, Dir::CW);
     }
     else if (PWM < 0)
     {
-        motor.setSpeed(PWM, Dir::CCW);
+        //ledcWrite(1, 0);
+        //ledcWrite(3, -PWM / 4);
+        motor.setSpeed(-PWM, Dir::CCW);
     }
 }
 
 void Motor_init()
 {
+    //pinMode(Motor_H_pin, OUTPUT);
+    //pinMode(Motor_L_pin, OUTPUT);
     motor.setup(hw);
+    motor.reconfigureFrequency(100000);
     motor.setFreewheelMode(FreewheelMode::HiZ_Awake);
     motor.start();
+    /*
+    ledcSetup(1, 100000, 8);       // 100kHz, 8-bit
+    ledcAttachPin(Motor_H_pin, 1); // 将Motor_H_pin引脚连接到通道1
+    ledcWrite(1, 0);               // 初始占空比为 0
+    ledcSetup(3, 100000, 8);       // 100kHz, 8-bit
+    ledcAttachPin(Motor_L_pin, 3); // 将Motor_L_pin引脚连接到通道3
+    ledcWrite(3, 0);               // 初始占空比为 0
+    */
+
 }
 
 void Motion_control_init()
 {
     MC_PULL_ONLINE_read();
     as5600.begin();
-    my_printf("AS5600 Status: %d" ,as5600.getMagnetStatus());
+    my_printf("(AS5600) AS5600 MagnetStatus: %d", as5600.getMagnetStatus());
     Motor_init();
 }
 
@@ -355,7 +374,7 @@ void AS5600_distance_updata()
     if (get_filament_motion(filament_num) != on_use || distance_E > 0)
         add_filament_meters(filament_num, distance_E / 1000);
     time_last = time_now;
-    last_total_distance += distance_E;  //mm
+    last_total_distance += distance_E; // mm
 }
 
 uint8_t pullcheck[4] = {0, 0, 0, 0}; // 当前bmcu通道使用标记
@@ -415,7 +434,7 @@ void motor_motion_run()
             }
             else if (MOTOR_CONTROL.get_motion() == 99 || MOTOR_CONTROL.get_motion() == 3)
             {
-                MOTOR_CONTROL.set_motion(2, 10000); // 保持压力延迟10s
+                MOTOR_CONTROL.set_motion(2, 5000); // 保持压力延迟5s
             }
             else if (MOTOR_CONTROL.get_motion() != 2 || H_PULL_stu < 0)
             {
@@ -436,6 +455,7 @@ void motor_motion_run()
             LED_setColor(2, 0xFF, 0x00, 0xFF); // 紫色
             if (pullcheck[num] == 1)
             {
+                MOTOR_CONTROL.set_motion(2, 2000);
                 break;
             }
             if (H_PULL_stu > -1 && MC_PULL_stu < 2)

@@ -433,6 +433,7 @@ void WebHandler::handleData(AsyncWebServerRequest *request)
   else if (catchkey == "close")
   {
     catch_key = 0;
+    //motor_test = true;
     my_printf("(http) Bambu-hub关闭抓包");
     request->send(200, "text/plain", "close catch");
   }

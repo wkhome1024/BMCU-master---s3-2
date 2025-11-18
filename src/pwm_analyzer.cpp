@@ -216,7 +216,7 @@ PWM_Analyzer::PWM_Analyzer(int _input_pwm_pin ,int _MCPWM_unit ,int _capture_cha
 
 uint32_t PWM_Analyzer::Get_PWM_frequency(){
     if(high == 0 && low == 0){
-        log_e("No pwm signal detected.");
+        //log_e("No pwm signal detected.");
         return -1;
     }
     else{
@@ -227,7 +227,7 @@ uint32_t PWM_Analyzer::Get_PWM_frequency(){
 
 double PWM_Analyzer::Get_PWM_duty_cycle(){ 
     if(high == 0 && low == 0){
-        log_e("No pwm signal detected.");
+        //log_e("No pwm signal detected.");
         return -1;
     }
     else{
