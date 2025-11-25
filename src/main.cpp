@@ -17,9 +17,9 @@ char mqtt_id[20];
 int save_count = 0;
 int postMsgId = 0;              // 消息ID初始值为0
 int catch_key = 0;              // 抓包计数
-bool catch_mode = true;         // 抓包模式
+bool catch_mode = false;         // 抓包模式
 bool server_key = false;        // HTTP服务器开关
-bool Motor_enable = false;      // 电机使能状态
+bool Motor_enable = true;      // 电机使能状态
 WiFiClient espclient;           // 创建一个WiFiClient对象
 PubSubClient client(espclient); // 创建一个PubSubClient对象
 bool error_flag = false;
@@ -48,38 +48,22 @@ void hub_msg()
     if (!client.publish(ha_topic, Sht30_read_mqtt().c_str()))
       client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
     sw_send = !sw_send;
+
+    //my_printf("{\"Pull_Voltage\":%.2f,\"Online_Voltage\":%.2f,\"Buf_PWM\":%.2f}",pull_voltage, online_voltage, Buf_pwm_read());
+    //my_printf("(sensor) 拉力传感器电压: %.2f V", MC_PULL_stu_raw);
+    //my_printf("(sensor) 在线传感器电压: %.2f V", MC_ONLINE_key_stu_raw);
+    //my_printf("(sensor) 缓冲PWM状态: %.2f", H_PULL_stu_raw);
+
+    //my_printf("(sensor) 电机输出: %d", motor_pwm);
   }
   else
   {
-
-    // char payload[100];
-    // my_printf("{\"Pull_Voltage\":%.2f,\"Online_Voltage\":%.2f,\"Buf_PWM\":%.2f}",pull_voltage, online_voltage, Buf_pwm_read());
-    // my_printf("(sensor) 拉力传感器电压: %.2f V", MC_PULL_stu_raw);
-    // my_printf("(sensor) 在线传感器电压: %.2f V", MC_ONLINE_key_stu_raw);
-    // my_printf("(sensor) 缓冲PWM状态: %.2f", H_PULL_stu_raw);
-    my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
-    // uint16_t rawAngle = as5600.readRawAngle();
-    // uint16_t angle = as5600.readAngle();
-    // float angleDegrees = as5600.getAngleDegrees();
-    // my_printf("(sensor) 角度: %.2f°", angleDegrees);
-    // my_printf("(sensor) 原始角度值: %d", rawAngle);
-    // my_printf("(sensor) 处理后角度值: %d", angle);
-
     uint8_t ams_num = postMsgId / 4;
     uint8_t tay_num = postMsgId % 4;
     String all_filament_data = "{";
     // 为每个AMS创建一个对象
-    all_filament_data += "\"ams" + String(ams_num + 1) + "\":{";
-    // 添加4个托盘的数据
-    if (tay_num == 0)
-      all_filament_data += "\"tay1\":" + Bmcu_set_json(ams_num, tay_num);
-    if (tay_num == 1)
-      all_filament_data += "\"tay2\":" + Bmcu_set_json(ams_num, tay_num);
-    if (tay_num == 2)
-      all_filament_data += "\"tay3\":" + Bmcu_set_json(ams_num, tay_num);
-    if (tay_num == 3)
-      all_filament_data += "\"tay4\":" + Bmcu_set_json(ams_num, tay_num);
-    all_filament_data += "}";
+    all_filament_data += "\"tay" + String(postMsgId + 1) + "\":";
+    all_filament_data += Bmcu_set_json(ams_num, tay_num);
     all_filament_data += "}";
     // 发布到统一的耗材主题
     client.publish(all_filament_topic, all_filament_data.c_str());
@@ -88,6 +72,7 @@ void hub_msg()
     {
       postMsgId = 0;
       my_printf("(mqtt) 发送数据成功");
+      my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);      
       SYS_leds.setPixelColor(1, 0x00, 0x00, 0x30); // 发送数据成功后变为蓝色
       if (SYS_leds.canShow())
       {

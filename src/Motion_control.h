@@ -12,4 +12,4 @@ extern int MC_PULL_stu;
 extern float MC_PULL_stu_raw;
 extern float H_PULL_stu_raw;
 extern float last_total_distance;
-extern bool motor_test;
+extern int motor_pwm;
