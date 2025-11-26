@@ -34,7 +34,7 @@ float MC_PULL_voltage_pull = 1.60f; // 压力平衡点 1.60
 uint64_t Assist_send_time = 3000; // 仅触发外侧后，送料时长
 // 退料距离 单位 MM
 // float_t P1X_OUT_filament_meters = 200.0f;                  // 内置200mm 外置700mm
-float last_total_distance = 0.0f; // 初始化退料开始时的距离
+float last_total_distance = 0.0f; // 每个耗材使用的距离
 // bool filament_channel_inserted[4]={false,false,false,false};//通道是否插入
 void MC_IO_read()
 {
@@ -259,6 +259,8 @@ public:
             speed_set = (2.0f - MC_PULL_stu_raw) * -200; // 线性压力反馈
             if (speed_set < 10 && speed_set > 0)                         // 防止电机抖动
                 speed_set = 0;
+            if (MC_PULL_stu == -2 && MC_ONLINE_key_stu == 1)
+                speed_set = -10;
         }
         float x = PID.caculate(speed_set - speed_as5600, (float)(time_now - time_last) / 1000);
         if (x > 5)
@@ -374,11 +376,12 @@ void AS5600_distance_updata()
     float speedx = distance_E / T * 1000;
     T = speed_filter_k / (T + speed_filter_k);
     speed_as5600 = speedx * (1 - T) + speed_as5600 * T; // mm/s
-    if (get_filament_motion(filament_num) != on_use || distance_E > 0)
-        add_filament_meters(filament_num, distance_E / 1000);
+    if (MC_ONLINE_key_stu == 2 || (distance_E > 0 && MC_ONLINE_key_stu > 0))
+    {
+        add_filament_meters(filament_num, distance_E / 1000); 
+        last_total_distance += distance_E; // mm               
+    }
     time_last = time_now;
-    if (MC_ONLINE_key_stu == 2)
-        last_total_distance += distance_E; // mm
 }
 
 uint8_t pullcheck[4] = {0, 0, 0, 0}; // 当前bmcu通道使用标记

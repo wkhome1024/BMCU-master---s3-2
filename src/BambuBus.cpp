@@ -636,7 +636,7 @@ uint8_t get_filament_left_char(uint8_t AMS_num)
     }
     return data;
 }
-
+uint32_t meters_virtual_count = 0;
 void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigned char read_num, unsigned char statu_flags)
 {
     // static uint8_t last_AMS_num = 0xFF;
@@ -648,7 +648,7 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
     uint8_t motion_flag = 0x00;
     if ((read_num != 0xFF) && (read_num < 4))
     {
-        meters = data_save.filament[AMS_num][read_num].meters;
+        meters = data_save.filament[AMS_num][read_num].meters + ((float)meters_virtual_count / 100000);
         // if (BambuBus_address == BambuBus_AMS)
         // meters = -meters;
         // pressure = data_save.filament[AMS_num][read_num].pressure;
@@ -694,7 +694,6 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
 bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char statu_flags, unsigned char fliment_motion_flag)
 {
     static uint32_t time_last = 0;
-    static uint32_t meters_virtual_count = 0;
     uint32_t time_now = get_time32();
     uint32_t time_used = time_now - time_last;
     time_last = time_now;
@@ -729,7 +728,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 }
                 else if (meters_virtual_count < 3500) // 10s virtual data
                 {
-                    data_save.filament[AMS_num][read_num].meters += (float)time_used / 100000; // 10mm/s
+                    //data_save.filament[AMS_num][read_num].meters += (float)time_used / 100000; // 10mm/s
                     meters_virtual_count += time_used;
                 }
                 data_save.filament[AMS_num][read_num].motion_set = on_use;
@@ -807,7 +806,7 @@ void online_buf_set(unsigned char *set_buf)
     set_buf[0] = (uint8_t)MC_ONLINE_key_stu;
     if (motor_unready)
         set_buf[0] |= 0x30;
-    set_buf[1] = (uint8_t)((MC_PULL_stu_raw - 1.0f) * 160); // 通道压力值/128 增大25%
+    set_buf[1] = (uint8_t)((MC_PULL_stu_raw - 0.8f) * 128); // 通道压力值/128 增大0.2
 }
 unsigned char Hit_res[] = {0x9D, 0x0A, 0x20,
                            0x00, 0x00, // amsnum + taynum
@@ -1592,9 +1591,13 @@ void Bmcu_run()
             if (read_num < 4)
             {
                 if (bambus_onflush)
-                    data_save.filament[AMS_num][read_num].meters = max(meters, data_save.filament[AMS_num][read_num].meters);
+                {
+                    //data_save.filament[AMS_num][read_num].meters = max(meters, data_save.filament[AMS_num][read_num].meters);                    
+                }
                 else if (meters < 600 && meters >= 0)
-                    data_save.filament[AMS_num][read_num].meters = meters;
+                {
+                    //data_save.filament[AMS_num][read_num].meters = meters;                    
+                }
             }
         }
     }
