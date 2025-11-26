@@ -377,7 +377,8 @@ void AS5600_distance_updata()
     if (get_filament_motion(filament_num) != on_use || distance_E > 0)
         add_filament_meters(filament_num, distance_E / 1000);
     time_last = time_now;
-    last_total_distance += distance_E; // mm
+    if (MC_ONLINE_key_stu == 2)
+        last_total_distance += distance_E; // mm
 }
 
 uint8_t pullcheck[4] = {0, 0, 0, 0}; // 当前bmcu通道使用标记
@@ -412,6 +413,7 @@ void motor_motion_run()
                 MOTOR_CONTROL.set_motion(3, 500);
             }
             pullcheck[num] = 1;
+            last_total_distance = 0;            
             break;
         case need_pull_back:
             LED_setColor(2, 0xFF, 0x00, 0xFF); // 紫色
@@ -423,7 +425,6 @@ void motor_motion_run()
             {
                 MOTOR_CONTROL.set_motion(-66, 100);
             }
-            last_total_distance = 0;
             break;
         case on_use:
             LED_setColor(2, 0xFF, 0xFF, 0xFF); // 白色
@@ -496,12 +497,9 @@ void Motion_control_run(int error)
 {
     MC_PULL_ONLINE_read();
     AS5600_distance_updata();
-    if (!error)
+    motor_motion_run();    
+    if (error)
     {
-        motor_motion_run();
-    }
-    else
-    {
-        MOTOR_CONTROL.set_motion(0, 100);
+        //MOTOR_CONTROL.set_motion(0, 100);
     }
 }

@@ -153,7 +153,7 @@ const char root2_html[] PROGMEM = R"rawliteral(
           <option disabled selected>选择抓包参数</option>
           <option value="data">输出抓包数据</option>
           <option value="open">开启抓包500个包</option>
-          <option value="close">关闭抓包</option>
+          <option value="close">关闭抓包--断开从机</option>
           <option value="catch_mode">开启抓包模式</option>
           <option value="normal_mode">关闭抓包模式</option>
           <option value="refresh">强制刷新</option>
@@ -433,8 +433,8 @@ void WebHandler::handleData(AsyncWebServerRequest *request)
   else if (catchkey == "close")
   {
     catch_key = 0;
-    //motor_test = true;
-    my_printf("(http) Bambu-hub关闭抓包");
+    Set_24(false);
+    my_printf("(http) Bambu-hub关闭抓包--断开从机电源20s");
     request->send(200, "text/plain", "close catch");
   }
   else if (catchkey == "catch_mode")

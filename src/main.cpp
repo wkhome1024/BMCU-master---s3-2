@@ -17,9 +17,9 @@ char mqtt_id[20];
 int save_count = 0;
 int postMsgId = 0;              // 消息ID初始值为0
 int catch_key = 0;              // 抓包计数
-bool catch_mode = false;         // 抓包模式
+bool catch_mode = false;        // 抓包模式
 bool server_key = false;        // HTTP服务器开关
-bool Motor_enable = true;      // 电机使能状态
+bool Motor_enable = true;       // 电机使能状态
 WiFiClient espclient;           // 创建一个WiFiClient对象
 PubSubClient client(espclient); // 创建一个PubSubClient对象
 bool error_flag = false;
@@ -49,12 +49,12 @@ void hub_msg()
       client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
     sw_send = !sw_send;
 
-    //my_printf("{\"Pull_Voltage\":%.2f,\"Online_Voltage\":%.2f,\"Buf_PWM\":%.2f}",pull_voltage, online_voltage, Buf_pwm_read());
-    //my_printf("(sensor) 拉力传感器电压: %.2f V", MC_PULL_stu_raw);
-    //my_printf("(sensor) 在线传感器电压: %.2f V", MC_ONLINE_key_stu_raw);
-    //my_printf("(sensor) 缓冲PWM状态: %.2f", H_PULL_stu_raw);
+    // my_printf("{\"Pull_Voltage\":%.2f,\"Online_Voltage\":%.2f,\"Buf_PWM\":%.2f}",pull_voltage, online_voltage, Buf_pwm_read());
+    // my_printf("(sensor) 拉力传感器电压: %.2f V", MC_PULL_stu_raw);
+    // my_printf("(sensor) 在线传感器电压: %.2f V", MC_ONLINE_key_stu_raw);
+    // my_printf("(sensor) 缓冲PWM状态: %.2f", H_PULL_stu_raw);
 
-    //my_printf("(sensor) 电机输出: %d", motor_pwm);
+    // my_printf("(sensor) 电机输出: %d", motor_pwm);
   }
   else
   {
@@ -72,7 +72,7 @@ void hub_msg()
     {
       postMsgId = 0;
       my_printf("(mqtt) 发送数据成功");
-      my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);      
+      my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
       SYS_leds.setPixelColor(1, 0x00, 0x00, 0x30); // 发送数据成功后变为蓝色
       if (SYS_leds.canShow())
       {
@@ -261,10 +261,6 @@ void loop()
   {
     if (save_time != 0)
     {
-      if (!enable_24())
-      {
-        Set_24(true);
-      }
       Set_fan_t(30); // 30度开启风扇
       publishLogOverMQTT();
       if (Switch_need_to_save())
@@ -277,7 +273,7 @@ void loop()
         Config_save();
       }
     }
-    //motor_test = false;
+    // motor_test = false;
     save_time = time_now + 60000; // 60 秒一次
     if (save_count >= 40)
     {
@@ -286,17 +282,28 @@ void loop()
     }
     save_count++;
   }
-  if (server_time == 0 && !server_key) // 如果WebServer未开启
+  if (server_time == 0) // 如果WebServer未开启
   {
     server_time = time_now + 20000; // 20秒后开启WebServer
     // initWebServer();                  // 开启WebServer
     // my_printf("(web) WebServer已开启");
   }
+  else if (server_time == 1 && !enable_24())
+  {
+    server_time = time_now + 20000;
+  }
   else if (server_time < time_now && server_time != 1)
   {
-    server_key = true;
-    // stopWebServer();    // 关闭WebServer
-    my_printf("(web) WebServer已开启");
+    if (!server_key)
+    {
+      server_key = true;
+      my_printf("(web) WebServer已开启");
+    }
+    if (!enable_24())
+    {
+      Set_24(true);
+      my_printf("(power) 从机24v已开启");
+    }
     server_time = 1; // 防止重复执行
   }
   if (led_time < time_now)
