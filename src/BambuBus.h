@@ -58,6 +58,7 @@ extern "C"
     extern uint8_t Bmcu_have_data;
     extern int BambuBus_have_data;
     extern uint8_t motor_unready;
+    extern bool bambubus_save_flag;
 #define max_filament_num 4
     extern bool Bambubus_read();
     extern void Bambu_readuart();

@@ -232,11 +232,13 @@ public:
             if (speed_set < 0 && speed_set > -5)      // 防止电机抖动
                 speed_set = 0;
         }
-        else if (motion == -3) //  pull 进料重试
+        else if (motion == -2) //  prepull
         {
-            speed_set = -40;
+            speed_set = (30 - H_PULL_stu_raw) * 0.75; // 线性压力反馈
+            if (speed_set < 5 && speed_set > 0)      // 防止电机抖动
+                speed_set = 0;
         }
-        else if (motion == -1 || motion == -2) // pull 370 70 130 18
+        else if (motion == -1) // pull 370 70 130 18
         {
             speed_set = -60;
         }
@@ -273,9 +275,9 @@ public:
             x = PWM_lim;
         if (x < -PWM_lim)
             x = -PWM_lim;
-        if (speed_as5600 > 0.2 || motion == 0 || speed_as5600 < -0.2 || time_set_speed < time_now - 20000)
+        if (speed_as5600 > 0.2 || motion == 0 || speed_as5600 < -0.2 || time_set_speed < time_now - 5000)
         {
-            time_set_speed = time_now + 3000;
+            time_set_speed = time_now + 5000;
         }
         if (time_set_speed < time_now && time_set_speed != 0)
         {

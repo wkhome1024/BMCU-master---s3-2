@@ -68,7 +68,7 @@ void Bambubus_set_need_to_save()
 void Bambubus_save()
 {
     if (!Flash_saves(&data_save, sizeof(data_save), bmcu_addr))
-        ESP_LOGE("FLASH", "bmcu保存失败");
+        my_printf("(FLASH) Bambubus保存失败");
 
     Bambubus_need_to_save = false;
 }
@@ -648,7 +648,8 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
     uint8_t motion_flag = 0x00;
     if ((read_num != 0xFF) && (read_num < 4))
     {
-        meters = data_save.filament[AMS_num][read_num].meters + ((float)meters_virtual_count / 100000);
+        //meters = data_save.filament[AMS_num][read_num].meters + ((float)meters_virtual_count / 100000);
+        meters = data_save.filament[AMS_num][read_num].meters;
         // if (BambuBus_address == BambuBus_AMS)
         // meters = -meters;
         // pressure = data_save.filament[AMS_num][read_num].pressure;
@@ -732,6 +733,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                     meters_virtual_count += time_used;
                 }
                 data_save.filament[AMS_num][read_num].motion_set = on_use;
+                data_save.BambuBus_now_filament_num = AMS_num * 4 + read_num;
                 data_save.filament[AMS_num][read_num].pressure -= (uint16_t)time_used * 10; // reduce pressure
                 if (data_save.filament[AMS_num][read_num].pressure < 0x0700)
                     data_save.filament[AMS_num][read_num].pressure = 0x3700;
@@ -739,6 +741,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
             else if ((statu_flags == 0x07) && (fliment_motion_flag == 0x7F)) // 07 7F
             {
                 data_save.filament[AMS_num][read_num].motion_set = on_use;
+                data_save.BambuBus_now_filament_num = AMS_num * 4 + read_num;
                 data_save.filament[AMS_num][read_num].pressure = 0x2B00;
                 meters_virtual_count = 0;
             }
@@ -812,8 +815,12 @@ unsigned char Hit_res[] = {0x9D, 0x0A, 0x20,
                            0x00, 0x00, // amsnum + taynum
                            0x00, 0x00, // 在线检测+电机检测
                            0x00};      // crc8 校验
-void send_for_Hit(unsigned char *buf, int length)
+void send_for_Hit(unsigned char *buf, int length, uint32_t time_now)
 {
+    static uint32_t last_Hit_time = 0;
+    if (time_now - last_Hit_time < 80)
+        return;
+    last_Hit_time = time_now;
     static bool sw1 = true;
     if (!bambus_onflush || sw1)
     {
@@ -1602,6 +1609,7 @@ void Bmcu_run()
         }
     }
 }
+bool bambubus_save_flag = false;
 package_type BambuBus_run()
 {
     package_type stu = BambuBus_package_NONE;
@@ -1624,7 +1632,7 @@ package_type BambuBus_run()
             switch (stu)
             {
             case BambuBus_package_heartbeat:
-                send_for_Hit(buf_X, data_length);
+                send_for_Hit(buf_X, data_length, timex);
                 time_set = timex + 1000;
                 break;
             case BambuBus_package_filament_motion_short:
@@ -1702,13 +1710,14 @@ package_type BambuBus_run()
         {
             my_printf("(bmcu) Bambubus已检测到冲刷状态,已设置为打印状态");
             bambus_onflush = true;
+            bambubus_save_flag = true;
         }
     }
     if (Bambubus_need_to_save)
     {
         if (save_count == 20)
         {
-            if (!bambus_onflush)
+            if (!bambus_onflush && data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].motion_set == idle)
             {
                 Bambubus_save();
                 time_set = timex + 1000;
@@ -1716,7 +1725,7 @@ package_type BambuBus_run()
             }
             else
             {
-                save_count -= 2; // 2min后重试
+                save_count -= 10; // 2min后重试
             }
         }
     }

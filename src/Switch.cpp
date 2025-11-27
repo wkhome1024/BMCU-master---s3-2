@@ -138,7 +138,8 @@ void Switch_set_need_to_save()
 void Switch_save()
 {
     //Flash_saves(&switch_save, sizeof(switch_save), use_flash_addr + sizeof(switch_save));
-    if(!Flash_saves(&switch_save, sizeof(switch_save), switch_addr))  ESP_LOGE("FLASH", "switch保存失败");
+    if(!Flash_saves(&switch_save, sizeof(switch_save), switch_addr))  
+        my_printf("(FLASH) switch保存失败");
     switch_need_to_save = false;
 }
 bool Switch_need_to_save()

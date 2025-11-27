@@ -74,7 +74,7 @@ bool WIFI_needsave()
 void Config_save()
 {
   if (!Flash_saves(&config_save, sizeof(config_save), config_addr))
-    ESP_LOGE("FLASH", "wifi保存失败");
+    my_printf("(FLASH) wifi保存失败");
 
   wifi_needsave = false;
 }

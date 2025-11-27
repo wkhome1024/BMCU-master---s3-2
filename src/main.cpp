@@ -277,7 +277,11 @@ void loop()
     save_time = time_now + 60000; // 60 秒一次
     if (save_count >= 40)
     {
-      Bambubus_set_need_to_save();
+      if (bambubus_save_flag)
+      {
+          Bambubus_set_need_to_save();
+          bambubus_save_flag = false;        
+      }
       save_count = 0;
     }
     save_count++;
