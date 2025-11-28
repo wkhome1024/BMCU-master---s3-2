@@ -60,6 +60,7 @@ bool Bambubus_read()
     return false;
 }
 bool Bambubus_need_to_save = false;
+bool bambubus_save_flag = false;
 void Bambubus_set_need_to_save()
 {
     Bambubus_need_to_save = true;
@@ -69,7 +70,7 @@ void Bambubus_save()
 {
     if (!Flash_saves(&data_save, sizeof(data_save), bmcu_addr))
         my_printf("(FLASH) Bambubus保存失败");
-
+    bambubus_save_flag = false;
     Bambubus_need_to_save = false;
 }
 
@@ -1609,7 +1610,6 @@ void Bmcu_run()
         }
     }
 }
-bool bambubus_save_flag = false;
 package_type BambuBus_run()
 {
     package_type stu = BambuBus_package_NONE;

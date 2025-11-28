@@ -56,27 +56,27 @@ void MC_PULL_ONLINE_read()
     if (MC_PULL_stu_raw > 1.9f) // 大于2V,表示压力过高
     {
         MC_PULL_stu = 2;
-        LED_setColor(0, 0xFF, 0x00, 0x00); // 红灯
+        LED_setColor(2, 0xFF, 0x00, 0x00); // 红灯
     }
     else if (MC_PULL_stu_raw < 1.3f) // 小于1.3V，表示压力过低
     {
         MC_PULL_stu = -2;
-        LED_setColor(0, 0x00, 0x00, 0xFF); // 蓝灯
+        LED_setColor(2, 0x00, 0x00, 0xFF); // 蓝灯
     }
     else if (MC_PULL_stu_raw > PULL_voltage_up) // 大于1.80V,表示压力高
     {
         MC_PULL_stu = 1;
-        LED_setColor(0, 0xFF, 0xFF, 0x00); // 黄灯
+        LED_setColor(2, 0xFF, 0xFF, 0x00); // 黄灯
     }
     else if (MC_PULL_stu_raw < PULL_voltage_down) // 小于1.45V，表示压力低
     {
         MC_PULL_stu = -1;
-        LED_setColor(0, 0x00, 0xFF, 0xFF); // 青灯
+        LED_setColor(2, 0x00, 0xFF, 0xFF); // 青灯
     }
     else // 1.45~1.80之间，在正常缓冲范围内按线性位置反馈
     {
         MC_PULL_stu = 0;
-        LED_setColor(0, 0x00, 0xFF, 0x00); // 绿灯
+        LED_setColor(2, 0x00, 0xFF, 0x00); // 绿灯
     }
 
     /*在线状态*/
@@ -242,14 +242,6 @@ public:
         {
             speed_set = -60;
         }
-        else if (motion == 100) // onuse send 370 15 130 10
-        {
-            speed_set = 15;
-        }
-        else if (motion == -100) // onuse pull 370 15 130 10
-        {
-            speed_set = -15;
-        }
         else if (motion == 66) // onuse pressure
         {
             speed_set = (70 - H_PULL_stu_raw) * 0.75; // 线性压力反馈
@@ -304,7 +296,7 @@ void Motion_control_set_PWM(int PWM)
     {
         //ledcWrite(1, 255);
         //ledcWrite(3, 255);
-        motor.setHardBrake();
+        motor.setFreewheel();
     }
     else if (PWM > 0)
     {
@@ -408,7 +400,7 @@ void motor_motion_run()
         switch (get_filament_motion(num))
         {
         case need_send_out:
-            LED_setColor(2, 0x00, 0xFF, 0x00); // 绿灯
+            LED_setColor(0, 0x00, 0xFF, 0x00); // 绿灯
             if (MC_PULL_stu > -1 && H_PULL_stu < 2)
             {
                 MOTOR_CONTROL.set_motion(1, 100);
@@ -421,7 +413,7 @@ void motor_motion_run()
             last_total_distance = 0;            
             break;
         case need_pull_back:
-            LED_setColor(2, 0xFF, 0x00, 0xFF); // 紫色
+            LED_setColor(0, 0xFF, 0x00, 0xFF); // 紫色
             if (MC_PULL_stu < 1)
             {
                 MOTOR_CONTROL.set_motion(-1, 100);
@@ -432,32 +424,19 @@ void motor_motion_run()
             }
             break;
         case on_use:
-            LED_setColor(2, 0xFF, 0xFF, 0xFF); // 白色
-            if (MOTOR_CONTROL.get_motion() == 1)
-            {
-                MOTOR_CONTROL.set_motion(99, 150); // 停电机 清空pid
-            }
-            else if (MOTOR_CONTROL.get_motion() == 99 || MOTOR_CONTROL.get_motion() == 3)
+            LED_setColor(0, 0xFF, 0xFF, 0xFF); // 白色
+            if (MOTOR_CONTROL.get_motion() == 1 || MOTOR_CONTROL.get_motion() == 3)
             {
                 MOTOR_CONTROL.set_motion(2, 5000); // 保持压力延迟5s
             }
             else if (MOTOR_CONTROL.get_motion() != 2 || H_PULL_stu < 0)
             {
-                if (H_PULL_stu < 0)
-                    MOTOR_CONTROL.set_motion(100, 100);
-                else if (H_PULL_stu > 1)
-                    MOTOR_CONTROL.set_motion(-100, 100);
-                else
-                    MOTOR_CONTROL.set_motion(66, 100);
+                MOTOR_CONTROL.set_motion(66, 100);
                 pullcheck[num] = 0;                    
-            }
-            if (MOTOR_CONTROL.get_motion() == 2 && H_PULL_stu > 1)
-            {
-                MOTOR_CONTROL.set_motion(99, 100); // 保持压力 确保送入挤出轮
             }
             break;
         case pre_pull:
-            LED_setColor(2, 0xFF, 0x00, 0xFF); // 紫色
+            LED_setColor(0, 0xFF, 0x00, 0xFF); // 紫色
             if (pullcheck[num] == 1)
             {
                 MOTOR_CONTROL.set_motion(2, 2000);
@@ -473,7 +452,7 @@ void motor_motion_run()
             }
             break;
         case idle:
-            LED_setColor(2, 0x00, 0x00, 0xFF); // 蓝灯
+            LED_setColor(0, 0x00, 0x00, 0xFF); // 蓝灯
             if (MC_ONLINE_key_stu > 0 && motor_unready)
             {
                 MOTOR_CONTROL.set_motion(-66, 100);

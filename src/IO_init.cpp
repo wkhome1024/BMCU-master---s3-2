@@ -36,6 +36,11 @@ PWM_Analyzer Buf_pwm(Bufio_pin, 1);
 float Buf_pwm_read()
 {
   float duty_cycle = Buf_pwm.Get_PWM_duty_cycle();
+  if (duty_cycle == -1)
+  {
+    duty_cycle = 60.0;
+    Buf_pwm.Restart();
+  }
   return duty_cycle;
 }
 uint32_t Buf_pwm_frequency()
