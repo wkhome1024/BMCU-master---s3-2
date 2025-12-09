@@ -414,14 +414,14 @@ void motor_motion_run()
             break;
         case need_pull_back:
             LED_setColor(0, 0xFF, 0x00, 0xFF); // 紫色
-            if (MC_PULL_stu < 1)
-            {
-                MOTOR_CONTROL.set_motion(-1, 100);
-            }
-            else if (MC_ONLINE_key_stu > 1)
+            if (MC_ONLINE_key_stu > 1)
             {
                 MOTOR_CONTROL.set_motion(-66, 100);
             }
+            else if (MC_PULL_stu < 1)
+            {
+                MOTOR_CONTROL.set_motion(-1, 100);
+            }            
             break;
         case on_use:
             LED_setColor(0, 0xFF, 0xFF, 0xFF); // 白色

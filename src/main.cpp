@@ -12,7 +12,7 @@ char host_name[20] = "bmcu-hub-1";                   // 设备主机名
 char all_filament_topic[20] = "bmcu-hub-1/filament"; // 所有耗材信息的主题
 #define product_id "bmcu-hub"                        // 产品ID
 #define device_id "s3"                               // 设备ID
-uint8_t hub_num = 3;                                 // 集线器编号
+uint8_t hub_num = 2;                                 // 集线器编号
 char mqtt_id[20];
 int save_count = 0;
 int postMsgId = 0;              // 消息ID初始值为0
@@ -72,8 +72,9 @@ void hub_msg()
     {
       postMsgId = 0;
       my_printf("(mqtt) 发送数据成功");
-      my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
-      my_printf("(sensor) 电机输出: %d", motor_pwm);
+      //my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
+      //my_printf("(sensor) 电机输出: %d", motor_pwm);
+      my_printf("(sensor) 在线传感器电压: %.2f V", MC_ONLINE_key_stu_raw);
       SYS_leds.setPixelColor(1, 0x00, 0x00, 0x30); // 发送数据成功后变为蓝色
       if (SYS_leds.canShow())
       {
