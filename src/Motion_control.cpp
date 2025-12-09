@@ -18,9 +18,9 @@ int MC_PULL_stu = 0;
 float MC_ONLINE_key_stu_raw = 0;
 // 0-离线 1-在线单微动触发 2-双微动触发 3-抖动
 int MC_ONLINE_key_stu = 3;
-float H_PULL_stu_raw = 0;
-// 30(-2) 低 40(-1)正常低 60(1)正常高 80(2)高
-int H_PULL_stu = 0;
+// float H_PULL_stu_raw = 0;
+//  30(-2) 低 40(-1)正常低 60(1)正常高 80(2)高
+// int H_PULL_stu = 0;
 int motor_pwm = 0;
 // 电压控制相关常量
 float PULL_voltage_up = 1.80f;   // 状态 压力高 红灯
@@ -40,15 +40,15 @@ void MC_IO_read()
 {
     static float MC_pull_old = 0;
     static float MC_ONLINE_old = 0;
-    static float H_PULL_old = 0;
+    // static float H_PULL_old = 0;
     auto voltage = ADC_read();
     if (voltage.first > 1.0f)
-        MC_PULL_stu_raw = voltage.first * 0.5f + MC_pull_old * 0.5f;          // 滤波处理
+        MC_PULL_stu_raw = voltage.first * 0.5f + MC_pull_old * 0.5f;      // 滤波处理
     MC_ONLINE_key_stu_raw = voltage.second * 0.5f + MC_ONLINE_old * 0.5f; // 滤波处理
-    H_PULL_stu_raw = Buf_pwm_read() * 0.5f + H_PULL_old * 0.5f;           // 滤波处理
+    // H_PULL_stu_raw = Buf_pwm_read() * 0.5f + H_PULL_old * 0.5f;           // 滤波处理
     MC_pull_old = MC_PULL_stu_raw;
     MC_ONLINE_old = MC_ONLINE_key_stu_raw;
-    H_PULL_old = H_PULL_stu_raw;
+    // H_PULL_old = H_PULL_stu_raw;
 }
 void MC_PULL_ONLINE_read()
 {
@@ -98,6 +98,7 @@ void MC_PULL_ONLINE_read()
         MC_ONLINE_key_stu = 3;
     }
 
+    /*
     // 缓冲压力pwm读取
     if (H_PULL_stu_raw > 80.0f) // 大于80.0，表示压力过高
     {
@@ -119,6 +120,7 @@ void MC_PULL_ONLINE_read()
     {
         H_PULL_stu = 0;
     }
+    */
 }
 
 #define PWM_lim 880
@@ -213,14 +215,20 @@ public:
         {
             set_filament_motion(CHx, idle);
         }
-
         if ((motion == 99 || motion == 0)) // 刹车
         {
-            speed_set = 0;
-            PID.clear();
-            Motion_control_set_PWM(0);
-            time_last = time_now;
-            return;
+            if (MC_PULL_stu == 2)
+            {
+                speed_set = 10;
+            }
+            else
+            {
+                speed_set = 0;
+                PID.clear();
+                Motion_control_set_PWM(0);
+                time_last = time_now;
+                return;
+            }
         }
         else if (motion == 1) // send 370 40  130 15
         {
@@ -228,14 +236,14 @@ public:
         }
         else if (motion == 2 || motion == 3) // over pressure
         {
-            speed_set = (80 - H_PULL_stu_raw) * 0.75; // 线性压力反馈
-            if (speed_set < 0 && speed_set > -5)      // 防止电机抖动
+            speed_set = (2.05f - MC_PULL_stu_raw) * 50; // 线性压力反馈
+            if (speed_set < 0 && speed_set > -5)        // 防止电机抖动
                 speed_set = 0;
         }
         else if (motion == -2) //  prepull
         {
-            speed_set = (30 - H_PULL_stu_raw) * 0.75; // 线性压力反馈
-            if (speed_set < 5 && speed_set > 0)      // 防止电机抖动
+            speed_set = (1.15f - MC_PULL_stu_raw) * 100; // 线性压力反馈
+            if (speed_set < 5 && speed_set > 0)          // 防止电机抖动
                 speed_set = 0;
         }
         else if (motion == -1) // pull 370 70 130 18
@@ -244,18 +252,15 @@ public:
         }
         else if (motion == 66) // onuse pressure
         {
-            speed_set = (70 - H_PULL_stu_raw) * 0.75; // 线性压力反馈
-            if (speed_set < 0 && speed_set > -5)      // 防止电机抖动
+            speed_set = (1.65f - MC_PULL_stu_raw) * 50; // 线性压力反馈
+            if (speed_set < 0 && speed_set > -5)        // 防止电机抖动
                 speed_set = 0;
         }
         else if (motion == -66) // pull on hall
         {
-            speed_set = (2.0f - MC_PULL_stu_raw) * -200; // 线性压力反馈
-            if (speed_set < 10 && speed_set > 0)                         // 防止电机抖动
-                speed_set = 0;
-            if (MC_PULL_stu == -2 && MC_ONLINE_key_stu == 1)
-                speed_set = -10;
+            speed_set = -60;
         }
+        speed_set = -speed_set; // 方向反转
         float x = PID.caculate(speed_set - speed_as5600, (float)(time_now - time_last) / 1000);
         if (x > 5)
             x += pwm_zero;
@@ -286,36 +291,36 @@ void Motion_control_set_PWM(int PWM)
 {
     if (Motor_enable == false)
     {
-        //ledcWrite(1, 0);
-        //ledcWrite(3, 0);
+        // ledcWrite(1, 0);
+        // ledcWrite(3, 0);
         motor.setFreewheel();
         return;
     }
     motor_pwm = PWM;
     if (PWM == 0)
     {
-        //ledcWrite(1, 255);
-        //ledcWrite(3, 255);
+        // ledcWrite(1, 255);
+        // ledcWrite(3, 255);
         motor.setFreewheel();
     }
     else if (PWM > 0)
     {
-        //ledcWrite(1, PWM / 4);
-        //ledcWrite(3, 0);
+        // ledcWrite(1, PWM / 4);
+        // ledcWrite(3, 0);
         motor.setSpeed(PWM, Dir::CW);
     }
     else if (PWM < 0)
     {
-        //ledcWrite(1, 0);
-        //ledcWrite(3, -PWM / 4);
+        // ledcWrite(1, 0);
+        // ledcWrite(3, -PWM / 4);
         motor.setSpeed(-PWM, Dir::CCW);
     }
 }
 
 void Motor_init()
 {
-    //pinMode(Motor_H_pin, OUTPUT);
-    //pinMode(Motor_L_pin, OUTPUT);
+    // pinMode(Motor_H_pin, OUTPUT);
+    // pinMode(Motor_L_pin, OUTPUT);
     motor.setup(hw);
     motor.reconfigureFrequency(100000);
     motor.setFreewheelMode(FreewheelMode::HiZ_Awake);
@@ -328,7 +333,6 @@ void Motor_init()
     ledcAttachPin(Motor_L_pin, 3); // 将Motor_L_pin引脚连接到通道3
     ledcWrite(3, 0);               // 初始占空比为 0
     */
-
 }
 
 void Motion_control_init()
@@ -372,8 +376,8 @@ void AS5600_distance_updata()
     speed_as5600 = speedx * (1 - T) + speed_as5600 * T; // mm/s
     if (MC_ONLINE_key_stu == 2 || (distance_E > 0 && MC_ONLINE_key_stu > 0))
     {
-        add_filament_meters(filament_num, distance_E / 1000); 
-        last_total_distance += distance_E; // mm               
+        add_filament_meters(filament_num, distance_E / 1000);
+        last_total_distance += distance_E; // mm
     }
     time_last = time_now;
 }
@@ -401,7 +405,7 @@ void motor_motion_run()
         {
         case need_send_out:
             LED_setColor(0, 0x00, 0xFF, 0x00); // 绿灯
-            if (MC_PULL_stu > -1 && H_PULL_stu < 2)
+            if (MC_PULL_stu < 2)
             {
                 MOTOR_CONTROL.set_motion(1, 100);
             }
@@ -410,7 +414,7 @@ void motor_motion_run()
                 MOTOR_CONTROL.set_motion(3, 500);
             }
             pullcheck[num] = 1;
-            last_total_distance = 0;            
+            last_total_distance = 0;
             break;
         case need_pull_back:
             LED_setColor(0, 0xFF, 0x00, 0xFF); // 紫色
@@ -418,10 +422,10 @@ void motor_motion_run()
             {
                 MOTOR_CONTROL.set_motion(-66, 100);
             }
-            else if (MC_PULL_stu < 1)
+            else
             {
                 MOTOR_CONTROL.set_motion(-1, 100);
-            }            
+            }
             break;
         case on_use:
             LED_setColor(0, 0xFF, 0xFF, 0xFF); // 白色
@@ -429,10 +433,10 @@ void motor_motion_run()
             {
                 MOTOR_CONTROL.set_motion(2, 5000); // 保持压力延迟5s
             }
-            else if (MOTOR_CONTROL.get_motion() != 2 || H_PULL_stu < 0)
+            else if (MOTOR_CONTROL.get_motion() != 2 || MC_PULL_stu < -1)
             {
                 MOTOR_CONTROL.set_motion(66, 100);
-                pullcheck[num] = 0;                    
+                pullcheck[num] = 0;
             }
             break;
         case pre_pull:
@@ -442,7 +446,7 @@ void motor_motion_run()
                 MOTOR_CONTROL.set_motion(2, 2000);
                 break;
             }
-            if (H_PULL_stu > -1 && MC_PULL_stu < 2)
+            if (MC_PULL_stu > -2)
             {
                 MOTOR_CONTROL.set_motion(-2, 100); // 退料时间调整
             }
@@ -481,9 +485,9 @@ void Motion_control_run(int error)
 {
     MC_PULL_ONLINE_read();
     AS5600_distance_updata();
-    motor_motion_run();    
+    motor_motion_run();
     if (error)
     {
-        //MOTOR_CONTROL.set_motion(0, 100);
+        // MOTOR_CONTROL.set_motion(0, 100);
     }
 }
