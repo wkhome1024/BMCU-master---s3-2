@@ -673,11 +673,11 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
         // if (statu_flags == 0x07)
         last_time = now_time;
     }
-    else if (read_num == 0xFF && statu_flags == 0x03 && 0) // ams退料状态更新
+    else if (read_num == 0xFF && statu_flags == 0x03) // ams退料状态更新
     {
         if (data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].motion_set == need_pull_back)
         {
-            if (last_time > now_time - pullback_time && MC_ONLINE_key_stu > 0)
+            if (last_time > now_time - pullback_time && GET_MC_Online_stu() > 0)
             {
                 meters = data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].meters;
                 last_meters = meters;
@@ -725,7 +725,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                         data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].motion_set = idle;
                         data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].pressure = 0xFFFF;
                     }
-                    if (!motor_unready && MC_ONLINE_key_stu == 0) // 等待bmcu就绪
+                    if (!motor_unready && GET_MC_Online_stu() == 0) // 等待bmcu就绪
                         data_save.BambuBus_now_filament_num = numx;
                 }
                 data_save.filament[AMS_num][read_num].motion_set = need_send_out;
@@ -830,10 +830,10 @@ void Bmcu_package_send_with_crc(uint8_t *data, int data_length)
 }
 void online_buf_set(unsigned char *set_buf)
 {
-    set_buf[0] = (uint8_t)MC_ONLINE_key_stu;
+    set_buf[0] = GET_MC_Online_stu();
     if (motor_unready)
         set_buf[0] |= 0x30;
-    set_buf[1] = (uint8_t)((MC_PULL_stu_raw - 0.8f) * 128); // 通道压力值/128 增大0.2
+    set_buf[1] = (uint8_t)((GET_MC_PULL_raw() - 0.8f) * 128); // 通道压力值/128 增大0.2
 }
 unsigned char Hit_res[] = {0x9D, 0x0A, 0x20,
                            0x00, 0x00, // amsnum + taynum
@@ -890,7 +890,7 @@ void send_for_Hit(unsigned char *buf, int length, uint32_t time_now)
 // 04 01 79 30 61 BE 00 00 03 00 44 00 12 00 FF FF FF FF 00 00 44 00 54 C1 F4 EE E7 01 01 01 01 00 00 00 00 FA 35
 #define C_test 0x00, 0x00, 0x00, 0x00, \
                0x00, 0x00, 0x80, 0xBF, \
-               0x00, 0x00, 0x00, 0x00, \
+               0x00, 0x00, 0xFF, 0xFF, \
                0x36, 0x00, 0x00, 0x00, \
                0x00, 0x00, 0x00, 0x00, \
                0x00, 0x00, 0x27, 0x00, \
@@ -942,7 +942,7 @@ void send_for_motion_short(unsigned char *buf, int length)
     if (!set_motion(AMS_num, read_num, statu_flags, fliment_motion_flag))
         return;
     
-    Cxx_res[38] = read_num;
+    //Cxx_res[38] = read_num;
     if (statu_flags == 0x03 && read_num == 0xFF)
     {
         //Cxx_res[38] = data_save.BambuBus_now_filament_num % 4;

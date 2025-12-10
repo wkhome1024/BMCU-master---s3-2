@@ -20,8 +20,6 @@
 #define Online_pin 4
 
 
-extern float pull_voltage;
-extern float online_voltage;
 
 extern float Buf_pwm_read();
 extern std::pair<float, float> ADC_read();

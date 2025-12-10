@@ -17,7 +17,7 @@ float MC_PULL_stu_raw = 0;
 int MC_PULL_stu = 0;
 float MC_ONLINE_key_stu_raw = 0;
 // 0-离线 1-在线单微动触发 2-双微动触发 3-抖动
-int MC_ONLINE_key_stu = 3;
+uint8_t MC_ONLINE_key_stu = 3;
 float H_PULL_stu_raw = 0;
 // 30(-2) 低 40(-1)正常低 60(1)正常高 80(2)高
 int H_PULL_stu = 0;
@@ -49,6 +49,18 @@ void MC_IO_read()
     MC_pull_old = MC_PULL_stu_raw;
     MC_ONLINE_old = MC_ONLINE_key_stu_raw;
     H_PULL_old = H_PULL_stu_raw;
+}
+uint8_t GET_MC_Online_stu()
+{
+    return MC_ONLINE_key_stu;
+}
+float GET_MC_PULL_raw()
+{
+    return MC_PULL_stu_raw;
+}
+String Motion_get_status() 
+{    
+    return String(MC_PULL_stu_raw) + "++" + String(MC_ONLINE_key_stu_raw) + "++" + String(H_PULL_stu_raw);
 }
 void MC_PULL_ONLINE_read()
 {
@@ -250,9 +262,9 @@ public:
         }
         else if (motion == -66) // pull on hall
         {
-            speed_set = (2.0f - MC_PULL_stu_raw) * -200; // 线性压力反馈
-            if (speed_set < 10 && speed_set > 0)                         // 防止电机抖动
-                speed_set = 0;
+            speed_set = (2.0f - MC_PULL_stu_raw) * -150; // 线性压力反馈
+            if (speed_set > -10)                         // 防止电机抖动
+                speed_set = -10;
             if (MC_PULL_stu == -2 && MC_ONLINE_key_stu == 1)
                 speed_set = -10;
         }
@@ -401,7 +413,7 @@ void motor_motion_run()
         {
         case need_send_out:
             LED_setColor(0, 0x00, 0xFF, 0x00); // 绿灯
-            if (MC_PULL_stu > -1 && H_PULL_stu < 2)
+            if (H_PULL_stu < 2)
             {
                 MOTOR_CONTROL.set_motion(1, 100);
             }
