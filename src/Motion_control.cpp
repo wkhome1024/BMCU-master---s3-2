@@ -17,7 +17,7 @@ float MC_PULL_stu_raw = 0;
 int MC_PULL_stu = 0;
 float MC_ONLINE_key_stu_raw = 0;
 // 0-离线 1-在线单微动触发 2-双微动触发 3-抖动
-int MC_ONLINE_key_stu = 3;
+uint8_t MC_ONLINE_key_stu = 3;
 // float H_PULL_stu_raw = 0;
 //  30(-2) 低 40(-1)正常低 60(1)正常高 80(2)高
 // int H_PULL_stu = 0;
@@ -49,6 +49,18 @@ void MC_IO_read()
     MC_pull_old = MC_PULL_stu_raw;
     MC_ONLINE_old = MC_ONLINE_key_stu_raw;
     // H_PULL_old = H_PULL_stu_raw;
+}
+uint8_t GET_MC_Online_stu()
+{
+    return MC_ONLINE_key_stu;
+}
+float GET_MC_PULL_raw()
+{
+    return MC_PULL_stu_raw;
+}
+String Motion_get_status()
+{
+    return String(MC_PULL_stu_raw) + "++" + String(MC_ONLINE_key_stu_raw);
 }
 void MC_PULL_ONLINE_read()
 {
@@ -217,18 +229,11 @@ public:
         }
         if ((motion == 99 || motion == 0)) // 刹车
         {
-            if (MC_PULL_stu == 2)
-            {
-                speed_set = 10;
-            }
-            else
-            {
-                speed_set = 0;
-                PID.clear();
-                Motion_control_set_PWM(0);
-                time_last = time_now;
-                return;
-            }
+            speed_set = 0;
+            PID.clear();
+            Motion_control_set_PWM(0);
+            time_last = time_now;
+            return;
         }
         else if (motion == 1) // send 370 40  130 15
         {
@@ -260,7 +265,7 @@ public:
         {
             speed_set = -60;
         }
-        speed_set = -speed_set; // 方向反转
+        // speed_set = -speed_set; // 方向反转
         float x = PID.caculate(speed_set - speed_as5600, (float)(time_now - time_last) / 1000);
         if (x > 5)
             x += pwm_zero;
@@ -368,7 +373,7 @@ void AS5600_distance_updata()
         cir_E = 4096;
     }
 
-    distance_E = (float)(now_distance - last_distance + cir_E) * AS5600_PI * 7.5 / 4096; // D=7.5mm
+    distance_E = (float)(now_distance - last_distance + cir_E) * AS5600_PI * -7.5 / 4096; // D=7.5mm 反向
     distance_save = now_distance;
     float T = (float)(time_now - time_last);
     float speedx = distance_E / T * 1000;

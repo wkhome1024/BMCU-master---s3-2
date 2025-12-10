@@ -49,12 +49,12 @@ void hub_msg()
       client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
     sw_send = !sw_send;
 
-    // my_printf("{\"Pull_Voltage\":%.2f,\"Online_Voltage\":%.2f,\"Buf_PWM\":%.2f}",pull_voltage, online_voltage, Buf_pwm_read());
     // my_printf("(sensor) 拉力传感器电压: %.2f V", MC_PULL_stu_raw);
     // my_printf("(sensor) 在线传感器电压: %.2f V", MC_ONLINE_key_stu_raw);
     // my_printf("(sensor) 缓冲PWM状态: %.2f", H_PULL_stu_raw);
-
     // my_printf("(sensor) 电机输出: %d", motor_pwm);
+    //my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
+    //my_printf("(sensor) pull+online: %s", Motion_get_status().c_str());
   }
   else
   {
@@ -72,9 +72,8 @@ void hub_msg()
     {
       postMsgId = 0;
       my_printf("(mqtt) 发送数据成功");
-      //my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
-      //my_printf("(sensor) 电机输出: %d", motor_pwm);
-      my_printf("(sensor) 在线传感器电压: %.2f V", MC_ONLINE_key_stu_raw);
+      my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
+      my_printf("(sensor) pull+online: %s", Motion_get_status().c_str());
       SYS_leds.setPixelColor(1, 0x00, 0x00, 0x30); // 发送数据成功后变为蓝色
       if (SYS_leds.canShow())
       {
