@@ -18,6 +18,7 @@ uint8_t motor_unready = 0;
 uint32_t pullback_time = 30000; // 30s
 _filament_motion_state_set motion_temp[4][4];
 uint8_t statu_temp[4][4];
+uint8_t slave_pull_statu[4][4] = {0};
 struct _filament
 {
     // AMS statu
@@ -1512,16 +1513,16 @@ void send_for_long_packge_set_filament(unsigned char *buf, int length)
         else if (sw2 == 0xD3)
         {
             filament_res[6] = 0xD3; // 棕色  --电机退料时间设定
-            my_printf("(bmcu) 电机退料时间设定: Bmcu%d-%d_motor_time = %ds", AMS_num, read_num, motor_time[read_num]);
+            my_printf("(bmcu) 电机二段退料时间设定: Bmcu%d-%d_motor_time = %ds", AMS_num, read_num, motor_time[read_num]);
         }
         else if (sw2 == 0xD5)
         {
-            filament_res[6] = 0xD5; // 岩石灰  --电机pwm 设定
-            my_printf("(bmcu) 电机pwm设定: Bmcu%d-%d_pwm_zero = %d", AMS_num, read_num, (pwm_zero[read_num] * 10));
+            filament_res[6] = 0xD5; // 岩石灰  --电机退料时间设定
+            my_printf("(bmcu) 电机一段退料时间设定: Bmcu%d-%d_motor_time = %ds", AMS_num, read_num, motor_time[read_num]);
         }
         else if (sw2 == 0xD7)
         {
-            filament_res[6] = 0xD7; // 灰色  --电机pwm 设定
+            filament_res[6] = 0xD7; // 灰色  --电机pwm 自动标定
             my_printf("(bmcu) 电机pwm设定: Bmcu%d-%d_pwm_zero = %d", AMS_num, read_num, (pwm_zero[read_num] * 10));
         }
         else if (sw2 == 0xD9)
@@ -1558,7 +1559,8 @@ void Bmcu_run()
             bmcu_online = buf_Bmcu[12];
             for (int i = 0; i < 4; i++)
             {
-                if (buf_Bmcu[i + 4] == 0x00)
+                slave_pull_statu[AMS_num][i] = buf_Bmcu[i + 4] & 0XF0;
+                if ((buf_Bmcu[i + 4] & 0X0F) == 0x00)
                 {
                     if (motion_temp[AMS_num][i] == idle && data_save.filament[AMS_num][i].motion_set != on_use)
                     {
@@ -1566,7 +1568,7 @@ void Bmcu_run()
                     }
                     motion_temp[AMS_num][i] = idle;
                 }
-                else if (buf_Bmcu[i + 4] == 0x01)
+                else if ((buf_Bmcu[i + 4] & 0X0F) == 0x01)
                 {
                     if (motion_temp[AMS_num][i] == need_pull_back)
                     {
@@ -1574,7 +1576,7 @@ void Bmcu_run()
                     }
                     motion_temp[AMS_num][i] = need_pull_back;
                 }
-                else if (buf_Bmcu[i + 4] == 0x02)
+                else if ((buf_Bmcu[i + 4] & 0X0F) == 0x02)
                 {
                     if (motion_temp[AMS_num][i] == need_send_out)
                     {
@@ -1582,7 +1584,7 @@ void Bmcu_run()
                     }
                     motion_temp[AMS_num][i] = need_send_out;
                 }
-                else if (buf_Bmcu[i + 4] == 0x03)
+                else if ((buf_Bmcu[i + 4] & 0X0F) == 0x03)
                 {
                     if (motion_temp[AMS_num][i] == pre_pull)
                     {
@@ -1590,7 +1592,7 @@ void Bmcu_run()
                     }
                     motion_temp[AMS_num][i] = pre_pull;
                 }
-                else if (buf_Bmcu[i + 4] == 0x04)
+                else if ((buf_Bmcu[i + 4] & 0X0F) == 0x04)
                 {
                     if (motion_temp[AMS_num][i] == on_use)
                     {
@@ -1624,9 +1626,9 @@ void Bmcu_run()
                 {
                     //data_save.filament[AMS_num][read_num].meters = max(meters, data_save.filament[AMS_num][read_num].meters);                    
                 }
-                else if (meters < 600 && meters >= 0)
+                else if (data_save.filament[AMS_num][read_num].meters < 0)
                 {
-                    //data_save.filament[AMS_num][read_num].meters = meters;                    
+                    data_save.filament[AMS_num][read_num].meters = 0;                    
                 }
             }
         }

@@ -219,6 +219,7 @@ public:
         static uint64_t time_last = 0;
         float speed_set = 0;
         uint8_t CHx = get_now_filament_num();
+        uint8_t pull_statu = slave_pull_statu[CHx / 4][CHx % 4] >> 4;
         if (time_now >= motor_stop_time)
         {
             motion = 0;
@@ -237,7 +238,10 @@ public:
         }
         else if (motion == 1) // send 370 40  130 15
         {
-            speed_set = 40;
+            if (pull_statu < 5)
+                speed_set = 40;
+            else
+                speed_set = (pull_statu - 2) * 16; // 线性压力反馈;
         }
         else if (motion == 2 || motion == 3) // over pressure
         {
@@ -263,7 +267,10 @@ public:
         }
         else if (motion == -66) // pull on hall
         {
-            speed_set = -60;
+            if (pull_statu < 10)
+                speed_set = -60;
+            else
+                speed_set = (pull_statu - 14) * 15; // 线性压力反馈
         }
         // speed_set = -speed_set; // 方向反转
         float x = PID.caculate(speed_set - speed_as5600, (float)(time_now - time_last) / 1000);
