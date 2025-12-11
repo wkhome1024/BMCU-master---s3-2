@@ -247,7 +247,7 @@ public:
         }
         else if (motion == -2) //  prepull
         {
-            speed_set = (1.15f - MC_PULL_stu_raw) * 100; // 线性压力反馈
+            speed_set = (1.2f - MC_PULL_stu_raw) * 100; // 线性压力反馈
             if (speed_set < 5 && speed_set > 0)          // 防止电机抖动
                 speed_set = 0;
         }
@@ -294,7 +294,7 @@ _MOTOR_CONTROL MOTOR_CONTROL;
 
 void Motion_control_set_PWM(int PWM)
 {
-    if (Motor_enable == false)
+    if (Motor_enable == false || MC_ONLINE_key_stu == 0)
     {
         // ledcWrite(1, 0);
         // ledcWrite(3, 0);
@@ -387,7 +387,7 @@ void AS5600_distance_updata()
     time_last = time_now;
 }
 
-uint8_t pullcheck[4] = {0, 0, 0, 0}; // 当前bmcu通道使用标记
+uint8_t pullcheck[16] = {0}; // 当前bmcu通道使用标记
 uint8_t lastnum = 0;
 
 bool Position_check()
@@ -404,7 +404,7 @@ bool Position_check()
 void motor_motion_run()
 {
     uint8_t num = get_now_filament_num();
-    if (get_filament_online(num) && MC_ONLINE_key_stu)
+    if (get_filament_online(num))
     {
         switch (get_filament_motion(num))
         {
@@ -468,6 +468,10 @@ void motor_motion_run()
             }
             else
                 MOTOR_CONTROL.set_motion(0, 100);
+            if (MC_PULL_stu == 2 && MC_ONLINE_key_stu > 0)    //手动退料
+            {
+                MOTOR_CONTROL.set_motion(-1, 100);
+            }
             break;
         }
     }
@@ -493,6 +497,6 @@ void Motion_control_run(int error)
     motor_motion_run();
     if (error)
     {
-        // MOTOR_CONTROL.set_motion(0, 100);
+        MOTOR_CONTROL.set_motion(0, 100);
     }
 }

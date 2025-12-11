@@ -12,7 +12,7 @@ char host_name[20] = "bmcu-hub-1";                   // 设备主机名
 char all_filament_topic[20] = "bmcu-hub-1/filament"; // 所有耗材信息的主题
 #define product_id "bmcu-hub"                        // 产品ID
 #define device_id "s3"                               // 设备ID
-uint8_t hub_num = 3;                                 // 集线器编号
+uint8_t hub_num = 1;                                 // 集线器编号
 char mqtt_id[20];
 int save_count = 0;
 int postMsgId = 0;              // 消息ID初始值为0

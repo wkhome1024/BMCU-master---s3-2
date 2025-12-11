@@ -673,7 +673,7 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
         // if (statu_flags == 0x07)
         last_time = now_time;
     }
-    else if (read_num == 0xFF && statu_flags == 0x03 && 0) // ams退料状态更新
+    else if (read_num == 0xFF && statu_flags == 0x03) // ams退料状态更新
     {
         if (data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].motion_set == need_pull_back)
         {
@@ -833,7 +833,8 @@ void online_buf_set(unsigned char *set_buf)
     set_buf[0] = GET_MC_Online_stu();
     if (motor_unready)
         set_buf[0] |= 0x30;
-    set_buf[1] = (uint8_t)((GET_MC_PULL_raw() - 0.8f) * 128); // 通道压力值/128 增大0.2
+    //set_buf[1] = (uint8_t)((GET_MC_PULL_raw() - 0.9f) * 128); // 通道压力值/128 增大0.2
+    set_buf[1] = 77; // p1s固定压力值1.6
 }
 unsigned char Hit_res[] = {0x9D, 0x0A, 0x20,
                            0x00, 0x00, // amsnum + taynum
