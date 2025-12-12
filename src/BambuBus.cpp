@@ -90,16 +90,14 @@ void add_filament_meters(int num, float meters)
     if (num < 32)
     {
         int AMS = num / 4, filament = num % 4;
-        if ((data_save.filament[AMS][filament].motion_set == on_use) || (data_save.filament[AMS][filament].motion_set == need_pull_back))
+        if (data_save.filament[AMS][filament].motion_set != idle)
             data_save.filament[AMS][filament].meters += meters;
     }
 }
-float get_filament_meters(int num)
+void set_filament_meters(int num, float meters)
 {
     if (num < 32)
-        return data_save.filament[num / 4][num % 4].meters;
-    else
-        return 0;
+        data_save.filament[num / 4][num % 4].meters = meters;
 }
 void set_filament_online(int num, bool if_online)
 {
@@ -767,6 +765,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 }
                 data_save.filament[AMS_num][read_num].pressure = 0x2B00;
             }
+            idle_count = 0;
         }
         else if ((read_num == 0xFF))
         {
@@ -775,18 +774,11 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 _filament *filament = &(data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4]);
                 if (data_save.BambuBus_now_filament_num < 16)
                 {
-                    if (filament->motion_set == idle)
-                    {
-                        if (idle_count > 5000)
-                        {
-                            filament->motion_set = need_pull_back;
-                        }  
-                    }
-                    else 
+                    if (filament->motion_set != idle)
                         filament->motion_set = need_pull_back;
-                    idle_count = 0;
                     filament->pressure = 0x4700;
                 }
+                idle_count = 0;
             }
             else if ((statu_flags == 0x01) && (fliment_motion_flag == 0x00)) // 01 00(FF)
             {
@@ -1807,7 +1799,7 @@ uint16_t get_tay_color(uint8_t num)
 String Bmcu_set_json(int ams_num, int i)
 {
     const auto &filament = data_save.filament[ams_num][i];
-    String name = filament.name;
+    String on_use = (filament.motion_set != idle) ? "true" : "false";
     char colorBuf[20];
     sprintf(colorBuf, "#%02X%02X%02X",
             filament.color_R,
@@ -1815,11 +1807,16 @@ String Bmcu_set_json(int ams_num, int i)
             filament.color_B);
     char meterBuf[10];
     float meters = filament.meters;
+    meters = meters / 350 * 100; // 转换为百分比显示
+    if (meters > 95.0f)
+    {
+        meters = 95.0f;
+    }
     if (isnan(meters) || isinf(meters))
     {
         meters = 0.0f;
     }
     sprintf(meterBuf, "%6.1f", meters);
-    String json = ("{\"name\":\"" + name + "\",\"color\":\"" + (String)colorBuf + "\",\"meter\":\"" + (String)meterBuf + "\"}");
+    String json = ("{\"onuse\":\"" + on_use + "\",\"color\":\"" + (String)colorBuf + "\",\"meter\":\"" + (String)meterBuf + "\"}");
     return json;
 }
