@@ -13,8 +13,8 @@ struct alignas(4) switch_save_struct
 
 const unsigned char select_bmcu_filament_name[] = "TPU-AMS"; //ID: GFU02
 const unsigned char reset_bmcu_meter_color[4] = {0xFF, 0xFF, 0xFF, 0xFF}; //white
-//const unsigned char set_bmcu_auto_color[4] = {0xD3, 0xC5, 0xA3, 0xFF};//沙漠黄
-const unsigned char haset_bmcu_channel_color[4] = {0x40, 0x61, 0x00, 0xFF};
+const unsigned char set_meter50_color[4] = {0xD3, 0xC5, 0xA3, 0xFF};//沙漠黄
+//const unsigned char haset_bmcu_channel_color[4] = {0x40, 0x61, 0x00, 0xFF};
 //const unsigned char hacheck_bmcu_channel_color[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
 const unsigned char reset_bmcu_channel_color[4] = {0xFF, 0xF1, 0x44, 0xFF}; //黄色
 const unsigned char set_bmcu_filament_color0[4] = {0xAF, 0x79, 0x33, 0xFF}; //棕色
@@ -74,20 +74,9 @@ uint8_t Switch_set_filament(unsigned char *buf, int length, uint8_t AMS_num, uin
     if (memcmp(select_bmcu_filament_name, buf + 23, sizeof(select_bmcu_filament_name)) == 0)
     { 
 
-        if(memcmp(buf + 15, haset_bmcu_channel_color, 2) == 0)
+        if(memcmp(buf + 15, set_meter50_color, 2) == 0)
         {
-            for (int i = 0; i < 32; i++)
-            {
-                unsigned char hacheck = 0x00 + i;
-                if (memcmp(buf + 17, &hacheck, 1) == 0)
-                {
-                    switch_save.filament_map_to[read_num] = i;
-                    my_printf("(switch)Filament %d map to %d-%d", read_num, i/4 + 1, i%4 + 1);
-                    Switch_set_need_to_save();
-                    return 0xEE;
-                }
-                
-            }
+            set_filament_meters(AMS_num * 4 + read_num, 175.0f);  
         }
         else if(memcmp(buf + 15, reset_bmcu_channel_color, 4) == 0)
         {

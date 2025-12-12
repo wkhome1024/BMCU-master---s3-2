@@ -89,16 +89,14 @@ void add_filament_meters(int num, float meters)
     if (num < 32)
     {
         int AMS = num / 4, filament = num % 4;
-        if ((data_save.filament[AMS][filament].motion_set == on_use) || (data_save.filament[AMS][filament].motion_set == need_pull_back))
+        if (data_save.filament[AMS][filament].motion_set != idle)
             data_save.filament[AMS][filament].meters += meters;
     }
 }
-float get_filament_meters(int num)
+void set_filament_meters(int num, float meters)
 {
     if (num < 32)
-        return data_save.filament[num / 4][num % 4].meters;
-    else
-        return 0;
+        data_save.filament[num / 4][num % 4].meters = meters;
 }
 void set_filament_online(int num, bool if_online)
 {
@@ -650,7 +648,7 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
     uint8_t checknum = 0xFF;
     if ((read_num != 0xFF) && (read_num < 4))
     {
-        //meters = data_save.filament[AMS_num][read_num].meters + ((float)meters_virtual_count / 100000);
+        // meters = data_save.filament[AMS_num][read_num].meters + ((float)meters_virtual_count / 100000);
         meters = data_save.filament[AMS_num][read_num].meters;
         // if (BambuBus_address == BambuBus_AMS)
         // meters = -meters;
@@ -704,7 +702,7 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
 bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char statu_flags, unsigned char fliment_motion_flag)
 {
     static uint32_t time_last = 0;
-    //static uint32_t pull_count = 0;
+    // static uint32_t pull_count = 0;
     static uint32_t meters_virtual_count = 0;
     static uint64_t idle_count = 0;
     uint32_t time_now = get_time32();
@@ -742,7 +740,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 }
                 else if (meters_virtual_count < 3500) // 10s virtual data
                 {
-                    //data_save.filament[AMS_num][read_num].meters += (float)time_used / 100000; // 10mm/s
+                    // data_save.filament[AMS_num][read_num].meters += (float)time_used / 100000; // 10mm/s
                     meters_virtual_count += time_used;
                 }
                 data_save.filament[AMS_num][read_num].motion_set = on_use;
@@ -766,6 +764,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 }
                 data_save.filament[AMS_num][read_num].pressure = 0x2B00;
             }
+            idle_count = 0;
         }
         else if ((read_num == 0xFF))
         {
@@ -774,17 +773,13 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 _filament *filament = &(data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4]);
                 if (data_save.BambuBus_now_filament_num < 16)
                 {
-                    if (filament->motion_set == idle)
+                    if (data_save.BambuBus_now_filament_num < 16)
                     {
-                        if (idle_count > 5000)
-                        {
+                        if (filament->motion_set != idle)
                             filament->motion_set = need_pull_back;
-                        }  
+                        filament->pressure = 0x4700;
                     }
-                    else 
-                        filament->motion_set = need_pull_back;
                     idle_count = 0;
-                    filament->pressure = 0x4700;
                 }
             }
             else if ((statu_flags == 0x01) && (fliment_motion_flag == 0x00)) // 01 00(FF)
@@ -941,13 +936,12 @@ void send_for_motion_short(unsigned char *buf, int length)
     online_buf_set(Motion_res + 7);
     if (!set_motion(AMS_num, read_num, statu_flags, fliment_motion_flag))
         return;
-    
-    //Cxx_res[38] = read_num;
+
+    // Cxx_res[38] = read_num;
     if (statu_flags == 0x03 && read_num == 0xFF)
     {
-        //Cxx_res[38] = data_save.BambuBus_now_filament_num % 4;
+        // Cxx_res[38] = data_save.BambuBus_now_filament_num % 4;
     }
-    
 
     set_motion_res_datas(Cxx_res + 5, AMS_num, read_num, statu_flags);
 
@@ -1207,7 +1201,7 @@ void send_for_online_detect(unsigned char *buf, int length)
             {
                 memcpy(F00_res + 8, online_detect_num4, sizeof(online_detect_num4));
             }
-            if (buf[6] < AMS_num_max)   
+            if (buf[6] < AMS_num_max)
                 package_send_with_crc(F00_res, sizeof(F00_res));
 
             return;
@@ -1621,11 +1615,11 @@ void Bmcu_run()
             {
                 if (bambus_onflush)
                 {
-                    //data_save.filament[AMS_num][read_num].meters = max(meters, data_save.filament[AMS_num][read_num].meters);                    
+                    // data_save.filament[AMS_num][read_num].meters = max(meters, data_save.filament[AMS_num][read_num].meters);
                 }
-                else if (meters < 600 && meters >= 0)
+                else if (data_save.filament[AMS_num][read_num].meters < 0)
                 {
-                    //data_save.filament[AMS_num][read_num].meters = meters;                    
+                    data_save.filament[AMS_num][read_num].meters = 0;
                 }
             }
         }
@@ -1804,7 +1798,7 @@ uint16_t get_tay_color(uint8_t num)
 String Bmcu_set_json(int ams_num, int i)
 {
     const auto &filament = data_save.filament[ams_num][i];
-    String name = filament.name;
+    String on_use = (filament.motion_set != idle) ? "true" : "false";
     char colorBuf[20];
     sprintf(colorBuf, "#%02X%02X%02X",
             filament.color_R,
@@ -1812,11 +1806,16 @@ String Bmcu_set_json(int ams_num, int i)
             filament.color_B);
     char meterBuf[10];
     float meters = filament.meters;
+    meters = meters / 350 * 100; // 转换为百分比显示
+    if (meters > 95.0f)
+    {
+        meters = 95.0f;
+    }
     if (isnan(meters) || isinf(meters))
     {
         meters = 0.0f;
     }
     sprintf(meterBuf, "%6.1f", meters);
-    String json = ("{\"name\":\"" + name + "\",\"color\":\"" + (String)colorBuf + "\",\"meter\":\"" + (String)meterBuf + "\"}");
+    String json = ("{\"onuse\":\"" + on_use + "\",\"color\":\"" + (String)colorBuf + "\",\"meter\":\"" + (String)meterBuf + "\"}");
     return json;
 }

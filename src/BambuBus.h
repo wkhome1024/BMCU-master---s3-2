@@ -68,7 +68,7 @@ extern "C"
     // extern uint16_t get_now_BambuBus_device_type();
     extern void reset_filament_meters(uint8_t AMS_num, uint8_t read_num);
     extern void add_filament_meters(int num, float meters);
-    extern float get_filament_meters(int num);
+    extern void set_filament_meters(int num, float meters);
     extern void set_filament_online(int num, bool if_online);
     extern bool get_filament_online(int num);
     _filament_motion_state_set get_filament_motion(int num);
