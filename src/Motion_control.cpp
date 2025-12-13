@@ -218,7 +218,7 @@ public:
         static uint64_t time_set_speed = 0;
         static uint64_t time_last = 0;
         float speed_set = 0;
-        uint8_t CHx = get_now_filament_num();
+        int CHx = get_now_filament_num();
         uint8_t pull_statu = slave_pull_statu[CHx / 4][CHx % 4] >> 4;
         if (time_now >= motor_stop_time)
         {
@@ -360,7 +360,7 @@ void AS5600_distance_updata()
     static int32_t distance_save = 0;
     static uint64_t time_last = 0;
     uint64_t time_now = get_time64();
-    uint8_t filament_num = get_now_filament_num();
+    int filament_num = get_now_filament_num();
     if (as5600.isConnected() == false)
     {
         distance_save = 0;
@@ -410,7 +410,7 @@ bool Position_check()
 }
 void motor_motion_run()
 {
-    uint8_t num = get_now_filament_num();
+    int num = get_now_filament_num();
     if (get_filament_online(num))
     {
         switch (get_filament_motion(num))
