@@ -12,4 +12,4 @@ extern String Motion_get_status();
 extern float GET_MC_PULL_raw();
 //extern float H_PULL_stu_raw;
 extern float last_total_distance;
-//extern int motor_pwm;
+extern int motor_pwm;

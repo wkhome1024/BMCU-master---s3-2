@@ -44,7 +44,7 @@ const char *bmcu_addr = "bmcu";
 struct alignas(4) flash_save_struct
 {
     _filament filament[8][4];
-    int BambuBus_now_filament_num = 0;
+    uint8_t BambuBus_now_filament_num = 0;
     uint32_t version = Bambubus_version;
     uint32_t check = 0x40614061;
 } data_save;
@@ -76,7 +76,7 @@ void Bambubus_save()
     Bambubus_need_to_save = false;
 }
 
-int get_now_filament_num()
+uint8_t get_now_filament_num()
 {
     return data_save.BambuBus_now_filament_num;
 }
@@ -841,6 +841,9 @@ void send_for_Hit(unsigned char *buf, int length, uint32_t time_now)
     if (time_now - last_Hit_time < 80)
         return;
     last_Hit_time = time_now;
+    bmcu_package_num++;
+    if (bmcu_package_num >= AMS_num_max)
+        bmcu_package_num = 0;
     static bool sw1 = true;
     if (!bambus_onflush || sw1)
     {
@@ -1071,12 +1074,6 @@ void send_for_motion_long(unsigned char *buf, int length)
     if (statu_flags != 0x01 || Motion_long_res[3] == bmcu_package_num)
     {
         Bmcu_package_send_with_crc(Motion_long_res, sizeof(Motion_long_res)); // 重写amsnum 转发bmcu
-    }
-    if (Motion_long_res[3] == bmcu_package_num)
-    {
-        bmcu_package_num--;
-        if (bmcu_package_num < 0)
-            bmcu_package_num = AMS_num_max - 1;
     }
 }
 unsigned char REQx6_res[] = {0x3D, 0xE0, 0x3C, 0x1A, 0x06,
