@@ -18,6 +18,7 @@ uint8_t motor_unready = 0;
 uint32_t pullback_time = 30000; // 30s
 _filament_motion_state_set motion_temp[4][4];
 uint8_t statu_temp[4][4];
+uint8_t slave_pull_statu[4][4] = {0};
 struct _filament
 {
     // AMS statu
@@ -1074,9 +1075,9 @@ void send_for_motion_long(unsigned char *buf, int length)
     }
     if (Motion_long_res[3] == bmcu_package_num)
     {
-        bmcu_package_num++;
-        if (bmcu_package_num > AMS_num_max - 1)
-            bmcu_package_num = 0;
+        bmcu_package_num--;
+        if (bmcu_package_num < 0)
+            bmcu_package_num = AMS_num_max - 1;
     }
 }
 unsigned char REQx6_res[] = {0x3D, 0xE0, 0x3C, 0x1A, 0x06,
@@ -1551,7 +1552,8 @@ void Bmcu_run()
             bmcu_online = buf_Bmcu[12];
             for (int i = 0; i < 4; i++)
             {
-                if (buf_Bmcu[i + 4] == 0x00)
+                slave_pull_statu[AMS_num][i] = buf_Bmcu[i + 4] & 0XF0;
+                if ((buf_Bmcu[i + 4] & 0X0F) == 0x00)
                 {
                     if (motion_temp[AMS_num][i] == idle && data_save.filament[AMS_num][i].motion_set != on_use)
                     {
@@ -1559,7 +1561,7 @@ void Bmcu_run()
                     }
                     motion_temp[AMS_num][i] = idle;
                 }
-                else if (buf_Bmcu[i + 4] == 0x01)
+                else if ((buf_Bmcu[i + 4] & 0X0F) == 0x01)
                 {
                     if (motion_temp[AMS_num][i] == need_pull_back)
                     {
@@ -1567,7 +1569,7 @@ void Bmcu_run()
                     }
                     motion_temp[AMS_num][i] = need_pull_back;
                 }
-                else if (buf_Bmcu[i + 4] == 0x02)
+                else if ((buf_Bmcu[i + 4] & 0X0F) == 0x02)
                 {
                     if (motion_temp[AMS_num][i] == need_send_out)
                     {
@@ -1575,7 +1577,7 @@ void Bmcu_run()
                     }
                     motion_temp[AMS_num][i] = need_send_out;
                 }
-                else if (buf_Bmcu[i + 4] == 0x03)
+                else if ((buf_Bmcu[i + 4] & 0X0F) == 0x03)
                 {
                     if (motion_temp[AMS_num][i] == pre_pull)
                     {
@@ -1583,7 +1585,7 @@ void Bmcu_run()
                     }
                     motion_temp[AMS_num][i] = pre_pull;
                 }
-                else if (buf_Bmcu[i + 4] == 0x04)
+                else if ((buf_Bmcu[i + 4] & 0X0F) == 0x04)
                 {
                     if (motion_temp[AMS_num][i] == on_use)
                     {
