@@ -616,7 +616,7 @@ package_type get_packge_type(unsigned char *buf, int length)
     }
     return BambuBus_package_NONE;
 }
-uint8_t package_num = 0;
+uint8_t package_num[4] = {0};
 uint8_t bmcu_package_num = 0;
 
 uint8_t get_filament_left_char(uint8_t AMS_num, uint8_t checknum)
@@ -923,12 +923,11 @@ unsigned char Motion_res[] = {0x9D, 0x0A, 0x03,
                               0x00};      // crc8 校验
 void send_for_motion_short(unsigned char *buf, int length)
 {
-    Cxx_res[1] = 0xC0 | (package_num << 3);
     unsigned char AMS_num = buf[5];
     unsigned char statu_flags = buf[6];
     unsigned char read_num = buf[7];
     unsigned char fliment_motion_flag = buf[8];
-
+    Cxx_res[1] = 0xC0 | (package_num[AMS_num] << 3);
     Motion_res[2] = 0x03;
     Motion_res[3] = AMS_num;
     Motion_res[4] = read_num;
@@ -945,20 +944,20 @@ void send_for_motion_short(unsigned char *buf, int length)
     }
 
     set_motion_res_datas(Cxx_res + 5, AMS_num, read_num, statu_flags);
-
-    if (package_num % 2 == 0)
+    package_send_with_crc(Cxx_res, sizeof(Cxx_res));
+    if (package_num[AMS_num] % 2 == 0)
     {
-        package_send_with_crc(Cxx_res, sizeof(Cxx_res));
+        
     }
     else
     {
         // package_send_with_crc(Cxx_res, sizeof(Cxx_res));
         Bmcu_package_send_with_crc(Motion_res, sizeof(Motion_res)); // 重写amsnum 转发bmcu
     }
-    if (package_num < 7)
-        package_num++;
+    if (package_num[AMS_num] < 7)
+        package_num[AMS_num]++;
     else
-        package_num = 0;
+        package_num[AMS_num] = 0;
 }
 /*
 0x00, 0x00, 0x00, 0xFF, // 0x0C...
@@ -1024,7 +1023,7 @@ void send_for_motion_long(unsigned char *buf, int length)
         return;
     /*if (need_res_for_06)
     {
-        Dxx_res2[1] = 0xC0 | (package_num << 3);
+        Dxx_res2[1] = 0xC0 | (package_num[AMS_num] << 3);
         Dxx_res2[9] = filament_flag_on;
         Dxx_res2[10] = filament_flag_on - filament_flag_NFC;
         Dxx_res2[11] = filament_flag_on - filament_flag_NFC;
@@ -1037,7 +1036,7 @@ void send_for_motion_long(unsigned char *buf, int length)
     }
     else*/
 
-    Dxx_res[1] = 0xC0 | (package_num << 3);
+    Dxx_res[1] = 0xC0 | (package_num[AMS_num] << 3);
     Dxx_res[5] = AMS_num; // A1 ams_num
     Dxx_res[9] = filament_flag_on;
     Dxx_res[10] = filament_flag_on - filament_flag_NFC;
@@ -1065,10 +1064,10 @@ void send_for_motion_long(unsigned char *buf, int length)
         package_send_with_crc(Dxx_res, sizeof(Dxx_res));
     // delay(1);
 
-    if (package_num < 7)
-        package_num++;
+    if (package_num[AMS_num] < 7)
+        package_num[AMS_num]++;
     else
-        package_num = 0;
+        package_num[AMS_num] = 0;
     if (statu_flags != 0x01 || Motion_long_res[3] == bmcu_package_num)
     {
         Bmcu_package_send_with_crc(Motion_long_res, sizeof(Motion_long_res)); // 重写amsnum 转发bmcu
@@ -1104,7 +1103,7 @@ void send_for_REQx6(unsigned char *buf, int length)
                 filament_flag_NFC |= 1 << i;
             }
         }
-        REQx6_res[1] = 0xC0 | (package_num << 3);
+        REQx6_res[1] = 0xC0 | (package_num[AMS_num] << 3);
         res_for_06_num = buf[7];
         REQx6_res[9] = filament_flag_on;
         REQx6_res[10] = filament_flag_on - filament_flag_NFC;
@@ -1113,10 +1112,10 @@ void send_for_REQx6(unsigned char *buf, int length)
         Dxx_res2[12] = res_for_06_num;
         package_send_with_crc(REQx6_res, sizeof(REQx6_res));
         need_res_for_06 = true;
-        if (package_num < 7)
-            package_num++;
+        if (package_num[AMS_num] < 7)
+            package_num[AMS_num]++;
         else
-            package_num = 0;*/
+            package_num[AMS_num] = 0;*/
 }
 
 void NFC_detect_run()

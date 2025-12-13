@@ -279,9 +279,9 @@ public:
             x = PWM_lim;
         if (x < -PWM_lim)
             x = -PWM_lim;
-        if (speed_as5600 > 0.2 || motion == 0 || speed_as5600 < -0.2 || time_set_speed < time_now - 5000)
+        if (speed_as5600 > 0.2 || motion == 0 || speed_as5600 < -0.2 || time_set_speed < time_now - 2000)
         {
-            time_set_speed = time_now + 5000;
+            time_set_speed = time_now + 2000;
         }
         if (time_set_speed < time_now && time_set_speed != 0)
         {
@@ -329,7 +329,7 @@ void Motor_init()
     //pinMode(Motor_H_pin, OUTPUT);
     //pinMode(Motor_L_pin, OUTPUT);
     motor.setup(hw);
-    motor.reconfigureFrequency(100000);
+    motor.reconfigureFrequency(200000);
     motor.setFreewheelMode(FreewheelMode::HiZ_Awake);
     motor.start();
     /*
