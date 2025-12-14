@@ -72,7 +72,7 @@ void hub_msg()
     {
       postMsgId = 0;
       my_printf("(mqtt) 发送数据成功");
-      my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
+      //my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
       my_printf("(sensor) pull+online: %s", Motion_get_status().c_str());
       SYS_leds.setPixelColor(1, 0x00, 0x00, 0x30); // 发送数据成功后变为蓝色
       if (SYS_leds.canShow())

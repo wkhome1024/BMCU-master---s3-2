@@ -839,6 +839,9 @@ void send_for_Hit(unsigned char *buf, int length, uint32_t time_now)
     if (time_now - last_Hit_time < 80)
         return;
     last_Hit_time = time_now;
+    bmcu_package_num++;
+    if (bmcu_package_num >= AMS_num_max)
+        bmcu_package_num = 0;
     static bool sw1 = true;
     if (!bambus_onflush || sw1)
     {
@@ -1071,12 +1074,6 @@ void send_for_motion_long(unsigned char *buf, int length)
     if (statu_flags != 0x01 || Motion_long_res[3] == bmcu_package_num)
     {
         Bmcu_package_send_with_crc(Motion_long_res, sizeof(Motion_long_res)); // 重写amsnum 转发bmcu
-    }
-    if (Motion_long_res[3] == bmcu_package_num)
-    {
-        bmcu_package_num--;
-        if (bmcu_package_num < 0)
-            bmcu_package_num = AMS_num_max - 1;
     }
 }
 unsigned char REQx6_res[] = {0x3D, 0xE0, 0x3C, 0x1A, 0x06,
