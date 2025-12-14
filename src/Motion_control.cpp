@@ -357,15 +357,11 @@ void AS5600_distance_updata()
     static uint64_t time_last = 0;
     uint64_t time_now = get_time64();
     uint8_t filament_num = get_now_filament_num();
-    if (as5600.isConnected() == false)
-    {
-        distance_save = 0;
-        speed_as5600 = 0;
+    if (as5600.updateRawAngleAsync() == false)
         return;
-    }
     int32_t cir_E = 0;
     int32_t last_distance = distance_save;
-    int32_t now_distance = as5600.readRawAngle();
+    int32_t now_distance = as5600.getRawAngleResult();
     float distance_E;
     if ((now_distance > 3072) && (last_distance <= 1024))
     {
