@@ -1637,9 +1637,9 @@ package_type BambuBus_run()
         int data_length = BambuBus_have_data;
         BambuBus_have_data = 0;
         need_debug = false;
-        // delay(1);
         get_C_data(buf_X, data_length);
         stu = get_packge_type(buf_X, data_length); // have_data
+        delay(1);  
         if (!catch_mode)
         {
             switch (stu)

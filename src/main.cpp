@@ -53,7 +53,7 @@ void hub_msg()
     // my_printf("(sensor) 拉力传感器电压: %.2f V", MC_PULL_stu_raw);
     // my_printf("(sensor) 在线传感器电压: %.2f V", MC_ONLINE_key_stu_raw);
     // my_printf("(sensor) 缓冲PWM状态: %.2f", H_PULL_stu_raw);
-    my_printf("(sensor) 电机输出: %d", motor_pwm);
+    // my_printf("(sensor) 电机输出: %d", motor_pwm);
   }
   else
   {
@@ -70,7 +70,7 @@ void hub_msg()
     if (postMsgId > ((get_AMS_num_max() * 4) - 1))
     {
       postMsgId = 0;
-      my_printf("(mqtt) 发送数据成功");
+      //my_printf("(mqtt) 发送数据成功");
       //my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
       //my_printf("(sensor) 电机输出: %d", motor_pwm);
       my_printf("(sensor) pull+online+H_pwm: %s", Motion_get_status().c_str());

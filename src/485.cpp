@@ -30,8 +30,8 @@ void serialTask(void *parameter)
             uint8_t c = rxBuffer0.read();
             RX_IRQ(c);
         }
-        vTaskDelay(pdMS_TO_TICKS(1));
         BambuBus_run();
+        vTaskDelay(pdMS_TO_TICKS(1));
         while (rxBuffer1.available() && !Bmcu_have_data)
         {
             uint8_t c = rxBuffer1.read();
@@ -50,7 +50,7 @@ void bmcuTask(void *parameter)
             // ESP_LOGE("BambuBus", "Processing package type: %d", stu);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(1)); // 每1ms调用一次
+        vTaskDelay(pdMS_TO_TICKS(2)); // 每2ms调用一次
     }
 }
 void Readuart()
@@ -58,14 +58,14 @@ void Readuart()
     while (Serial0.available())
     {
         uint8_t c = Serial0.read();
-        rxBuffer0.write(c);
-        //RX_IRQ(c);
+        //rxBuffer0.write(c);
+        RX_IRQ(c);
     }
-    while (Serial1.available() && !Bmcu_have_data)
+    while (Serial1.available())
     {
         uint8_t d = Serial1.read();
-        rxBuffer1.write(d);
-        //RX_BMCU(d);
+        //rxBuffer1.write(d);
+        RX_BMCU(d);
     }
 }
 
@@ -109,7 +109,6 @@ void BambuBUS_UART_Init()
         //RX_IRQ(c);
     } });    
     */
-
 }
 
 void send_bmcu_uart(const unsigned char *data, size_t length)
@@ -144,17 +143,17 @@ void BMCU_UART_Init()
 
 void start_rs485_task()
 {
-    BaseType_t serialResult = xTaskCreate(serialTask, "Serial Task", TASK_STACK_SIZE, NULL, 4, NULL);
-    if (serialResult != pdPASS)
-    {
-        ESP_LOGE("(rs485)", "Failed to create Serial Task");
-    }
 
-    /*
     BaseType_t bmcuResult = xTaskCreate(bmcuTask, "Bmcu Task", TASK_STACK_SIZE, NULL, 4, NULL);
     if (bmcuResult != pdPASS)
     {
         ESP_LOGE("(bmcu)", "Failed to create Bmcu  Task");
+    }
+    /*
+    BaseType_t serialResult = xTaskCreate(serialTask, "Serial Task", TASK_STACK_SIZE, NULL, 4, NULL);
+    if (serialResult != pdPASS)
+    {
+        ESP_LOGE("(rs485)", "Failed to create Serial Task");
     }
     */
 }
