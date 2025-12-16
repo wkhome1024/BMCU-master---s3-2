@@ -30,23 +30,24 @@
 #define test_pin 3
 #define test_pin2 45
 #define test_channel 5
-PWM_Analyzer Buf_pwm(Bufio_pin, 1);
+//PWM_Analyzer Buf_pwm(Bufio_pin, 1);
 // PWM_Analyzer Buf_pwm(test_pin2, 1);
 // float buf_voltage = 0.0;
 float Buf_pwm_read()
 {
-  float duty_cycle = Buf_pwm.Get_PWM_duty_cycle();
+  //float duty_cycle = Buf_pwm.Get_PWM_duty_cycle();
+  float duty_cycle = -1;
   if (duty_cycle == -1)
   {
     duty_cycle = 60.0;
-    Buf_pwm.Restart();
+    //Buf_pwm.Restart();
   }
   return duty_cycle;
 }
 uint32_t Buf_pwm_frequency()
 {
-  uint32_t frequency = Buf_pwm.Get_PWM_frequency();
-  return frequency;
+  //uint32_t frequency = Buf_pwm.Get_PWM_frequency();
+  return 0;
 }
 
 void ADC_init()
@@ -55,7 +56,7 @@ void ADC_init()
   analogSetAttenuation(ADC_11db); // 设置衰减为11dB，适用于0-3.3V范围
   adcAttachPin(Pull_pin);
   adcAttachPin(Online_pin);
-  Buf_pwm.Restart();
+  //Buf_pwm.Restart();
 }
 std::pair<float, float> ADC_read()
 {

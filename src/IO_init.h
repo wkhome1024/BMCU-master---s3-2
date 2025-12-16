@@ -1,7 +1,7 @@
 #pragma once
 #include <Wire.h>
 #include <main.h>
-#include "pwm_analyzer.h"
+//#include "pwm_analyzer.h"
 
 //#include <Adafruit_GFX.h>      
 //#include <Adafruit_ST7735.h> 

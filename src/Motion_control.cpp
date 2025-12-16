@@ -14,6 +14,7 @@ float speed_as5600 = 0;
 
 /******************************     控制相关变量       *******************************/
 float MC_PULL_stu_raw = 0;
+//  -2-1.3过低  -1-1.45低 0 正常 1-1.8高 2-1.9过高
 int MC_PULL_stu = 0;
 float MC_ONLINE_key_stu_raw = 0;
 // 0-离线 1-在线单微动触发 2-双微动触发 3-抖动
@@ -23,10 +24,10 @@ uint8_t MC_ONLINE_key_stu = 3;
 // int H_PULL_stu = 0;
 int motor_pwm = 0;
 // 电压控制相关常量
-float PULL_voltage_up = 1.80f;   // 状态 压力高 红灯
-float PULL_voltage_down = 1.45f; // 状态 压力低 蓝灯
+float PULL_voltage_up = 1.80f;   // 1.80V 状态 压力高 红灯
+float PULL_voltage_down = 1.45f; // 1.45V 状态 压力低 蓝灯
 // 微动触发控制相关常量
-float MC_PULL_voltage_pull = 1.60f; // 压力平衡点 1.60
+float MC_PULL_voltage_pull = 1.70f; // 压力平衡点 1.70
 // bool Assist_send_filament[4] = {false, false, false, false};
 //  bool pull_state_old = false; // 上次触发状态——True：未触发，False：进料完成
 //  bool is_backing_out = false;
@@ -218,7 +219,7 @@ public:
         static uint64_t time_set_speed = 0;
         static uint64_t time_last = 0;
         float speed_set = 0;
-        int CHx = get_now_filament_num();
+        uint8_t CHx = get_now_filament_num();
         uint8_t pull_statu = slave_pull_statu[CHx / 4][CHx % 4] >> 4;
         if (time_now >= motor_stop_time)
         {
@@ -261,7 +262,7 @@ public:
         }
         else if (motion == 66) // onuse pressure
         {
-            speed_set = (1.65f - MC_PULL_stu_raw) * 50; // 线性压力反馈
+            speed_set = (MC_PULL_voltage_pull - MC_PULL_stu_raw) * 50; // 线性压力反馈
             if (speed_set < 0 && speed_set > -5)        // 防止电机抖动
                 speed_set = 0;
         }
@@ -360,7 +361,7 @@ void AS5600_distance_updata()
     static int32_t distance_save = 0;
     static uint64_t time_last = 0;
     uint64_t time_now = get_time64();
-    int filament_num = get_now_filament_num();
+    uint8_t filament_num = get_now_filament_num();
     if (as5600.updateRawAngleAsync() == false)
         return;
     int32_t cir_E = 0;
@@ -406,7 +407,7 @@ bool Position_check()
 }
 void motor_motion_run()
 {
-    int num = get_now_filament_num();
+    uint8_t num = get_now_filament_num();
     if (get_filament_online(num))
     {
         switch (get_filament_motion(num))
@@ -443,7 +444,10 @@ void motor_motion_run()
             }
             else if (MOTOR_CONTROL.get_motion() != 2 || MC_PULL_stu < -1)
             {
-                MOTOR_CONTROL.set_motion(66, 100);
+                if (MC_PULL_stu < 1)
+                    MOTOR_CONTROL.set_motion(66, 100);
+                else
+                    MOTOR_CONTROL.set_motion(0, 100);
                 pullcheck[num] = 0;
             }
             break;
