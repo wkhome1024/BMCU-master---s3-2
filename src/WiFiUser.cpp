@@ -433,6 +433,7 @@ void WebHandler::handleData(AsyncWebServerRequest *request)
   else if (catchkey == "close")
   {
     catch_key = 0;
+    mqtt_status = 0;
     Set_24(false);
     my_printf("(http) Bambu-hub关闭抓包--断开从机电源20s");
     request->send(200, "text/plain", "close catch");

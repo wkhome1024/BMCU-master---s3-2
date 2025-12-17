@@ -185,6 +185,11 @@ void RX_IRQ(unsigned char _RX_IRQ_data)
                 data_length_index = 2;
                 data_CRC8_index = 3;
             }
+            else if (data == 0)
+            {
+                _index = 0;
+                return;
+            }
             else
             {
                 data_length_index = 4;
@@ -1639,7 +1644,7 @@ package_type BambuBus_run()
         need_debug = false;
         get_C_data(buf_X, data_length);
         stu = get_packge_type(buf_X, data_length); // have_data
-        delay(1);  
+        //vTaskDelay(pdMS_TO_TICKS(1)); 
         if (!catch_mode)
         {
             switch (stu)

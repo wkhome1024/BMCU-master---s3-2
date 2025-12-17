@@ -15,7 +15,7 @@ char all_filament_topic[20] = "bmcu-hub-1/filament"; // 所有耗材信息的主
 uint8_t hub_num = 2;                                 // 集线器编号
 char mqtt_id[20];
 int save_count = 0;
-int postMsgId = 0;              // 消息ID初始值为0
+uint8_t mqtt_status = 0;        // MQTT连接状态
 int catch_key = 0;              // 抓包计数
 bool catch_mode = false;        // 抓包模式
 bool server_key = false;        // HTTP服务器开关
@@ -42,13 +42,20 @@ void LED_setColor(uint8_t num, uint8_t r, uint8_t g, uint8_t b)
 bool sw_send = true;
 void hub_msg()
 {
+  static uint8_t postMsgId = 0; // 消息ID初始值为0
   // tft_print(catch_mode);
   if (sw_send)
   {
-    if (!client.publish(ha_topic, Sht30_read_mqtt().c_str()))
-      client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
+    if (mqtt_status < 3)
+    {
+      if (!client.publish(ha_topic, Sht30_read_mqtt().c_str()))
+      {
+        client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
+        mqtt_status++;
+        my_printf("(mqtt) MQTT发布失败,正在重连...尝试次数: %d", mqtt_status);
+      }
+    }
     sw_send = !sw_send;
-
     // my_printf("{\"Pull_Voltage\":%.2f,\"Online_Voltage\":%.2f,\"Buf_PWM\":%.2f}",pull_voltage, online_voltage, Buf_pwm_read());
     // my_printf("(sensor) 拉力传感器电压: %.2f V", MC_PULL_stu_raw);
     // my_printf("(sensor) 在线传感器电压: %.2f V", MC_ONLINE_key_stu_raw);
@@ -60,19 +67,22 @@ void hub_msg()
     uint8_t ams_num = postMsgId / 4;
     uint8_t tay_num = postMsgId % 4;
     String all_filament_data = "{";
-    // 为每个AMS创建一个对象
-    all_filament_data += "\"tay" + String(postMsgId + 1) + "\":";
-    all_filament_data += Bmcu_set_json(ams_num, tay_num);
-    all_filament_data += "}";
-    // 发布到统一的耗材主题
-    client.publish(all_filament_topic, all_filament_data.c_str());
+    if (mqtt_status < 3)
+    {
+      // 为每个AMS创建一个对象
+      all_filament_data += "\"tay" + String(postMsgId + 1) + "\":";
+      all_filament_data += Bmcu_set_json(ams_num, tay_num);
+      all_filament_data += "}";
+      // 发布到统一的耗材主题
+      client.publish(all_filament_topic, all_filament_data.c_str());
+    }
     postMsgId++;
     if (postMsgId > ((get_AMS_num_max() * 4) - 1))
     {
       postMsgId = 0;
-      //my_printf("(mqtt) 发送数据成功");
-      //my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
-      //my_printf("(sensor) 电机输出: %d", motor_pwm);
+      // my_printf("(mqtt) 发送数据成功");
+      // my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
+      // my_printf("(sensor) 电机输出: %d", motor_pwm);
       my_printf("(sensor) pull+online+H_pwm: %s", Motion_get_status().c_str());
       SYS_leds.setPixelColor(1, 0x00, 0x00, 0x30); // 发送数据成功后变为蓝色
       if (SYS_leds.canShow())
@@ -280,8 +290,8 @@ void loop()
     {
       if (bambubus_save_flag)
       {
-          Bambubus_set_need_to_save();
-          bambubus_save_flag = false;        
+        Bambubus_set_need_to_save();
+        bambubus_save_flag = false;
       }
       save_count = 0;
     }
