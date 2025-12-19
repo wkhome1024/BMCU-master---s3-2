@@ -32,10 +32,10 @@ void serialTask(void *parameter)
         }
         BambuBus_run();
         vTaskDelay(pdMS_TO_TICKS(1));
-        while (rxBuffer1.available() && !Bmcu_have_data)
+        while (rxBuffer1.available())
         {
-            uint8_t c = rxBuffer1.read();
-            RX_BMCU(c);
+            uint8_t d = rxBuffer1.read();
+            RX_BMCU(d);
         }
         vTaskDelay(pdMS_TO_TICKS(1)); // 每1ms调用一次BambuBus_run()
     }
@@ -50,7 +50,7 @@ void bmcuTask(void *parameter)
             // ESP_LOGE("BambuBus", "Processing package type: %d", stu);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(2)); // 每2ms调用一次
+        vTaskDelay(pdMS_TO_TICKS(1)); // 每2ms调用一次
     }
 }
 void Readuart()
@@ -80,7 +80,7 @@ void send_bambu_uart(const unsigned char *data, size_t length)
     // vTaskDelay(pdMS_TO_TICKS(1) / 10);         // 延迟0.1ms发送
     // Serial0.write("12345");
     Serial0.write(data, length);
-    Serial0.flush();              // 等待串口0发送完成
+    //Serial0.flush();              // 等待串口0发送完成
     vTaskDelay(pdMS_TO_TICKS(1)); // 延迟0.1ms发送  错开时序
     // digitalWrite(Bambu_RTS_PIN, LOW);  // 设置RTS引脚为低
     if (catch_key > 200 && !catch_mode)
@@ -144,7 +144,7 @@ void BMCU_UART_Init()
 void start_rs485_task()
 {
 
-    BaseType_t bmcuResult = xTaskCreate(bmcuTask, "Bmcu Task", TASK_STACK_SIZE, NULL, 4, NULL);
+    BaseType_t bmcuResult = xTaskCreate(bmcuTask, "Bmcu Task", TASK_STACK_SIZE, NULL, 2, NULL);
     if (bmcuResult != pdPASS)
     {
         ESP_LOGE("(bmcu)", "Failed to create Bmcu  Task");

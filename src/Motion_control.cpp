@@ -348,14 +348,6 @@ void Motor_init()
     */
 }
 
-void Motion_control_init()
-{
-    MC_PULL_ONLINE_read();
-    as5600.begin();
-    my_printf("(AS5600) AS5600 MagnetStatus: %d", as5600.getMagnetStatus());
-    Motor_init();
-}
-
 void AS5600_distance_updata()
 {
     static int32_t distance_save = 0;
@@ -390,7 +382,32 @@ void AS5600_distance_updata()
     }
     time_last = time_now;
 }
-
+void motorTask(void *pvParameters)
+{
+  while (1)
+  {
+    AS5600_distance_updata();  //异步刷新测速
+    vTaskDelay(pdMS_TO_TICKS(5));
+    Motion_control_run(0);
+    vTaskDelay(pdMS_TO_TICKS(5)); // 每10ms调用一次
+  }
+}
+void setup_motor_task()
+{
+  BaseType_t motorResult = xTaskCreate(motorTask, "Motor Task", 8192, NULL, 2, NULL);
+  if (motorResult != pdPASS)
+  {
+    ESP_LOGE("(rs485)", "Failed to create Motor Task");
+  }
+}
+void Motion_control_init()
+{
+    MC_PULL_ONLINE_read();
+    as5600.begin();
+    my_printf("(AS5600) AS5600 MagnetStatus: %d", as5600.getMagnetStatus());
+    Motor_init();
+    setup_motor_task();
+}
 uint8_t pullcheck[16] = {0}; // 当前bmcu通道使用标记
 uint8_t lastnum = 0;
 
