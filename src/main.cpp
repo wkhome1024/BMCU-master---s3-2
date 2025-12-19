@@ -135,22 +135,7 @@ void publishLogOverMQTT()
   client.publish(logTopic, payload);
   offset += (chunkSize - 1);
 }
-void motorTask(void *pvParameters)
-{
-  while (1)
-  {
-    Motion_control_run(error_flag);
-    vTaskDelay(pdMS_TO_TICKS(10)); // 每10ms调用一次
-  }
-}
-void setup_motor_task()
-{
-  BaseType_t motorResult = xTaskCreate(motorTask, "Motor Task", 8192, NULL, 2, NULL);
-  if (motorResult != pdPASS)
-  {
-    ESP_LOGE("(rs485)", "Failed to create Motor Task");
-  }
-}
+
 void setup()
 {
   INIT_DATA();
@@ -179,14 +164,14 @@ void setup()
     all_filament_topic[9] += (hub_num - 1);
     client.setServer(mqtt_server.c_str(), mqtt_port); // 设置MQTT服务器地址和端口
     client.connect(mqtt_id, mqtt_username.c_str(), mqtt_password.c_str());
-    client.publish(ha_topic, "Hi, I'm ESP32 ^^");
     my_printf("(wifi) WiFi连接成功");
     my_printf("(wifi) WiFi名称: %s", WiFi.SSID().c_str());
     my_printf("(wifi) WiFi IP地址: %s", WiFi.localIP().toString().c_str());
     my_printf("(wifi) MQTT服务器: %s", mqtt_server.c_str());
     my_printf("(wifi) MQTT端口: %d", mqtt_port);
     my_printf("(wifi) MQTT ID: %s", mqtt_id);
-    my_printf("(wifi) MQTT连接成功");
+    if (client.publish(ha_topic, "Hi, I'm ESP32 ^^"))
+        my_printf("(wifi) MQTT连接成功");
   }
 
   RS485_init();
@@ -195,7 +180,7 @@ void setup()
   my_printf("(memory) RAM可使用大小: %d", ESP.getFreeHeap());
   my_printf("(memory) PSRAM可使用大小: %d", ESP.getFreePsram());
   webtask_setup();
-  setup_motor_task();
+  //setup_motor_task();
 }
 uint32_t error_time = 0;
 uint32_t offline_time = 0;

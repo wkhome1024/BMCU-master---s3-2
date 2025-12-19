@@ -25,14 +25,14 @@ void serialTask(void *parameter)
 {
     for (;;)
     {
-        while (rxBuffer0.available() && !BambuBus_have_data)
+        while (rxBuffer0.available())
         {
             uint8_t c = rxBuffer0.read();
             RX_IRQ(c);
         }
         BambuBus_run();
         vTaskDelay(pdMS_TO_TICKS(1));
-        while (rxBuffer1.available() && !Bmcu_have_data)
+        while (rxBuffer1.available())
         {
             uint8_t c = rxBuffer1.read();
             RX_BMCU(c);
@@ -61,7 +61,7 @@ void Readuart()
         // rxBuffer0.write(c);
         RX_IRQ(c);
     }
-    while (Serial1.available() && !Bmcu_have_data)
+    while (Serial1.available())
     {
         uint8_t d = Serial1.read();
         // rxBuffer1.write(d);
@@ -80,7 +80,7 @@ void send_bambu_uart(const unsigned char *data, size_t length)
     // vTaskDelay(pdMS_TO_TICKS(1) / 10);         // 延迟0.1ms发送
     // Serial0.write("12345");
     Serial0.write(data, length);
-    Serial0.flush();              // 等待串口0发送完成
+    // Serial0.flush();              // 等待串口0发送完成
     vTaskDelay(pdMS_TO_TICKS(1)); // 延迟0.1ms发送  错开时序
     // digitalWrite(Bambu_RTS_PIN, LOW);  // 设置RTS引脚为低
     if (catch_key > 200 && !catch_mode)

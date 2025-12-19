@@ -955,7 +955,6 @@ void send_for_motion_short(unsigned char *buf, int length)
     package_send_with_crc(Cxx_res, sizeof(Cxx_res));
     if (package_num[AMS_num] % 2 == 0)
     {
-        
     }
     else
     {
@@ -1554,11 +1553,22 @@ void Bmcu_run()
             for (int i = 0; i < 4; i++)
             {
                 slave_pull_statu[AMS_num][i] = buf_Bmcu[i + 4] & 0XF0;
+                _filament *filament = &data_save.filament[AMS_num][i];
                 if ((buf_Bmcu[i + 4] & 0X0F) == 0x00)
                 {
-                    if (motion_temp[AMS_num][i] == idle && data_save.filament[AMS_num][i].motion_set != on_use)
+                    if (motion_temp[AMS_num][i] == idle && filament->motion_set == need_pull_back)
                     {
-                        data_save.filament[AMS_num][i].motion_set = motion_temp[AMS_num][i];
+                        filament_res[2] = 0x08;
+                        filament_res[3] = AMS_num;
+                        filament_res[4] = i;
+                        filament_res[5] = 0x00;
+                        filament_res[6] = 0xD9; // 选中激活为onuse
+                        Bmcu_package_send_with_crc(filament_res, sizeof(filament_res));    // 发送选中激活为onuse
+                        my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为onuse", AMS_num, i);
+                    }
+                    else if (motion_temp[AMS_num][i] == idle && filament->motion_set != on_use)
+                    {
+                        filament->motion_set = motion_temp[AMS_num][i];
                     }
                     motion_temp[AMS_num][i] = idle;
                 }
@@ -1566,7 +1576,7 @@ void Bmcu_run()
                 {
                     if (motion_temp[AMS_num][i] == need_pull_back)
                     {
-                        data_save.filament[AMS_num][i].motion_set = motion_temp[AMS_num][i];
+                        filament->motion_set = motion_temp[AMS_num][i];
                     }
                     motion_temp[AMS_num][i] = need_pull_back;
                 }
@@ -1574,7 +1584,7 @@ void Bmcu_run()
                 {
                     if (motion_temp[AMS_num][i] == need_send_out)
                     {
-                        data_save.filament[AMS_num][i].motion_set = motion_temp[AMS_num][i];
+                        filament->motion_set = motion_temp[AMS_num][i];
                     }
                     motion_temp[AMS_num][i] = need_send_out;
                 }
@@ -1582,7 +1592,7 @@ void Bmcu_run()
                 {
                     if (motion_temp[AMS_num][i] == pre_pull)
                     {
-                        data_save.filament[AMS_num][i].motion_set = motion_temp[AMS_num][i];
+                        filament->motion_set = motion_temp[AMS_num][i];
                     }
                     motion_temp[AMS_num][i] = pre_pull;
                 }
@@ -1590,19 +1600,19 @@ void Bmcu_run()
                 {
                     if (motion_temp[AMS_num][i] == on_use)
                     {
-                        data_save.filament[AMS_num][i].motion_set = motion_temp[AMS_num][i];
+                        filament->motion_set = motion_temp[AMS_num][i];
                     }
                     motion_temp[AMS_num][i] = on_use;
                 }
                 if (bmcu_online & (0x01 << (2 * i)))
                 {
-                    data_save.filament[AMS_num][i].statu = online;
+                    filament->statu = online;
                     statu_temp[AMS_num][i] = 0;
                 }
                 else
                 {
-                    if (statu_temp[AMS_num][i] > 2)
-                        data_save.filament[AMS_num][i].statu = offline;
+                    if (statu_temp[AMS_num][i] > 100 && (filament->motion_set != idle && GET_MC_Online_stu() < 1))
+                        filament->statu = offline;
                     statu_temp[AMS_num][i] += 1; // 离线状态计数
                 }
             }
@@ -1644,7 +1654,7 @@ package_type BambuBus_run()
         need_debug = false;
         get_C_data(buf_X, data_length);
         stu = get_packge_type(buf_X, data_length); // have_data
-        //vTaskDelay(pdMS_TO_TICKS(1)); 
+        // vTaskDelay(pdMS_TO_TICKS(1));
         if (!catch_mode)
         {
             switch (stu)
