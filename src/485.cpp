@@ -81,7 +81,7 @@ void send_bambu_uart(const unsigned char *data, size_t length)
     // Serial0.write("12345");
     Serial0.write(data, length);
     // Serial0.flush();              // 等待串口0发送完成
-    vTaskDelay(pdMS_TO_TICKS(1)); // 延迟0.1ms发送  错开时序
+    // vTaskDelay(pdMS_TO_TICKS(1)); // 延迟0.1ms发送  错开时序
     // digitalWrite(Bambu_RTS_PIN, LOW);  // 设置RTS引脚为低
     if (catch_key > 200 && !catch_mode)
         get_C_data((uint8_t *)data, length);

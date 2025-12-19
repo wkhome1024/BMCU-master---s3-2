@@ -850,7 +850,7 @@ void send_for_Hit(unsigned char *buf, int length, uint32_t time_now)
     if (bmcu_package_num >= AMS_num_max)
         bmcu_package_num = 0;
     static bool sw1 = true;
-    if (!bambus_onflush || sw1)
+    if (bambus_onflush || sw1)
     {
         sw1 = false;
         if (AMS_num_c > AMS_num_max)
@@ -952,11 +952,12 @@ void send_for_motion_short(unsigned char *buf, int length)
     }
 
     set_motion_res_datas(Cxx_res + 5, AMS_num, read_num, statu_flags);
-    package_send_with_crc(Cxx_res, sizeof(Cxx_res));
-    if (package_num[AMS_num] % 2 == 0)
+    
+    if (package_num[AMS_num] % 3 == 0)
     {
+        package_send_with_crc(Cxx_res, sizeof(Cxx_res));
     }
-    else
+    else if (package_num[AMS_num] % 3 == 1)
     {
         // package_send_with_crc(Cxx_res, sizeof(Cxx_res));
         Bmcu_package_send_with_crc(Motion_res, sizeof(Motion_res)); // 重写amsnum 转发bmcu
@@ -1067,15 +1068,19 @@ void send_for_motion_long(unsigned char *buf, int length)
         }
         last_detect--;
     }
-    if (statu_flags != 0x01 || !bambus_onflush || Dxx_res[5] == bmcu_package_num)
+    if (bambus_onflush)
+    {
+        if (Dxx_res[5] == data_save.BambuBus_now_filament_num / 4 && GET_MC_Online_stu() > 0)
+            package_send_with_crc(Dxx_res, sizeof(Dxx_res));
+    }
+    else if (Dxx_res[5] == bmcu_package_num)
         package_send_with_crc(Dxx_res, sizeof(Dxx_res));
-    // delay(1);
 
     if (package_num[AMS_num] < 7)
         package_num[AMS_num]++;
     else
         package_num[AMS_num] = 0;
-    if (statu_flags != 0x01 || Motion_long_res[3] == bmcu_package_num)
+    if (Motion_long_res[3] == bmcu_package_num)
     {
         Bmcu_package_send_with_crc(Motion_long_res, sizeof(Motion_long_res)); // 重写amsnum 转发bmcu
     }
