@@ -834,7 +834,7 @@ void online_buf_set(unsigned char *set_buf)
     set_buf[0] = GET_MC_Online_stu();
     if (motor_unready)
         set_buf[0] |= 0x30;
-    set_buf[1] = (uint8_t)((GET_MC_PULL_raw() - 0.8f) * 128); // 通道压力值/128 增大0.2
+    set_buf[1] = (uint8_t)((GET_MC_PULL_raw() - 0.9f) * 128); // 通道压力值/128 增大0.1
 }
 unsigned char Hit_res[] = {0x9D, 0x0A, 0x20,
                            0x00, 0x00, // amsnum + taynum
@@ -849,31 +849,19 @@ void send_for_Hit(unsigned char *buf, int length, uint32_t time_now)
     bmcu_package_num++;
     if (bmcu_package_num >= AMS_num_max)
         bmcu_package_num = 0;
-    static bool sw1 = true;
-    if (bambus_onflush || sw1)
+    if (AMS_num_c > AMS_num_max)
     {
-        sw1 = false;
-        if (AMS_num_c > AMS_num_max)
-        {
-            Tay_num_c++;
-            AMS_num_c = 0;
-        }
-        if (Tay_num_c > 3)
-        {
-            Tay_num_c = 0;
-        }
-        Hit_res[3] = AMS_num_c;
-        Hit_res[4] = Tay_num_c;
-        Hit_res[2] = 0x20;
-        AMS_num_c++; // 每个心跳包轮询一个bmcu_tay
+        Tay_num_c++;
+        AMS_num_c = 0;
     }
-    else
+    if (Tay_num_c > 3)
     {
-        sw1 = true;
-        Hit_res[2] = 0x20;
-        Hit_res[3] = data_save.BambuBus_now_filament_num / 4;
-        Hit_res[4] = data_save.BambuBus_now_filament_num % 4;
+        Tay_num_c = 0;
     }
+    Hit_res[3] = AMS_num_c;
+    Hit_res[4] = Tay_num_c;
+    Hit_res[2] = 0x20;
+    AMS_num_c++; // 每个心跳包轮询一个bmcu_tay
 
     Hit_res[5] = 0; // sw_read();               // 五通前端状态
     Hit_res[6] = 0;
@@ -952,7 +940,7 @@ void send_for_motion_short(unsigned char *buf, int length)
     }
 
     set_motion_res_datas(Cxx_res + 5, AMS_num, read_num, statu_flags);
-    
+
     if (package_num[AMS_num] % 3 == 0)
     {
         package_send_with_crc(Cxx_res, sizeof(Cxx_res));
@@ -1080,7 +1068,7 @@ void send_for_motion_long(unsigned char *buf, int length)
         package_num[AMS_num]++;
     else
         package_num[AMS_num] = 0;
-    if (Motion_long_res[3] == bmcu_package_num)
+    if (Motion_long_res[3] == (bmcu_package_num + 1) % AMS_num_max)
     {
         Bmcu_package_send_with_crc(Motion_long_res, sizeof(Motion_long_res)); // 重写amsnum 转发bmcu
     }
@@ -1567,8 +1555,8 @@ void Bmcu_run()
                         filament_res[3] = AMS_num;
                         filament_res[4] = i;
                         filament_res[5] = 0x00;
-                        filament_res[6] = 0xD9; // 选中激活为onuse
-                        Bmcu_package_send_with_crc(filament_res, sizeof(filament_res));    // 发送选中激活为onuse
+                        filament_res[6] = 0xD9;                                         // 选中激活为onuse
+                        Bmcu_package_send_with_crc(filament_res, sizeof(filament_res)); // 发送选中激活为onuse
                         my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为onuse", AMS_num, i);
                     }
                     else if (motion_temp[AMS_num][i] == idle && filament->motion_set != on_use)
@@ -1614,11 +1602,11 @@ void Bmcu_run()
                     filament->statu = online;
                     statu_temp[AMS_num][i] = 0;
                 }
-                else
+                else if (filament->statu != offline)
                 {
-                    if (statu_temp[AMS_num][i] > 10)
+                    if (statu_temp[AMS_num][i] > 20)
                         filament->statu = offline;
-                    if (filament->motion_set == idle || GET_MC_Online_stu() < 1)
+                    if (filament->motion_set == idle || GET_MC_Online_stu() == 0)
                         statu_temp[AMS_num][i] += 1; // 离线状态计数
                 }
             }
