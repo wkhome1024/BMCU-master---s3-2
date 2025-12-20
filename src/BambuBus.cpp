@@ -748,7 +748,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
         {
             if ((statu_flags == 0x03) && (fliment_motion_flag == 0x00)) // 03 00(FF)
             {
-                _filament *filament = &(data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4]);
+                _filament *filament = &(data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4]);
                 if (data_save.BambuBus_now_filament_num < 16)
                 {
                     if (filament->motion_set == on_use || filament->motion_set == pre_pull)
@@ -1518,17 +1518,7 @@ void Bmcu_run()
                 _filament *filament = &data_save.filament[AMS_num][i];
                 if ((buf_Bmcu[i + 4] & 0X0F) == 0x00)
                 {
-                    if (motion_temp[AMS_num][i] == idle && filament->motion_set == need_pull_back)
-                    {
-                        filament_res[2] = 0x08;
-                        filament_res[3] = AMS_num;
-                        filament_res[4] = i;
-                        filament_res[5] = 0x00;
-                        filament_res[6] = 0xD9;                                         // 选中激活为onuse
-                        Bmcu_package_send_with_crc(filament_res, sizeof(filament_res)); // 发送选中激活为onuse
-                        my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为onuse", AMS_num, i);
-                    }
-                    else if (motion_temp[AMS_num][i] == idle && filament->motion_set != on_use)
+                    if (motion_temp[AMS_num][i] == idle && filament->motion_set != on_use)
                     {
                         filament->motion_set = motion_temp[AMS_num][i];
                     }
