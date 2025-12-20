@@ -1586,9 +1586,10 @@ void Bmcu_run()
                 }
                 else
                 {
-                    if (statu_temp[AMS_num][i] > 2)
+                    if (statu_temp[AMS_num][i] > 10)
                         data_save.filament[AMS_num][i].statu = offline;
-                    statu_temp[AMS_num][i] += 1; // 离线状态计数
+                    if (data_save.filament[AMS_num][i].motion_set == idle || GET_MC_Online_stu() < 1)
+                        statu_temp[AMS_num][i] += 1; // 离线状态计数
                 }
             }
             if (bmcu_online & 0xAA)

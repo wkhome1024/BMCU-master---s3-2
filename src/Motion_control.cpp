@@ -253,7 +253,7 @@ public:
         else if (motion == -2) //  prepull
         {
             speed_set = (1.2f - MC_PULL_stu_raw) * 100; // 线性压力反馈
-            if (speed_set < 5 && speed_set > 0)          // 防止电机抖动
+            if (speed_set < 5 && speed_set > 0)         // 防止电机抖动
                 speed_set = 0;
         }
         else if (motion == -1) // pull 370 70 130 18
@@ -263,7 +263,7 @@ public:
         else if (motion == 66) // onuse pressure
         {
             speed_set = (MC_PULL_voltage_pull - MC_PULL_stu_raw) * 50; // 线性压力反馈
-            if (speed_set < 0 && speed_set > -5)        // 防止电机抖动
+            if (speed_set < 0 && speed_set > -5)                       // 防止电机抖动
                 speed_set = 0;
         }
         else if (motion == -66) // pull on hall
@@ -384,21 +384,21 @@ void AS5600_distance_updata()
 }
 void motorTask(void *pvParameters)
 {
-  while (1)
-  {
-    AS5600_distance_updata();  //异步刷新测速
-    vTaskDelay(pdMS_TO_TICKS(5));
-    Motion_control_run(0);
-    vTaskDelay(pdMS_TO_TICKS(5)); // 每10ms调用一次
-  }
+    while (1)
+    {
+        AS5600_distance_updata(); // 异步刷新测速
+        vTaskDelay(pdMS_TO_TICKS(5));
+        Motion_control_run(0);
+        vTaskDelay(pdMS_TO_TICKS(5)); // 每10ms调用一次
+    }
 }
 void setup_motor_task()
 {
-  BaseType_t motorResult = xTaskCreate(motorTask, "Motor Task", 8192, NULL, 2, NULL);
-  if (motorResult != pdPASS)
-  {
-    ESP_LOGE("(rs485)", "Failed to create Motor Task");
-  }
+    BaseType_t motorResult = xTaskCreate(motorTask, "Motor Task", 8192, NULL, 2, NULL);
+    if (motorResult != pdPASS)
+    {
+        ESP_LOGE("(rs485)", "Failed to create Motor Task");
+    }
 }
 void Motion_control_init()
 {
@@ -492,7 +492,7 @@ void motor_motion_run()
             }
             else
                 MOTOR_CONTROL.set_motion(0, 100);
-            if (MC_PULL_stu == 2 && MC_ONLINE_key_stu > 0)    //手动退料
+            if (MC_PULL_stu == 2 && MC_ONLINE_key_stu > 0) // 手动退料
             {
                 MOTOR_CONTROL.set_motion(-1, 100);
             }
