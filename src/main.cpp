@@ -228,7 +228,7 @@ void loop()
         hub_msg();
       }
     }
-    else if (!Bambus_onflush() && offline_time < time_now)
+    else if (BambuBus_not_on_print() && offline_time < time_now)
     {
 
       offline_time = time_now + 300000; // 300秒后重连

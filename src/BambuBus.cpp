@@ -137,20 +137,9 @@ _filament_motion_state_set get_filament_motion(int num)
     else
         return idle;
 }
-bool BambuBus_if_on_print()
+bool BambuBus_not_on_print()
 {
-    bool on_print = false;
-    for (int i = 0; i < 4; i++)
-    {
-        for (int j = 0; i < 4; j++)
-        {
-            if (data_save.filament[i][j].motion_set != idle)
-            {
-                on_print = true;
-            }
-        }
-    }
-    return on_print;
+    return (!bambus_onflush && data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].motion_set == idle);
 }
 uint8_t buf_X[512];
 CRC8 _RX_IRQ_crcx(0x39, 0x66, 0x00, false, false);
@@ -707,14 +696,13 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
 }
 bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char statu_flags, unsigned char fliment_motion_flag)
 {
-    static uint32_t time_last = 0;
+    static uint32_t time_last[4] = {0};
     // static uint32_t pull_count = 0;
     static uint32_t meters_virtual_count = 0;
-    static uint64_t idle_count = 0;
+    //static uint64_t idle_count = 0;
     uint32_t time_now = get_time32();
-    uint32_t time_used = time_now - time_last;
-    if (AMS_num == data_save.BambuBus_now_filament_num / 4)
-        time_last = time_now;
+    uint32_t time_used = time_now - time_last[AMS_num];
+    time_last[AMS_num] = time_now;
     if (BambuBus_address == BambuBus_AMS) // AMS08
     {
         if (read_num < 4)
@@ -746,7 +734,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 }
                 else if (meters_virtual_count < 3500) // 10s virtual data
                 {
-                    // data_save.filament[AMS_num][read_num].meters += (float)time_used / 100000; // 10mm/s
+                    data_save.filament[AMS_num][read_num].meters += (float)time_used / 100000; // 10mm/s
                     meters_virtual_count += time_used;
                 }
                 data_save.filament[AMS_num][read_num].motion_set = on_use;
@@ -770,34 +758,28 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 }
                 data_save.filament[AMS_num][read_num].pressure = 0x2B00;
             }
-            idle_count = 0;
         }
         else if ((read_num == 0xFF))
         {
             if ((statu_flags == 0x03) && (fliment_motion_flag == 0x00)) // 03 00(FF)
             {
-                _filament *filament = &(data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4]);
+                _filament *filament = &(data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4]);
                 if (data_save.BambuBus_now_filament_num < 16)
                 {
-                    if (data_save.BambuBus_now_filament_num < 16)
-                    {
-                        if (filament->motion_set != idle)
-                            filament->motion_set = need_pull_back;
-                        filament->pressure = 0x4700;
-                    }
-                    idle_count = 0;
+
+                    if (filament->motion_set != idle)
+                        filament->motion_set = need_pull_back;
+                    filament->pressure = 0x4700;
                 }
             }
             else if ((statu_flags == 0x01) && (fliment_motion_flag == 0x00)) // 01 00(FF)
             {
                 for (auto i = 0; i < 4; i++)
                 {
-                    if (data_save.filament[AMS_num][i].motion_set != on_use || idle_count > 9999)
+                    if (data_save.filament[AMS_num][i].motion_set != on_use)
                         data_save.filament[AMS_num][i].motion_set = idle;
                     data_save.filament[AMS_num][i].pressure = 0xFFFF;
                 }
-                if (idle_count < 10000)
-                    idle_count += time_used;
             }
         }
     }
@@ -1549,17 +1531,7 @@ void Bmcu_run()
                 _filament *filament = &data_save.filament[AMS_num][i];
                 if ((buf_Bmcu[i + 4] & 0X0F) == 0x00)
                 {
-                    if (motion_temp[AMS_num][i] == idle && filament->motion_set == need_pull_back)
-                    {
-                        filament_res[2] = 0x08;
-                        filament_res[3] = AMS_num;
-                        filament_res[4] = i;
-                        filament_res[5] = 0x00;
-                        filament_res[6] = 0xD9;                                         // 选中激活为onuse
-                        Bmcu_package_send_with_crc(filament_res, sizeof(filament_res)); // 发送选中激活为onuse
-                        my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为onuse", AMS_num, i);
-                    }
-                    else if (motion_temp[AMS_num][i] == idle && filament->motion_set != on_use)
+                    if (motion_temp[AMS_num][i] == idle && filament->motion_set != on_use)
                     {
                         filament->motion_set = motion_temp[AMS_num][i];
                     }
@@ -1739,7 +1711,7 @@ package_type BambuBus_run()
     {
         if (save_count == 20)
         {
-            if (!bambus_onflush && data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].motion_set == idle)
+            if (BambuBus_not_on_print())
             {
                 Bambubus_save();
                 time_set = timex + 1000;
