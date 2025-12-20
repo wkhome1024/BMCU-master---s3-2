@@ -639,7 +639,7 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
     uint8_t checknum = 0xFF;
     if ((read_num != 0xFF) && (read_num < 4))
     {
-        
+
         meters = data_save.filament[AMS_num][read_num].meters;
         // if (BambuBus_address == BambuBus_AMS)
         // meters = -meters;
@@ -658,7 +658,7 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
         {
             motion_flag = 0x04;
             pressure = data_save.filament[AMS_num][read_num].pressure;
-            //meters = data_save.filament[AMS_num][read_num].meters + ((float)meters_virtual_count / 100000);
+            // meters = data_save.filament[AMS_num][read_num].meters + ((float)meters_virtual_count / 100000);
         }
         // if (statu_flags == 0x07)
         last_time = now_time;
@@ -698,7 +698,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
     static uint32_t meters_virtual_count = 0;
     // static uint64_t idle_count = 0;
     uint32_t time_now = get_time32();
-    uint32_t time_used = time_now - time_last;       
+    uint32_t time_used = time_now - time_last;
     if (BambuBus_address == BambuBus_AMS) // AMS08
     {
         if (read_num < 4)
@@ -753,7 +753,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 }
                 data_save.filament[AMS_num][read_num].pressure = 0x2B00;
             }
-            time_last = time_now; 
+            time_last = time_now;
         }
         else if ((read_num == 0xFF))
         {
@@ -827,31 +827,19 @@ void send_for_Hit(unsigned char *buf, int length, uint32_t time_now)
     bmcu_package_num++;
     if (bmcu_package_num >= AMS_num_max)
         bmcu_package_num = 0;
-    static bool sw1 = true;
-    if (bambus_onflush || sw1)
+    if (AMS_num_c > AMS_num_max)
     {
-        sw1 = false;
-        if (AMS_num_c > AMS_num_max)
-        {
-            Tay_num_c++;
-            AMS_num_c = 0;
-        }
-        if (Tay_num_c > 3)
-        {
-            Tay_num_c = 0;
-        }
-        Hit_res[3] = AMS_num_c;
-        Hit_res[4] = Tay_num_c;
-        Hit_res[2] = 0x20;
-        AMS_num_c++; // 每个心跳包轮询一个bmcu_tay
+        Tay_num_c++;
+        AMS_num_c = 0;
     }
-    else
+    if (Tay_num_c > 3)
     {
-        sw1 = true;
-        Hit_res[2] = 0x20;
-        Hit_res[3] = data_save.BambuBus_now_filament_num / 4;
-        Hit_res[4] = data_save.BambuBus_now_filament_num % 4;
+        Tay_num_c = 0;
     }
+    Hit_res[3] = AMS_num_c;
+    Hit_res[4] = Tay_num_c;
+    Hit_res[2] = 0x20;
+    AMS_num_c++; // 每个心跳包轮询一个bmcu_tay
 
     Hit_res[5] = 0; // sw_read();               // 五通前端状态
     Hit_res[6] = 0;
@@ -928,12 +916,11 @@ void send_for_motion_short(unsigned char *buf, int length)
     if (statu_flags == 0x03 && read_num == 0xFF)
     {
         Cxx_res[38] = data_save.BambuBus_now_filament_num % 4;
-    }    
+    }
     */
 
-
     set_motion_res_datas(Cxx_res + 5, AMS_num, read_num, statu_flags);
-    
+
     if (package_num[AMS_num] % 3 == 0)
     {
         package_send_with_crc(Cxx_res, sizeof(Cxx_res));
@@ -1054,14 +1041,14 @@ void send_for_motion_long(unsigned char *buf, int length)
         if (Dxx_res[5] == data_save.BambuBus_now_filament_num / 4 && GET_MC_Online_stu() > 0)
             package_send_with_crc(Dxx_res, sizeof(Dxx_res));
     }
-    else if (statu_flags != 0x01 || Dxx_res[5] == bmcu_package_num)
+    else if (Dxx_res[5] == bmcu_package_num)
         package_send_with_crc(Dxx_res, sizeof(Dxx_res));
-    
+
     if (package_num[AMS_num] < 7)
         package_num[AMS_num]++;
     else
         package_num[AMS_num] = 0;
-    if (statu_flags != 0x01 || Motion_long_res[3] == bmcu_package_num)
+    if (Motion_long_res[3] == (bmcu_package_num + 1) % AMS_num_max)
     {
         Bmcu_package_send_with_crc(Motion_long_res, sizeof(Motion_long_res)); // 重写amsnum 转发bmcu
     }
@@ -1539,11 +1526,22 @@ void Bmcu_run()
             for (int i = 0; i < 4; i++)
             {
                 slave_pull_statu[AMS_num][i] = buf_Bmcu[i + 4] & 0XF0;
+                _filament *filament = &data_save.filament[AMS_num][i];
                 if ((buf_Bmcu[i + 4] & 0X0F) == 0x00)
                 {
-                    if (motion_temp[AMS_num][i] == idle && data_save.filament[AMS_num][i].motion_set != on_use)
+                    if (motion_temp[AMS_num][i] == idle && filament->motion_set == need_pull_back)
                     {
-                        data_save.filament[AMS_num][i].motion_set = motion_temp[AMS_num][i];
+                        filament_res[2] = 0x08;
+                        filament_res[3] = AMS_num;
+                        filament_res[4] = i;
+                        filament_res[5] = 0x00;
+                        filament_res[6] = 0xD9;                                         // 选中激活为onuse
+                        Bmcu_package_send_with_crc(filament_res, sizeof(filament_res)); // 发送选中激活为onuse
+                        my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为onuse", AMS_num, i);
+                    }
+                    else if (motion_temp[AMS_num][i] == idle && filament->motion_set != on_use)
+                    {
+                        filament->motion_set = motion_temp[AMS_num][i];
                     }
                     motion_temp[AMS_num][i] = idle;
                 }
@@ -1551,7 +1549,7 @@ void Bmcu_run()
                 {
                     if (motion_temp[AMS_num][i] == need_pull_back)
                     {
-                        data_save.filament[AMS_num][i].motion_set = motion_temp[AMS_num][i];
+                        filament->motion_set = motion_temp[AMS_num][i];
                     }
                     motion_temp[AMS_num][i] = need_pull_back;
                 }
@@ -1559,7 +1557,7 @@ void Bmcu_run()
                 {
                     if (motion_temp[AMS_num][i] == need_send_out)
                     {
-                        data_save.filament[AMS_num][i].motion_set = motion_temp[AMS_num][i];
+                        filament->motion_set = motion_temp[AMS_num][i];
                     }
                     motion_temp[AMS_num][i] = need_send_out;
                 }
@@ -1567,7 +1565,7 @@ void Bmcu_run()
                 {
                     if (motion_temp[AMS_num][i] == pre_pull)
                     {
-                        data_save.filament[AMS_num][i].motion_set = motion_temp[AMS_num][i];
+                        filament->motion_set = motion_temp[AMS_num][i];
                     }
                     motion_temp[AMS_num][i] = pre_pull;
                 }
@@ -1575,20 +1573,20 @@ void Bmcu_run()
                 {
                     if (motion_temp[AMS_num][i] == on_use)
                     {
-                        data_save.filament[AMS_num][i].motion_set = motion_temp[AMS_num][i];
+                        filament->motion_set = motion_temp[AMS_num][i];
                     }
                     motion_temp[AMS_num][i] = on_use;
                 }
                 if (bmcu_online & (0x01 << (2 * i)))
                 {
-                    data_save.filament[AMS_num][i].statu = online;
+                    filament->statu = online;
                     statu_temp[AMS_num][i] = 0;
                 }
-                else
+                else if (filament->statu != offline)
                 {
-                    if (statu_temp[AMS_num][i] > 10)
-                        data_save.filament[AMS_num][i].statu = offline;
-                    if (data_save.filament[AMS_num][i].motion_set == idle || GET_MC_Online_stu() < 1)
+                    if (statu_temp[AMS_num][i] > 20)
+                        filament->statu = offline;
+                    if (filament->motion_set == idle || GET_MC_Online_stu() == 0)
                         statu_temp[AMS_num][i] += 1; // 离线状态计数
                 }
             }
@@ -1626,7 +1624,7 @@ package_type BambuBus_run()
         need_debug = false;
         get_C_data(buf_X, data_length);
         stu = get_packge_type(buf_X, data_length); // have_data
-        //vTaskDelay(pdMS_TO_TICKS(1));        
+        // vTaskDelay(pdMS_TO_TICKS(1));
         if (!catch_mode)
         {
             switch (stu)
