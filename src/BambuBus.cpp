@@ -682,12 +682,13 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
 }
 bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char statu_flags, unsigned char fliment_motion_flag)
 {
-    static uint32_t time_last = 0;
+    static uint32_t time_last[4] = {0};
     // static uint32_t pull_count = 0;
     static uint32_t meters_virtual_count = 0;
-    // static uint64_t idle_count = 0;
+    static uint64_t pre_pull_count = 0;
     uint32_t time_now = get_time32();
-    uint32_t time_used = time_now - time_last;
+    uint32_t time_used = time_now - time_last[AMS_num];
+    time_last[AMS_num] = time_now;
     if (BambuBus_address == BambuBus_AMS) // AMS08
     {
         if (read_num < 4)
@@ -707,6 +708,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 data_save.filament[AMS_num][read_num].motion_set = need_send_out;
                 // data_save.filament[AMS_num][read_num].pressure = 0x4700;
                 meters_virtual_count = 0;
+                pre_pull_count = 0;
             }
             else if ((statu_flags == 0x09)) // 09 A5 / 09 3F
             {
@@ -736,13 +738,21 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
             }
             else if ((statu_flags == 0x07) && (fliment_motion_flag == 0x00)) // 07 00
             {
-                if (data_save.filament[AMS_num][read_num].motion_set == on_use)
-                {
-                    data_save.filament[AMS_num][read_num].motion_set = pre_pull;
-                }
+
                 data_save.filament[AMS_num][read_num].pressure = 0x2B00;
+                if (pre_pull_count < 10000) // 10s pre pull
+                {
+                    if (data_save.filament[AMS_num][read_num].motion_set == on_use)
+                    {
+                        data_save.filament[AMS_num][read_num].motion_set = pre_pull;
+                    }
+                    pre_pull_count += time_used;
+                }
+                else
+                {
+                    data_save.filament[AMS_num][read_num].motion_set = on_use;
+                }
             }
-            time_last = time_now;
         }
         else if ((read_num == 0xFF))
         {
@@ -1518,7 +1528,17 @@ void Bmcu_run()
                 _filament *filament = &data_save.filament[AMS_num][i];
                 if ((buf_Bmcu[i + 4] & 0X0F) == 0x00)
                 {
-                    if (motion_temp[AMS_num][i] == idle && filament->motion_set != on_use)
+                    if (motion_temp[AMS_num][i] == idle && filament->motion_set == on_use)
+                    {
+                        filament_res[2] = 0x08;
+                        filament_res[3] = AMS_num;
+                        filament_res[4] = i;
+                        filament_res[5] = 0x00;
+                        filament_res[6] = 0xD9;                                         // 选中激活为onuse
+                        Bmcu_package_send_with_crc(filament_res, sizeof(filament_res)); // 发送选中激活为onuse
+                        my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为onuse", AMS_num, i);
+                    }
+                    else if (motion_temp[AMS_num][i] == idle)
                     {
                         filament->motion_set = motion_temp[AMS_num][i];
                     }
@@ -1544,7 +1564,16 @@ void Bmcu_run()
                 {
                     if (motion_temp[AMS_num][i] == pre_pull)
                     {
-                        filament->motion_set = motion_temp[AMS_num][i];
+                        if (filament->motion_set == on_use)
+                        {
+                            Motion_long_res[2] = 0x04;
+                            Motion_long_res[3] = AMS_num;
+                            Motion_long_res[4] = i;
+                            Motion_long_res[5] = 0x03;
+                            Motion_long_res[6] = 0x00;
+                            online_buf_set(Motion_long_res + 7);
+                            Bmcu_package_send_with_crc(Motion_long_res, sizeof(Motion_long_res));
+                        }
                     }
                     motion_temp[AMS_num][i] = pre_pull;
                 }
