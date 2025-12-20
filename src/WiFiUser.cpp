@@ -451,7 +451,7 @@ void WebHandler::handleData(AsyncWebServerRequest *request)
   }
   else if (catchkey == "refresh")
   {
-    if (!Bambus_onflush() && 0)
+    if (BambuBus_not_on_print() && 0)
     {
       Switch_set_refresh(true);
       request->send(200, "text/plain", "success");

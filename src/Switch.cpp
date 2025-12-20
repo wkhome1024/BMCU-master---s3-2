@@ -85,7 +85,7 @@ uint8_t Switch_set_filament(unsigned char *buf, int length, uint8_t AMS_num, uin
             //switch_save.filament_map_to[2] = read_num * 4 + 2;
             //switch_save.filament_map_to[3] = read_num * 4 + 3;
             //my_printf("(switch)reset_map_to bmcu-%d" ,read_num);
-            if (!Bambus_onflush())
+            if (BambuBus_not_on_print())
             {
                 Switch_set_refresh(true);                
             }

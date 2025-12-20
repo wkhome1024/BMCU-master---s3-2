@@ -138,20 +138,9 @@ _filament_motion_state_set get_filament_motion(int num)
     else
         return idle;
 }
-bool BambuBus_if_on_print()
+bool BambuBus_not_on_print()
 {
-    bool on_print = false;
-    for (int i = 0; i < 4; i++)
-    {
-        for (int j = 0; i < 4; j++)
-        {
-            if (data_save.filament[i][j].motion_set != idle)
-            {
-                on_print = true;
-            }
-        }
-    }
-    return on_print;
+    return (!bambus_onflush && data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].motion_set == idle);
 }
 uint8_t buf_X[512];
 CRC8 _RX_IRQ_crcx(0x39, 0x66, 0x00, false, false);
@@ -1715,7 +1704,7 @@ package_type BambuBus_run()
     {
         if (save_count == 20)
         {
-            if (!bambus_onflush && data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].motion_set == idle)
+            if (BambuBus_not_on_print())
             {
                 Bambubus_save();
                 time_set = timex + 1000;
