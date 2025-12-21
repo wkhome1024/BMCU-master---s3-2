@@ -19,7 +19,6 @@ uint8_t mqtt_status = 0;        // MQTT连接状态
 int catch_key = 0;              // 抓包计数
 bool catch_mode = false;        // 抓包模式
 bool server_key = false;        // HTTP服务器开关
-bool Motor_enable = true;       // 电机使能状态
 WiFiClient espclient;           // 创建一个WiFiClient对象
 PubSubClient client(espclient); // 创建一个PubSubClient对象
 bool error_flag = false;
@@ -82,7 +81,7 @@ void hub_msg()
       postMsgId = 0;
       // my_printf("(mqtt) 发送数据成功");
       // my_printf("(sensor) 送料距离: %.2f mm", last_total_distance);
-      // my_printf("(sensor) 电机输出: %d", motor_pwm);
+      my_printf("(sensor) 电机输出: %d", motor_pwm);
       my_printf("(sensor) pull+online+H_pwm: %s", Motion_get_status().c_str());
       SYS_leds.setPixelColor(1, 0x00, 0x00, 0x30); // 发送数据成功后变为蓝色
       if (SYS_leds.canShow())
@@ -182,20 +181,20 @@ void setup()
   webtask_setup();
   //setup_motor_task();
 }
-uint32_t error_time = 0;
-uint32_t offline_time = 0;
-uint32_t mqtt_time = 0;
-uint32_t led_time = 0;
-uint32_t server_time = 0;
-uint32_t save_time = 0;
-uint32_t switch_time = 0;
+uint64_t error_time = 0;
+uint64_t offline_time = 0;
+uint64_t mqtt_time = 0;
+uint64_t led_time = 0;
+uint64_t server_time = 0;
+uint64_t save_time = 0;
+uint64_t switch_time = 0;
 void loop()
 {
   package_type stu = BambuBus_stu();
   // package_type stu = BambuBus_run();
   //   Bmcu_readuart();
   //    int stu =-1;
-  uint32_t time_now = get_time32();
+  uint64_t time_now = get_time64();
 
   if (stu == BambuBus_package_ERROR) // offline
   {

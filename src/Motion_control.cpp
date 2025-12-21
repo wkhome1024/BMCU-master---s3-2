@@ -222,11 +222,6 @@ public:
         {
             motion = 0;
         }
-        if ((get_filament_online(CHx) == false))
-        {
-            set_filament_motion(CHx, idle);
-        }
-
         if ((motion == 99 || motion == 0)) // 刹车
         {
             speed_set = 0;
@@ -297,14 +292,14 @@ _MOTOR_CONTROL MOTOR_CONTROL;
 
 void Motion_control_set_PWM(int PWM)
 {
-    if (Motor_enable == false || MC_ONLINE_key_stu == 0)
+    motor_pwm = PWM;
+    if (MC_ONLINE_key_stu == 0)
     {
         //ledcWrite(1, 0);
         //ledcWrite(3, 0);
         motor.setFreewheel();
         return;
     }
-    motor_pwm = PWM;
     if (PWM == 0)
     {
         //ledcWrite(1, 255);
@@ -421,7 +416,7 @@ bool Position_check()
 void motor_motion_run()
 {
     uint8_t num = get_now_filament_num();
-    if (get_filament_online(num))
+    if (get_filament_online(num) || MC_ONLINE_key_stu)
     {
         switch (get_filament_motion(num))
         {

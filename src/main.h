@@ -22,7 +22,6 @@ extern uint8_t mqtt_status;
 extern int catch_key; // 抓包开关
 extern bool catch_mode;             // 抓包模式
 extern bool server_key;
-extern bool Motor_enable;
 #define EN_log true                          // 日志开关
 
 extern void LED_setColor(uint8_t num, uint8_t r, uint8_t g, uint8_t b);
