@@ -6,9 +6,8 @@ const char *switch_addr = "switch";
 struct alignas(4) switch_save_struct
 {
     uint32_t version = BMCUSwitch_version;
-    uint8_t bmcu_num = 0;
-    unsigned char current_bmcu_num = 0;
-    unsigned char filament_map_to[4];
+    uint8_t F_AMS_num = 0;
+    unsigned char ams_map[4];
 } switch_save;
 
 const unsigned char select_bmcu_filament_name[] = "TPU-AMS"; //ID: GFU02
@@ -24,14 +23,22 @@ const unsigned char set_bmcu_filament_color3[4] = {0x16, 0x16, 0x16, 0xFF}; //�
 void Switch_init()
 {
     //bool _init_ready = Switch_read();
-    if (0)
+    if (F_AMS_num == 0)
     {
-        switch_save.bmcu_num = 0;
-        switch_save.current_bmcu_num = 0;
-        switch_save.filament_map_to[0] = 0;
-        switch_save.filament_map_to[1] = 1;
-        switch_save.filament_map_to[2] = 2;
-        switch_save.filament_map_to[3] = 3;
+        switch_save.F_AMS_num = 0;
+        switch_save.ams_map[0] = 0;
+        switch_save.ams_map[1] = 1;
+        switch_save.ams_map[2] = 2;
+        switch_save.ams_map[3] = 3;
+        //Switch_save();
+    }
+    else 
+    {
+        switch_save.F_AMS_num = F_AMS_num;
+        switch_save.ams_map[0] = 0 + F_AMS_num;
+        switch_save.ams_map[1] = 1 + F_AMS_num;
+        switch_save.ams_map[2] = 2 + F_AMS_num;
+        switch_save.ams_map[3] = 3 + F_AMS_num;
         //Switch_save();
     }
 }
@@ -47,26 +54,9 @@ bool Switch_read()
     return false;
 }
 
-uint8_t get_filament_map_to(uint8_t num)
+uint8_t get_ams_map_to(uint8_t num)
 {
-    return switch_save.filament_map_to[num];
-}
-
-std::pair<uint8_t, uint8_t> get_bmcu_and_channel(uint8_t num) {
-
-
-    if (num < 4)
-    {
-        uint8_t number = get_filament_map_to(num);
-        uint8_t bmcuNumber = number / 4;      // 计算 AMS 编号
-        uint8_t channelNumber = number % 4; // 计算通道编号
-        return {bmcuNumber, channelNumber};
-    }
-    else 
-    {
-        return {0, num};  
-    }
-
+    return switch_save.ams_map[num];
 }
 
 uint8_t Switch_set_filament(unsigned char *buf, int length, uint8_t AMS_num, uint8_t read_num)
@@ -147,26 +137,3 @@ bool Switch_need_refresh()
 }
 
 
-String get_filament_map() {
-    String json = "{";
-    for (int i = 0; i < 4; ++i) {
-        int value = switch_save.filament_map_to[i];
-        int row = value / 4 + 1;
-        int col = value % 4 + 1;
-
-        String key = "tay" + String(i + 1);
-
-        json += "\"" + key + "\":\"bmcu" + String(row) + "-" + String(col) + "\"";
-
-        if (i != 3) {
-            json += ","; 
-        }
-    }
-    json += "}";
-    return json;
-}
-String get_tay_map(uint8_t num) {
-    int bank = switch_save.filament_map_to[num] / 4 + 1;
-    int port = switch_save.filament_map_to[num] % 4 + 1;
-    return String("tay") + String(num + 1) + ": b" + String(bank) + "-" + String(port);
-}

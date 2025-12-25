@@ -684,7 +684,7 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
         }
     }
 
-    set_buf[0] = AMS_num; // A1 ams_num
+    set_buf[0] = AMS_num; // real ams_num
     set_buf[1] = 0x00;
     set_buf[2] = motion_flag;
     set_buf[3] = read_num; // filament number or maybe using number
@@ -912,6 +912,11 @@ void send_for_motion_short(unsigned char *buf, int length)
     unsigned char read_num = buf[7];
     unsigned char fliment_motion_flag = buf[8];
     Cxx_res[1] = 0xC0 | (package_num[AMS_num] << 3);
+    uint8_t AMS_num_REAL = AMS_num;
+    if (AMS_num < F_AMS_num)
+       return; // REAL AMS 不处理短包
+    else 
+       AMS_num = get_ams_map_to(AMS_num);
     Motion_res[2] = 0x03;
     Motion_res[3] = AMS_num;
     Motion_res[4] = read_num;
@@ -928,6 +933,7 @@ void send_for_motion_short(unsigned char *buf, int length)
     }
 
     set_motion_res_datas(Cxx_res + 5, AMS_num, read_num, statu_flags);
+    Cxx_res[5] = AMS_num_REAL; // real ams_num
 
     if (package_num[AMS_num] % 3 == 0)
     {
@@ -983,7 +989,11 @@ void send_for_motion_long(unsigned char *buf, int length)
     unsigned char statu_flags = buf[6];
     unsigned char fliment_motion_flag = buf[7];
     unsigned char read_num = buf[9];
-
+    uint8_t AMS_num_REAL = AMS_num;
+    if (AMS_num < F_AMS_num)
+       return; // REAL AMS 不处理长包
+    else 
+       AMS_num = get_ams_map_to(AMS_num);
     Motion_long_res[2] = 0x04;
     Motion_long_res[3] = AMS_num;
     Motion_long_res[4] = read_num;
@@ -1021,7 +1031,7 @@ void send_for_motion_long(unsigned char *buf, int length)
     else*/
 
     Dxx_res[1] = 0xC0 | (package_num[AMS_num] << 3);
-    Dxx_res[5] = AMS_num; // A1 ams_num
+    Dxx_res[5] = AMS_num_REAL;  // real ams_num 
     Dxx_res[9] = filament_flag_on;
     Dxx_res[10] = filament_flag_on - filament_flag_NFC;
     Dxx_res[11] = filament_flag_on - filament_flag_NFC;
@@ -1029,6 +1039,7 @@ void send_for_motion_long(unsigned char *buf, int length)
     Dxx_res[13] = filament_flag_NFC;
 
     set_motion_res_datas(Dxx_res + 17, AMS_num, read_num, statu_flags);
+    Dxx_res[17] = AMS_num_REAL;  // real ams_num 
 
     if (last_detect != 0)
     {
@@ -1159,6 +1170,8 @@ void send_for_online_detect(unsigned char *buf, int length)
             }
         }
         num_F00++;
+        if (num_F00 < F_AMS_num)
+           return; // REAL AMS 不处理ONLINE DETECT
         package_send_with_crc(F00_res, sizeof(F00_res));
     }
     else if ((buf[5] == 0x01) && (buf[6] < 4))
@@ -1183,14 +1196,8 @@ void send_for_online_detect(unsigned char *buf, int length)
             {
                 memcpy(F00_res + 8, online_detect_num4, sizeof(online_detect_num4));
             }
-            if (buf[6] < AMS_num_max)
+            if (buf[6] < AMS_num_max && buf[6] + 1 > F_AMS_num)
                 package_send_with_crc(F00_res, sizeof(F00_res));
-
-            return;
-        }
-        else if (buf[6] == 0)
-        {
-            package_send_with_crc(F00_res, sizeof(F00_res));
         }
     }
 }
@@ -1227,7 +1234,7 @@ void send_for_long_packge_MC_online(unsigned char *buf, int length)
     {
         return;
     }
-    if (printer_data_long.target_address != BambuBus_address)
+    if (printer_data_long.target_address != BambuBus_address || AMS_num < F_AMS_num)
         return;
     data.datas = long_packge_MC_online;
     data.datas[0] = AMS_num;
@@ -1260,7 +1267,10 @@ void send_for_long_packge_filament(unsigned char *buf, int length)
     uint8_t filament_num = printer_data_long.datas[1];
     long_packge_filament[0] = AMS_num;
     long_packge_filament[1] = filament_num;
-
+    if (AMS_num < F_AMS_num)
+       return; // REAL AMS 不处理耗材长包
+    else 
+       AMS_num = get_ams_map_to(AMS_num);
     if (filament_num > 3)
     {
         my_printf("(bambu) 错误的通道耗材长包裹数据");
@@ -1318,7 +1328,7 @@ void send_for_long_packge_version(unsigned char *buf, int length)
     {
         return;
     }
-    if (printer_data_long.target_address != BambuBus_address)
+    if (printer_data_long.target_address != BambuBus_address || AMS_num < F_AMS_num)
         return;
     switch (printer_data_long.type)
     {
@@ -1373,7 +1383,10 @@ void send_for_set_filament(unsigned char *buf, int length)
     uint8_t read_num = buf[5];
     uint8_t AMS_num = read_num / 4;
     read_num = read_num % 4;
-
+    if (AMS_num < F_AMS_num)
+           return; // REAL AMS 不处理设置耗材数据
+    else
+       AMS_num = get_ams_map_to(AMS_num);
     uint8_t sw2 = Switch_set_filament(buf, length, AMS_num, read_num);
 
     filament_res[5] = 0x00;
@@ -1381,6 +1394,7 @@ void send_for_set_filament(unsigned char *buf, int length)
 
     if (!sw2)
     {
+
         memcpy(data_save.filament[AMS_num][read_num].ID, buf + 7, sizeof(data_save.filament[AMS_num][read_num].ID));
 
         data_save.filament[AMS_num][read_num].color_R = buf[15];
@@ -1391,7 +1405,7 @@ void send_for_set_filament(unsigned char *buf, int length)
         memcpy(&data_save.filament[AMS_num][read_num].temperature_min, buf + 19, 2);
         memcpy(&data_save.filament[AMS_num][read_num].temperature_max, buf + 21, 2);
         memcpy(data_save.filament[AMS_num][read_num].name, buf + 23, sizeof(data_save.filament[AMS_num][read_num].name));
-
+        
         package_send_with_crc(Set_filament_res, sizeof(Set_filament_res));
         Bambubus_set_need_to_save();
     }
@@ -1438,6 +1452,11 @@ void send_for_long_packge_set_filament(unsigned char *buf, int length)
     Bambubus_long_package_analysis(buf, length, &printer_data_long);
     uint8_t AMS_num = printer_data_long.datas[0];
     uint8_t read_num = printer_data_long.datas[1];
+    uint8_t AMS_num_real = AMS_num;
+    if (AMS_num < F_AMS_num)
+           return; // REAL AMS 不处理设置耗材数据
+    else
+       AMS_num = get_ams_map_to(AMS_num);
     uint8_t buf_t[39] = {0x00};
     memcpy(buf_t + 7, printer_data_long.datas + 2, sizeof(buf_t) - 7);
     uint8_t sw2 = Switch_set_filament(buf_t, sizeof(buf_t), AMS_num, read_num);
@@ -1459,7 +1478,7 @@ void send_for_long_packge_set_filament(unsigned char *buf, int length)
         memcpy(data_save.filament[AMS_num][read_num].name, printer_data_long.datas + 18, 16);
         Bambubus_set_need_to_save();
 
-        Set_filament_res_type2[0] = AMS_num;
+        Set_filament_res_type2[0] = AMS_num_real;
         Set_filament_res_type2[1] = read_num;
         Set_filament_res_type2[2] = 0x00;
         data.datas = Set_filament_res_type2;

@@ -13,6 +13,7 @@ char all_filament_topic[20] = "bmcu-hub-1/filament"; // 所有耗材信息的主
 #define product_id "bmcu-hub"                        // 产品ID
 #define device_id "s3"                               // 设备ID
 uint8_t hub_num = 2;                                 // 集线器编号
+uint8_t F_AMS_num = 0;                              // 官方AMS数量
 char mqtt_id[20];
 int save_count = 0;
 uint8_t mqtt_status = 0;        // MQTT连接状态
