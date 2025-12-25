@@ -31,8 +31,8 @@ float MC_PULL_voltage_pull = 1.70f; // 压力平衡点 1.70
 // bool Assist_send_filament[4] = {false, false, false, false};
 //  bool pull_state_old = false; // 上次触发状态——True：未触发，False：进料完成
 //  bool is_backing_out = false;
-// uint64_t Assist_filament_time[4] = {0, 0, 0, 0};
-uint64_t Assist_send_time = 3000; // 仅触发外侧后，送料时长
+// uint32_t Assist_filament_time[4] = {0, 0, 0, 0};
+uint32_t Assist_send_time = 3000; // 仅触发外侧后，送料时长
 // 退料距离 单位 MM
 // float_t P1X_OUT_filament_meters = 200.0f;                  // 内置200mm 外置700mm
 float last_total_distance = 0.0f; // 每个耗材使用的距离
@@ -185,7 +185,7 @@ class _MOTOR_CONTROL
 public:
     int motion = 0;
     int pwm_zero = 380;
-    uint64_t motor_stop_time = 0;
+    uint32_t motor_stop_time = 0;
     MOTOR_PID PID;
 
     _MOTOR_CONTROL()
@@ -194,13 +194,13 @@ public:
         motor_stop_time = 0;
         motion = 0;
     }
-    void set_motion(int _motion, uint64_t over_time)
+    void set_motion(int _motion, uint32_t over_time)
     {
-        uint64_t time_now = get_time64();
+        uint32_t time_now = millis();
         motor_stop_time = time_now + over_time;
         motion = _motion;
     }
-    void set_motion_add(int _motion, uint64_t over_time)
+    void set_motion_add(int _motion, uint32_t over_time)
     {
         motor_stop_time += over_time;
         motion = _motion;
@@ -215,9 +215,9 @@ public:
     }
     void run()
     {
-        uint64_t time_now = get_time64();
-        static uint64_t time_set_speed = 0;
-        static uint64_t time_last = 0;
+        uint32_t time_now = millis();
+        static uint32_t time_set_speed = 0;
+        static uint32_t time_last = 0;
         float speed_set = 0;
         uint8_t CHx = get_now_filament_num();
         uint8_t pull_statu = slave_pull_statu[CHx / 4][CHx % 4] >> 4;
@@ -281,9 +281,9 @@ public:
             x = PWM_lim;
         if (x < -PWM_lim)
             x = -PWM_lim;
-        if (speed_as5600 > 0.2 || motion == 0 || speed_as5600 < -0.2 || time_set_speed < time_now - 5000)
+        if (speed_as5600 > 0.2 || motion == 0 || speed_as5600 < -0.2 || time_set_speed < time_now - 2000)
         {
-            time_set_speed = time_now + 5000;
+            time_set_speed = time_now + 2000;
         }
         if (time_set_speed < time_now && time_set_speed != 0)
         {
@@ -347,8 +347,8 @@ void Motor_init()
 void AS5600_distance_updata()
 {
     static int32_t distance_save = 0;
-    static uint64_t time_last = 0;
-    uint64_t time_now = get_time64();
+    static uint32_t time_last = 0;
+    uint32_t time_now = millis();
     uint8_t filament_num = get_now_filament_num();
     if (as5600.updateRawAngleAsync() == false)
         return;

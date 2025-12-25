@@ -17,7 +17,7 @@
 //#include <ArduinoOTA.h>
 extern char host_name[20];
 extern uint8_t hub_num;
-extern int save_count;
+extern uint8_t save_count;
 extern int catch_key; // 抓包开关
 extern bool catch_mode;             // 抓包模式
 extern bool server_key;
