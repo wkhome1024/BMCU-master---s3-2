@@ -835,7 +835,7 @@ void send_for_Hit(unsigned char *buf, int length, uint64_t time_now)
         return;
     last_Hit_time = time_now;
     bmcu_package_num++;
-    if (bmcu_package_num >= AMS_num_max)
+    if (bmcu_package_num >= AMS_num_max + F_AMS_num)
         bmcu_package_num = 0;
     if (AMS_num_c > AMS_num_max)
     {
@@ -1127,6 +1127,7 @@ unsigned char F01_res[] = {
     0x0E, 0x7D, 0x32, 0x31, 0x31, 0x38, 0x15, 0x00, 0x36, 0x39, 0x37, 0x33, 0xFF, 0xFF, 0xFF, 0xFF,
     0x00, 0x00, 0x00, 0x33, 0xF0};
 int num_F00 = 0;
+uint8_t detect_num = 22;
 void send_for_online_detect(unsigned char *buf, int length)
 {
     uint8_t F00_res[sizeof(F01_res)];
@@ -1137,7 +1138,7 @@ void send_for_online_detect(unsigned char *buf, int length)
     }
     if ((buf[5] == 0x00))
     {
-        if (num_F00 > (AMS_num_max - 1) && BambuBus_address == BambuBus_AMS)
+        if (num_F00 + 1 > (AMS_num_max + F_AMS_num) && BambuBus_address == BambuBus_AMS)
         {
             return;
         }
@@ -1145,10 +1146,13 @@ void send_for_online_detect(unsigned char *buf, int length)
         {
             return;
         }
-
+        if (millis() < 5000)
+        {
+            return;
+        }
         F00_res[5] = 0;
         F00_res[6] = num_F00;
-        F00_res[7] = 22 - num_F00;
+        F00_res[7] = detect_num - num_F00;
         if (BambuBus_address == BambuBus_AMS)
         {
             // F00_res[7] = 3 - num_F00;
@@ -1171,12 +1175,20 @@ void send_for_online_detect(unsigned char *buf, int length)
         }
         num_F00++;
         if (num_F00 < F_AMS_num)
-           return; // REAL AMS 不处理ONLINE DETECT
+        {
+            return; // REAL AMS 不处理ONLINE DETECT
+        }          
         package_send_with_crc(F00_res, sizeof(F00_res));
     }
     else if ((buf[5] == 0x01) && (buf[6] < 4))
     {
-        F00_res[7] = 22 - buf[6];
+        if (buf[6] < F_AMS_num)
+        {
+            if (buf[7] != 0)
+                detect_num = buf[7];
+            return; // REAL AMS 不处理ONLINE DETECT                       
+        }
+        F00_res[7] = detect_num - buf[6];
         memcpy(F00_res + 4, buf + 4, 3);
         if (BambuBus_address == BambuBus_AMS)
         {
@@ -1196,7 +1208,7 @@ void send_for_online_detect(unsigned char *buf, int length)
             {
                 memcpy(F00_res + 8, online_detect_num4, sizeof(online_detect_num4));
             }
-            if (buf[6] < AMS_num_max && buf[6] + 1 > F_AMS_num)
+            if (buf[6] < AMS_num_max + F_AMS_num)
                 package_send_with_crc(F00_res, sizeof(F00_res));
         }
     }
@@ -1328,13 +1340,14 @@ void send_for_long_packge_version(unsigned char *buf, int length)
     {
         return;
     }
-    if (printer_data_long.target_address != BambuBus_address || AMS_num < F_AMS_num)
+    if (printer_data_long.target_address != BambuBus_address)
         return;
     switch (printer_data_long.type)
     {
     case 0x402:
-
         AMS_num = printer_data_long.datas[33];
+        if (AMS_num < F_AMS_num)
+           return; // REAL AMS 不处理版本序列号长包
         serial_number[14] = AMS_num + 1;
         long_packge_version_serial_number[0] = sizeof(serial_number);
         memcpy(long_packge_version_serial_number + 1, serial_number, sizeof(serial_number));
@@ -1354,8 +1367,9 @@ void send_for_long_packge_version(unsigned char *buf, int length)
         data.datas[65] = AMS_num;
         break;
     case 0x103:
-
         AMS_num = printer_data_long.datas[0];
+        if (AMS_num < F_AMS_num)
+           return; // REAL AMS 不处理版本名称长包
         data.datas = long_packge_version_version_and_name;
         data.data_length = sizeof(long_packge_version_version_and_name_AMS08);
         data.datas[20] = AMS_num;
@@ -1384,7 +1398,7 @@ void send_for_set_filament(unsigned char *buf, int length)
     uint8_t AMS_num = read_num / 4;
     read_num = read_num % 4;
     if (AMS_num < F_AMS_num)
-           return; // REAL AMS 不处理设置耗材数据
+        return; // REAL AMS 不处理设置耗材数据
     else
        AMS_num = get_ams_map_to(AMS_num);
     uint8_t sw2 = Switch_set_filament(buf, length, AMS_num, read_num);
@@ -1454,7 +1468,7 @@ void send_for_long_packge_set_filament(unsigned char *buf, int length)
     uint8_t read_num = printer_data_long.datas[1];
     uint8_t AMS_num_real = AMS_num;
     if (AMS_num < F_AMS_num)
-           return; // REAL AMS 不处理设置耗材数据
+        return; // REAL AMS 不处理设置耗材数据
     else
        AMS_num = get_ams_map_to(AMS_num);
     uint8_t buf_t[39] = {0x00};

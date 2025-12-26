@@ -35,11 +35,13 @@ void Switch_init()
     else 
     {
         switch_save.F_AMS_num = F_AMS_num;
-        switch_save.ams_map[0] = 0 + F_AMS_num;
-        switch_save.ams_map[1] = 1 + F_AMS_num;
-        switch_save.ams_map[2] = 2 + F_AMS_num;
-        switch_save.ams_map[3] = 3 + F_AMS_num;
-        //Switch_save();
+        for (int i = 0; i < 4; i++)
+        {
+            if (i < F_AMS_num)
+                switch_save.ams_map[i] = 0x00; // 官方AMS 不映射
+            else 
+                switch_save.ams_map[i] = i - F_AMS_num;
+        }
     }
 }
 bool Switch_read()
