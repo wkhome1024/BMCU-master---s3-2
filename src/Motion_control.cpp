@@ -275,14 +275,18 @@ public:
             x = PWM_lim;
         if (x < -PWM_lim)
             x = -PWM_lim;
-        if (speed_as5600 > 0.2 || motion == 0 || speed_as5600 < -0.2 || time_set_speed < time_now - 2000)
+        if (speed_as5600 > 0.2 || motion == 0 || speed_as5600 < -0.2)
         {
             time_set_speed = time_now + 2000;
         }
         if (time_set_speed < time_now && time_set_speed != 0)
         {
             if (x > 820 || x < -820)
+            {
                 x = 0; // 防止电机卡死过热
+                if (time_set_speed < time_now - 2000)
+                    PID.clear();                 
+            }
         }
         Motion_control_set_PWM(x);
         time_last = time_now;
