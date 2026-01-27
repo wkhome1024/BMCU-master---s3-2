@@ -1561,16 +1561,7 @@ void Bmcu_run()
                 {
                     if (motion_temp[AMS_num][i] == pre_pull)
                     {
-                        if (filament->motion_set == on_use)
-                        {
-                            Motion_long_res[2] = 0x04;
-                            Motion_long_res[3] = AMS_num;
-                            Motion_long_res[4] = i;
-                            Motion_long_res[5] = 0x03;
-                            Motion_long_res[6] = 0x00;
-                            online_buf_set(Motion_long_res + 7);
-                            Bmcu_package_send_with_crc(Motion_long_res, sizeof(Motion_long_res));
-                        }
+
                     }
                     motion_temp[AMS_num][i] = pre_pull;
                 }
