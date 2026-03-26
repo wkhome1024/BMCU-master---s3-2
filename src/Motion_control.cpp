@@ -329,7 +329,7 @@ void Motor_init()
     //pinMode(Motor_H_pin, OUTPUT);
     //pinMode(Motor_L_pin, OUTPUT);
     motor.setup(hw);
-    motor.reconfigureFrequency(100000);
+    //motor.reconfigureFrequency(100000);
     motor.setFreewheelMode(FreewheelMode::HiZ_Awake);
     motor.start();
     /*
