@@ -323,7 +323,11 @@ void Motion_control_set_PWM(int PWM)
         motor.setSpeed(-PWM, Dir::CCW);
     }
 }
-
+void Motor_reboot()
+{
+    mqtt_status = 0; 
+    motor.clearFault();
+}
 void Motor_init()
 {
     //pinMode(Motor_H_pin, OUTPUT);

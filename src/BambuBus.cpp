@@ -1764,7 +1764,7 @@ package_type BambuBus_run()
             {
                 Bambubus_save();
                 time_set = timex + 1000;
-                mqtt_status = 0;   
+                Motor_reboot();  
                 my_printf("(bmcu) Bambubus已保存");
             }
             else
