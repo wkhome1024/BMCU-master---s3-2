@@ -1715,11 +1715,12 @@ package_type BambuBus_run()
             {
                 Bambubus_save();
                 time_set = timex + 1000;
+                Motor_reboot();
                 my_printf("(bmcu) Bambubus已保存");
             }
             else
             {
-                save_count -= 10; // 2min后重试
+                save_count -= 10; // 20min后重试
             }
         }
     }
