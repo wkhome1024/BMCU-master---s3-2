@@ -243,6 +243,8 @@ void loop()
     {
       if (switch_time == 0)
       {
+        p2s_reset_startup_seq();
+        Motor_reboot();
         switch_time = time_now + 8000; // 强制刷新
         my_printf("(hub) AMS数据刷新成功");
       }

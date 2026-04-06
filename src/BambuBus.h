@@ -38,8 +38,9 @@ extern "C"
         BambuBus_long_package_version,
         BambuBus_package_heartbeat,
         BambuBus_package_ETC,
-        BambuBus_package_test1,
-        BambuBus_package_test2,
+        BambuBus_package_a0,
+        BambuBus_package_0237,
+        BambuBus_package_023c,
         BambuBus_read_cert,
         BambuBus_send_cert_verify,
         BambuBus_cert_datas_sync,
@@ -80,6 +81,7 @@ extern "C"
     extern void RX_IRQ(unsigned char _RX_IRQ_data);
     extern void RX_BMCU(unsigned char inChar);
     extern uint16_t get_tay_color(uint8_t num);
+    extern void p2s_reset_startup_seq(void);
 #ifdef __cplusplus
 }
 #endif
