@@ -1149,7 +1149,7 @@ void p2s_reset_startup_seq(void)
         p2s_0237_seq_pos[i] = 0;
         p2s_023c_seq_pos[i] = 0;
     }
-    p2s_state = p2s_runtime_state::boot;
+    p2s_state = p2s_runtime_state::runtime;
 }
 static const uint8_t p2s_a0_payload_seq[][10] = {
     {0x86, 0x36, 0x30, 0x11, 0x00, 0x00, 0x00, 0x00, 0x11, 0x00},
