@@ -1764,7 +1764,7 @@ package_type BambuBus_run()
             {
                 Bambubus_save();
                 time_set = timex + 1000;
-                Motor_reboot();  
+                //Motor_reboot();  
                 my_printf("(bmcu) Bambubus已保存");
             }
             else
