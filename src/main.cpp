@@ -23,6 +23,7 @@ bool server_key = false;        // HTTP服务器开关
 WiFiClient espclient;           // 创建一个WiFiClient对象
 PubSubClient client(espclient); // 创建一个PubSubClient对象
 bool error_flag = false;
+bool motor_reboot_flag = false;
 #define SYS_RGB 8   // RGB灯针脚
 #define ledPixels 3 // led数量
 Adafruit_NeoPixel SYS_leds(ledPixels, SYS_RGB, NEO_GRB + NEO_KHZ800);
@@ -278,6 +279,15 @@ void loop()
           bambubus_save_flag = false;        
       }
       save_count = 0;
+    }
+    else if (save_count == 30)
+    {
+      if (motor_reboot_flag)
+      {
+          Motor_reboot();
+          send_reset();  //打印完成 耗材复位
+          motor_reboot_flag = false;      
+      }
     }
     save_count++;
   }
