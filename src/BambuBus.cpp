@@ -48,7 +48,7 @@ enum class p2s_runtime_state : uint8_t
 };
 
 static p2s_runtime_state p2s_state = p2s_runtime_state::boot;
-static uint8_t p2s_a0_seq_pos[4]   = {0};
+static uint8_t p2s_a0_seq_pos = 0;
 static uint8_t p2s_0237_seq_pos[4] = {0};
 static uint8_t p2s_023c_seq_pos[4] = {0};
 struct alignas(4) flash_save_struct
@@ -567,7 +567,7 @@ package_type get_packge_type(unsigned char *buf, int length)
         case 0x20:
             return BambuBus_package_heartbeat;
         case 0xa0:
-            return BambuBus_package_a0;
+            return BambuBus_package_a0;     //p2 排风？
         default:
             return BambuBus_package_ETC;
         }
@@ -895,7 +895,7 @@ void send_for_Hit(unsigned char *buf, int length, uint64_t time_now)
                0x00, 0x00, 0x27, 0x00, \
                0x55,                   \
                0xFF, 0xFF, 0xFF, 0xFF, \
-               0xFF, 0xFF, 0xFF, 0xFF,
+               0x01, 0x01, 0x01, 0x01,
 /*#define C_test 0x00, 0x00, 0x02, 0x02, \
                0x00, 0x00, 0x00, 0x00, \
                0x00, 0x00, 0x00, 0xC0, \
@@ -1145,7 +1145,7 @@ void p2s_reset_startup_seq(void)
 {
     for (int i = 0; i < 4; i++)
     {
-        p2s_a0_seq_pos[i]   = 0;
+        p2s_a0_seq_pos = 0;
         p2s_0237_seq_pos[i] = 0;
         p2s_023c_seq_pos[i] = 0;
     }
@@ -1224,9 +1224,8 @@ static void send_for_a0(unsigned char *buf, int length)
 {
     (void)buf;
     (void)length;
-    uint8_t AMS_num = buf[4];
     const size_t max_pos = sizeof(p2s_a0_payload_seq) / sizeof(p2s_a0_payload_seq[0]);
-    const size_t pos = (p2s_a0_seq_pos[AMS_num] < (uint8_t)max_pos) ? p2s_a0_seq_pos[AMS_num] : (max_pos - 1u);
+    const size_t pos = (p2s_a0_seq_pos < (uint8_t)max_pos) ? p2s_a0_seq_pos : (max_pos - 1u);
     const uint8_t *payload = p2s_a0_payload_seq[pos];
 
     uint8_t out[19];
@@ -1235,11 +1234,10 @@ static void send_for_a0(unsigned char *buf, int length)
     out[2] = 0x13;
     out[4] = 0xA0;
     out[5] = 0x03;
-    out[6] = (p2s_a0_seq_pos[AMS_num] == 0u) ? 0x00u : 0x02u;
+    out[6] = (p2s_a0_seq_pos == 0u) ? 0x00u : 0x02u;
     memcpy(out + 7, payload, 10);
-    Bmcu_package_send_with_crc(out, 19);
-
-    if (p2s_a0_seq_pos[AMS_num] < 0xFFu) p2s_a0_seq_pos[AMS_num]++;
+    package_send_with_crc(out, 19);
+    if (p2s_a0_seq_pos < 0xFFu) p2s_a0_seq_pos++;
 }
 
 static void send_for_0237(unsigned char *buf, int length)
@@ -1532,7 +1530,7 @@ unsigned char long_packge_version_serial_number[] = {16, // length
 
 unsigned char long_packge_version_version_and_name_AMS_lite[] = {0x3E, 0x06, 0x01, 0x00, // verison number
                                                                  0x41, 0x4D, 0x53, 0x5F, 0x46, 0x31, 0x30, 0x32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-unsigned char long_packge_version_version_and_name_AMS08[] = {0x3E, 0x06, 0x01, 0x03, // verison number
+unsigned char long_packge_version_version_and_name_AMS08[] = {0x00, 0x00, 0x00, 0x00, // verison number
                                                               0x41, 0x4D, 0x53, 0x30, 0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 void send_for_long_packge_version(unsigned char *buf, int length)
@@ -1926,7 +1924,7 @@ package_type BambuBus_run()
                 send_for_set_filament(buf_X, data_length);
                 break;
             case BambuBus_package_a0:
-                send_for_a0(buf_X, data_length);
+                //send_for_a0(buf_X, data_length);
                 break;
             case BambuBus_package_0237:
                 send_for_0237(buf_X, data_length);

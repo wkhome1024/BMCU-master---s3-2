@@ -282,6 +282,10 @@ void loop()
       }
       save_count = 0;
     }
+    else if (save_count == 30)
+    {
+      mqtt_status = 0; // 定时重置MQTT连接状态，防止长时间未连接后状态异常
+    }
     save_count++;
   }
   if (server_time == 0) // 如果WebServer未开启
