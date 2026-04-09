@@ -18,6 +18,7 @@
 extern char host_name[20];
 extern uint8_t hub_num;
 extern int save_count;
+extern bool motor_reboot_flag;
 extern uint8_t F_AMS_num;
 extern uint8_t mqtt_status;
 extern int catch_key; // 抓包开关

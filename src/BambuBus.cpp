@@ -1604,6 +1604,15 @@ unsigned char filament_res[] = {0x7D, 0x0A, 0x08,
 unsigned char Set_filament_res[] = {0x3D, 0xC0, 0x08, 0xB2, 0x08, 0x60, 0xB4, 0x04};
 uint8_t motor_time[4] = {1, 4, 8, 12};  // 电机退料时间
 uint8_t pwm_zero[4] = {22, 30, 38, 46}; // 电机pwm 零点
+void send_reset()
+{
+    filament_res[2] = 0x08;
+    filament_res[3] = 0x00;
+    filament_res[4] = 0x00;
+    filament_res[5] = 0xE0; // bmcu_reset
+    filament_res[6] = 0x00;
+    Bmcu_package_send_with_crc(filament_res, sizeof(filament_res));
+}
 void send_for_set_filament(unsigned char *buf, int length)
 {
     uint8_t read_num = buf[5];
@@ -1857,7 +1866,7 @@ void Bmcu_run()
                 {
                     // data_save.filament[AMS_num][read_num].meters = max(meters, data_save.filament[AMS_num][read_num].meters);
                 }
-                else if (data_save.filament[AMS_num][read_num].meters < 0)
+                else if (data_save.filament[AMS_num][read_num].meters < 0 || data_save.filament[AMS_num][read_num].meters > 350)
                 {
                     data_save.filament[AMS_num][read_num].meters = 0;
                 }
@@ -1985,7 +1994,7 @@ package_type BambuBus_run()
             {
                 Bambubus_save();
                 time_set = timex + 1000;
-                //Motor_reboot();  
+                motor_reboot_flag = true; 
                 my_printf("(bmcu) Bambubus已保存");
             }
             else
