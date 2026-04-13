@@ -1390,6 +1390,7 @@ void send_for_online_detect(unsigned char *buf, int length)
             //    detect_num = buf[7];
             return; // REAL AMS 不处理ONLINE DETECT
         }
+        F00_res[6] = buf[6];
         F00_res[7] = buf[7];
         memcpy(F00_res + 8, online_detect_num[buf[6]], sizeof(online_detect_num[buf[6]]));        
         if (memcmp(buf + 8, online_detect_num[buf[6]], sizeof(online_detect_num[buf[6]])) == 0)
