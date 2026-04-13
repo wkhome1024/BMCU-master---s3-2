@@ -3,7 +3,7 @@
 /******************************     电机控制接口       *******************************/
 #define Motor_H_pin 17
 #define Motor_L_pin 18
-MotorMCPWMConfig hw{Motor_H_pin, Motor_L_pin, -1, MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM0A, MCPWM0B};
+MotorMCPWMConfig hw{Motor_H_pin, Motor_L_pin, -1, MCPWM_UNIT_0, MCPWM_TIMER_1, MCPWM1A, MCPWM1B};
 Motor motor;
 
 /******************************     AS5600 角度传感器接口       *******************************/
