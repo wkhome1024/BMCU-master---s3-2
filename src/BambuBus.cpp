@@ -285,11 +285,12 @@ void Bmcu_readuart()
     }
 }
 
-uint8_t online_detect_num1[] = {0x0E, 0x7D, 0x32, 0x31, 0x31, 0x38, 0x15, 0x00, 0x36, 0x39, 0x37, 0x33, 0xFF, 0xFF, 0xFF, 0xFF};
-uint8_t online_detect_num2[] = {0x9B, 0x31, 0x33, 0x34, 0x36, 0x35, 0x02, 0x00, 0x37, 0x39, 0x33, 0x38, 0xFF, 0xFF, 0xFF, 0xFF};
-uint8_t online_detect_num3[] = {0x2E, 0xC2, 0x35, 0x31, 0x38, 0x37, 0x18, 0x00, 0x36, 0x36, 0x38, 0x30, 0xFF, 0xFF, 0xFF, 0xFF};
-uint8_t online_detect_num4[] = {0xC9, 0xD2, 0x36, 0x38, 0x34, 0x36, 0x17, 0x00, 0x53, 0x33, 0x32, 0x33, 0xFF, 0xFF, 0xFF, 0xFF};
-uint8_t online_detect_num5[] = {0xBF, 0xCF, 0x30, 0x35, 0x39, 0x37, 0x18, 0x00, 0x4A, 0x36, 0x30, 0x35, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t online_detect_num[5][16] = {
+    {0x0E, 0x7D, 0x32, 0x31, 0x31, 0x38, 0x15, 0x00, 0x36, 0x39, 0x37, 0x33, 0xFF, 0xFF, 0xFF, 0xFF},
+    {0x9B, 0x31, 0x33, 0x34, 0x36, 0x35, 0x02, 0x00, 0x37, 0x39, 0x33, 0x38, 0xFF, 0xFF, 0xFF, 0xFF},
+    {0x2E, 0xC2, 0x35, 0x31, 0x38, 0x37, 0x18, 0x00, 0x36, 0x36, 0x38, 0x30, 0xFF, 0xFF, 0xFF, 0xFF},
+    {0xC9, 0xD2, 0x36, 0x38, 0x34, 0x36, 0x17, 0x00, 0x53, 0x33, 0x32, 0x33, 0xFF, 0xFF, 0xFF, 0xFF},
+    {0xBF, 0xCF, 0x30, 0x35, 0x39, 0x37, 0x18, 0x00, 0x4A, 0x36, 0x30, 0x35, 0xFF, 0xFF, 0xFF, 0xFF}};
 
 void BambuBus_init()
 {
@@ -297,10 +298,10 @@ void BambuBus_init()
     crc_8.reset(0x39, 0x66, 0, false, false);
     crc_16.reset(0x1021, 0x913D, 0, false, false);
 
-    online_detect_num1[0] += (hub_num - 1);
-    online_detect_num2[0] += (hub_num - 1);
-    online_detect_num3[0] += (hub_num - 1);
-    online_detect_num4[0] += (hub_num - 1);
+    online_detect_num[0][0] += (hub_num - 1);
+    online_detect_num[1][0] += (hub_num - 1);
+    online_detect_num[2][0] += (hub_num - 1);
+    online_detect_num[3][0] += (hub_num - 1);
 
     if (!_init_ready)
     {
@@ -1104,6 +1105,7 @@ unsigned char F01_res[] = {
     0x0E, 0x7D, 0x32, 0x31, 0x31, 0x38, 0x15, 0x00, 0x36, 0x39, 0x37, 0x33, 0xFF, 0xFF, 0xFF, 0xFF,
     0x00, 0x00, 0x00, 0x33, 0xF0};
 int num_F00 = 0;
+bool have_registered[4] = {false, false, false, false};
 void send_for_online_detect(unsigned char *buf, int length)
 {
     uint8_t F00_res[sizeof(F01_res)];
@@ -1114,71 +1116,36 @@ void send_for_online_detect(unsigned char *buf, int length)
     }
     if ((buf[5] == 0x00))
     {
-        if (num_F00 > (AMS_num_max - 1) && BambuBus_address == BambuBus_AMS)
-        {
-            return;
-        }
-        if (num_F00 > 0 && BambuBus_address == BambuBus_AMS_lite)
-        {
-            return;
-        }
 
-        F00_res[5] = 0;
-        F00_res[6] = num_F00;
-        F00_res[7] = 22 - num_F00;
-        if (BambuBus_address == BambuBus_AMS)
+        if (millis() < 5000)
+        {
+            return;
+        }
+        for (num_F00 = 0; num_F00 < AMS_num_max; num_F00++)
         {
             // F00_res[7] = 3 - num_F00;
-            if (num_F00 == 0)
-            {
-                memcpy(F00_res + 8, online_detect_num1, sizeof(online_detect_num1));
-            }
-            else if (num_F00 == 1)
-            {
-                memcpy(F00_res + 8, online_detect_num2, sizeof(online_detect_num2));
-            }
-            else if (num_F00 == 2)
-            {
-                memcpy(F00_res + 8, online_detect_num3, sizeof(online_detect_num3));
-            }
-            else if (num_F00 == 3)
-            {
-                memcpy(F00_res + 8, online_detect_num4, sizeof(online_detect_num4));
-            }
-        }
-        num_F00++;
-        package_send_with_crc(F00_res, sizeof(F00_res));
-    }
-    else if ((buf[5] == 0x01) && (buf[6] < 4))
-    {
-        F00_res[7] = 22 - buf[6];
-        memcpy(F00_res + 4, buf + 4, 3);
-        if (BambuBus_address == BambuBus_AMS)
-        {
-            if (buf[6] == 0)
-            {
-                memcpy(F00_res + 8, online_detect_num1, sizeof(online_detect_num1));
-            }
-            else if (buf[6] == 1)
-            {
-                memcpy(F00_res + 8, online_detect_num2, sizeof(online_detect_num2));
-            }
-            else if (buf[6] == 2)
-            {
-                memcpy(F00_res + 8, online_detect_num3, sizeof(online_detect_num3));
-            }
-            else if (buf[6] == 3)
-            {
-                memcpy(F00_res + 8, online_detect_num4, sizeof(online_detect_num4));
-            }
-            if (buf[6] < AMS_num_max)
-                package_send_with_crc(F00_res, sizeof(F00_res));
-
-            return;
-        }
-        else if (buf[6] == 0)
-        {
+            if (have_registered[num_F00] == true)
+                continue;
+            F00_res[5] = 0;
+            F00_res[6] = num_F00;
+            F00_res[7] = 22 - num_F00;
+            memcpy(F00_res + 8, online_detect_num[num_F00], sizeof(online_detect_num[num_F00]));
             package_send_with_crc(F00_res, sizeof(F00_res));
+            //vTaskDelay(pdMS_TO_TICKS(5));
+        }
+    }
+    else if ((buf[5] == 0x01) && (buf[6] < AMS_num_max))
+    {
+        F00_res[7] = buf[7];
+        memcpy(F00_res + 8, online_detect_num[buf[6]], sizeof(online_detect_num[buf[6]]));        
+        if (memcmp(buf + 8, online_detect_num[buf[6]], sizeof(online_detect_num[buf[6]])) == 0)
+        {
+            have_registered[buf[6]] = true;
+            package_send_with_crc(F00_res, sizeof(F00_res));
+        }
+        else
+        {
+            have_registered[buf[6]] = false;
         }
     }
 }
@@ -1225,7 +1192,8 @@ void send_for_long_packge_MC_online(unsigned char *buf, int length)
     data.type = printer_data_long.type;
     data.source_address = printer_data_long.target_address;
     data.target_address = printer_data_long.source_address;
-    Bambubus_long_package_send(&data);
+    if (have_registered[AMS_num] == true)
+        Bambubus_long_package_send(&data);
 
     // Bmcu_package_send_with_crc(buf,length);                        //转发bmcu
 }
@@ -1318,14 +1286,7 @@ void send_for_long_packge_version(unsigned char *buf, int length)
         memcpy(long_packge_version_serial_number + 1, serial_number, sizeof(serial_number));
         if (printer_data_long.target_address == BambuBus_AMS)
         {
-            if (AMS_num == 0)
-                memcpy(long_packge_version_serial_number + 33, online_detect_num1, sizeof(online_detect_num1));
-            else if (AMS_num == 1)
-                memcpy(long_packge_version_serial_number + 33, online_detect_num2, sizeof(online_detect_num2));
-            else if (AMS_num == 2)
-                memcpy(long_packge_version_serial_number + 33, online_detect_num3, sizeof(online_detect_num3));
-            else if (AMS_num == 3)
-                memcpy(long_packge_version_serial_number + 33, online_detect_num4, sizeof(online_detect_num4));
+            memcpy(long_packge_version_serial_number + 33, online_detect_num[AMS_num], sizeof(online_detect_num[AMS_num]));
         }
         data.datas = long_packge_version_serial_number;
         data.data_length = sizeof(long_packge_version_serial_number);
@@ -1346,7 +1307,8 @@ void send_for_long_packge_version(unsigned char *buf, int length)
     data.type = printer_data_long.type;
     data.source_address = printer_data_long.target_address;
     data.target_address = printer_data_long.source_address;
-    Bambubus_long_package_send(&data);
+    if (have_registered[AMS_num] == true)
+        Bambubus_long_package_send(&data);
 }
 unsigned char s = 0x01;
 unsigned char filament_res[] = {0x7D, 0x0A, 0x08,
@@ -1546,7 +1508,7 @@ void Bmcu_run()
                     }
                     else if (motion_temp[AMS_num][i] == idle)
                     {
-                        filament->motion_set = motion_temp[AMS_num][i];
+                        //filament->motion_set = motion_temp[AMS_num][i];
                     }
                     motion_temp[AMS_num][i] = idle;
                 }
