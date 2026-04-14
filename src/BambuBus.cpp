@@ -1131,14 +1131,14 @@ void send_for_online_detect(unsigned char *buf, int length)
             F00_res[7] = 22 - num_F00;
             memcpy(F00_res + 8, online_detect_num[num_F00], sizeof(online_detect_num[num_F00]));
             package_send_with_crc(F00_res, sizeof(F00_res));
-            //vTaskDelay(pdMS_TO_TICKS(5));
+            // vTaskDelay(pdMS_TO_TICKS(5));
         }
     }
     else if ((buf[5] == 0x01) && (buf[6] < AMS_num_max))
     {
         F00_res[7] = buf[7];
         F00_res[6] = buf[6];
-        memcpy(F00_res + 8, online_detect_num[buf[6]], sizeof(online_detect_num[buf[6]]));        
+        memcpy(F00_res + 8, online_detect_num[buf[6]], sizeof(online_detect_num[buf[6]]));
         if (memcmp(buf + 8, online_detect_num[buf[6]], sizeof(online_detect_num[buf[6]])) == 0)
         {
             have_registered[buf[6]] = true;
@@ -1497,19 +1497,39 @@ void Bmcu_run()
                 _filament *filament = &data_save.filament[AMS_num][i];
                 if ((buf_Bmcu[i + 4] & 0X0F) == 0x00)
                 {
-                    if (motion_temp[AMS_num][i] == idle && filament->motion_set == on_use)
+                    if (motion_temp[AMS_num][i] == idle)
                     {
-                        filament_res[2] = 0x08;
-                        filament_res[3] = AMS_num;
-                        filament_res[4] = i;
-                        filament_res[5] = 0x00;
-                        filament_res[6] = 0xD9;                                         // 选中激活为onuse
-                        Bmcu_package_send_with_crc(filament_res, sizeof(filament_res)); // 发送选中激活为onuse
-                        my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为onuse", AMS_num, i);
-                    }
-                    else if (motion_temp[AMS_num][i] == idle)
-                    {
-                        //filament->motion_set = motion_temp[AMS_num][i];
+                        if (filament->motion_set == on_use)
+                        {
+                            filament_res[2] = 0x08;
+                            filament_res[3] = AMS_num;
+                            filament_res[4] = i;
+                            filament_res[5] = 0x00;
+                            filament_res[6] = 0xD9;                                         // 选中激活为onuse
+                            Bmcu_package_send_with_crc(filament_res, sizeof(filament_res)); // 发送选中激活为onuse
+                            my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为onuse", AMS_num, i);
+                        }
+                        else if (filament->motion_set == need_pull_back)
+                        {
+                            filament_res[2] = 0x08;
+                            filament_res[3] = AMS_num;
+                            filament_res[4] = i;
+                            filament_res[5] = 0x00;
+                            filament_res[6] = 0xB9;                                         //--指定通道need_pull_back
+                            Bmcu_package_send_with_crc(filament_res, sizeof(filament_res));
+                            my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为pullback", AMS_num, i);
+                        }
+                        else if (filament->motion_set == need_send_out)
+                        {
+                            filament_res[2] = 0x08;
+                            filament_res[3] = AMS_num;
+                            filament_res[4] = i;
+                            filament_res[5] = 0x00;
+                            filament_res[6] = 0xC9;                                         //--指定通道need_send_out
+                            Bmcu_package_send_with_crc(filament_res, sizeof(filament_res));
+                            my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为sendout", AMS_num, i);
+
+                        }
                     }
                     motion_temp[AMS_num][i] = idle;
                 }
@@ -1523,7 +1543,7 @@ void Bmcu_run()
                 }
                 else if ((buf_Bmcu[i + 4] & 0X0F) == 0x02)
                 {
-                    if (motion_temp[AMS_num][i] == need_send_out  && filament->motion_set != on_use)
+                    if (motion_temp[AMS_num][i] == need_send_out && filament->motion_set != on_use)
                     {
                         filament->motion_set = motion_temp[AMS_num][i];
                     }
@@ -1533,7 +1553,6 @@ void Bmcu_run()
                 {
                     if (motion_temp[AMS_num][i] == pre_pull)
                     {
-
                     }
                     motion_temp[AMS_num][i] = pre_pull;
                 }
