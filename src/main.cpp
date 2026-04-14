@@ -82,7 +82,7 @@ void hub_msg()
     if (postMsgId > ((get_AMS_num_max() * 4) - 1))
     {
       postMsgId = 0;
-      my_printf("(mqtt) 发送数据成功");
+      //my_printf("(mqtt) 发送数据成功");
       my_printf("(sensor) 电机输出: %d", motor_pwm);
       my_printf("(sensor) pull+online: %s", Motion_get_status().c_str());
       SYS_leds.setPixelColor(1, 0x00, 0x00, 0x30); // 发送数据成功后变为蓝色
