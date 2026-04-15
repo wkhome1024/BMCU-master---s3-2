@@ -680,7 +680,7 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
     {
         if (data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].motion_set == need_pull_back)
         {
-            if (last_time > now_time - pullback_time && GET_MC_Online_stu() > 0)
+            if (last_time > now_time - pullback_time && GET_MC_Online_stu() > 1)
             {
                 meters = data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].meters;
                 last_meters = meters;
@@ -1784,7 +1784,7 @@ void Bmcu_run()
                             Bmcu_package_send_with_crc(filament_res, sizeof(filament_res)); // 发送选中激活为onuse
                             my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为onuse", AMS_num, i);
                         }
-                        else if (filament->motion_set == need_pull_back)
+                        else if (filament->motion_set == need_pull_back || (filament->motion_set == idle && GET_MC_Online_stu() > 1))
                         {
                             filament_res[6] = 0xB9;                                         //--指定通道need_pull_back
                             Bmcu_package_send_with_crc(filament_res, sizeof(filament_res));
