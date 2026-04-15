@@ -948,9 +948,9 @@ void send_for_motion_short(unsigned char *buf, int length)
         return;
 
     // Cxx_res[38] = read_num;
-    if (statu_flags == 0x07 && fliment_motion_flag == 0x00)
+    if (statu_flags == 0x03 && read_num == 0xFF)
     {
-        Motion_res[6] = 0xFF;
+        // Cxx_res[38] = data_save.BambuBus_now_filament_num % 4;
     }
 
     set_motion_res_datas(Cxx_res + 5, AMS_num, read_num, statu_flags);
@@ -1021,10 +1021,6 @@ void send_for_motion_long(unsigned char *buf, int length)
     Motion_long_res[5] = statu_flags;
     Motion_long_res[6] = fliment_motion_flag;
     online_buf_set(Motion_long_res + 7);
-    if (statu_flags == 0x07 && fliment_motion_flag == 0x00)
-    {
-        Motion_long_res[6] = 0xFF;
-    }
     for (auto i = 0; i < 4; i++)
     {
         // filament[i].meters;
