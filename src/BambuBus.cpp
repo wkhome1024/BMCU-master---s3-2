@@ -799,6 +799,8 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
             {
                 for (auto i = 0; i < 4; i++)
                 {
+                    if (data_save.BambuBus_now_filament_num  == (AMS_num * 4 + i) && (data_save.filament[AMS_num][i].motion_set == need_pull_back && GET_MC_Online_stu() > 1))
+                        continue;
                     if (data_save.filament[AMS_num][i].motion_set != on_use)
                         data_save.filament[AMS_num][i].motion_set = idle;
                     data_save.filament[AMS_num][i].pressure = 0xFFFF;
@@ -948,7 +950,7 @@ void send_for_motion_short(unsigned char *buf, int length)
     // Cxx_res[38] = read_num;
     if (statu_flags == 0x07 && fliment_motion_flag == 0x00)
     {
-        Motion_res[6] = 0x7F;
+        Motion_res[6] = 0xFF;
     }
 
     set_motion_res_datas(Cxx_res + 5, AMS_num, read_num, statu_flags);
@@ -1021,7 +1023,7 @@ void send_for_motion_long(unsigned char *buf, int length)
     online_buf_set(Motion_long_res + 7);
     if (statu_flags == 0x07 && fliment_motion_flag == 0x00)
     {
-        Motion_long_res[6] = 0x7F;
+        Motion_long_res[6] = 0xFF;
     }
     for (auto i = 0; i < 4; i++)
     {
@@ -1770,7 +1772,7 @@ void Bmcu_run()
                 _filament *filament = &data_save.filament[AMS_num][i];
                 if ((buf_Bmcu[i + 4] & 0X0F) == 0x00)
                 {
-                    if (motion_temp[AMS_num][i] == idle)
+                    if (data_save.BambuBus_now_filament_num == (AMS_num * 4 + i))
                     {
                         filament_res[2] = 0x08;
                         filament_res[3] = AMS_num;
@@ -1794,6 +1796,10 @@ void Bmcu_run()
                             Bmcu_package_send_with_crc(filament_res, sizeof(filament_res));
                             my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为sendout", AMS_num, i);
                         }
+                    }
+                    else
+                    {
+                        filament->motion_set = idle;
                     }
                     motion_temp[AMS_num][i] = idle;
                 }
