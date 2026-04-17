@@ -803,13 +803,15 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
             }
             else if ((statu_flags == 0x01) && (fliment_motion_flag == 0x00)) // 01 00(FF)
             {
-                if (data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].motion_set == idle)
+                if (data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].motion_set == idle && data_save.BambuBus_now_filament_num / 4 == AMS_num) // idle on same ams
                 {
-                    idle_count += time_used;
-                    if (idle_count > 300000) // 30s idle
+                    if (idle_count < 600000) // 60s idle
+                    {
+                        idle_count += time_used;
+                    }
+                    else if (idle_count > 599999)
                     {
                         //data_save.BambuBus_now_filament_num = 0xFF;
-                        idle_count = 0;
                     }
                 }
                 else 

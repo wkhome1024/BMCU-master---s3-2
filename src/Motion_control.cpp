@@ -327,6 +327,7 @@ void Motor_reboot()
 {
     mqtt_status = 0; 
     motor.clearFault();
+    MOTOR_CONTROL.set_motion(0, 500);
 }
 void Motor_init()
 {
