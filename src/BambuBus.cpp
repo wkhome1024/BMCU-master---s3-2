@@ -680,7 +680,7 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
 bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char statu_flags, unsigned char fliment_motion_flag)
 {
     static uint64_t time_last[4] = {0};
-    // static uint64_t pull_count = 0;
+    static uint64_t idle_count = 0;
     static uint64_t meters_virtual_count = 0;
     static uint64_t pre_pull_count = 0;
     uint64_t time_now = get_time64();
@@ -700,12 +700,14 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                         data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].motion_set = idle;
                         data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].pressure = 0xFFFF;
                     }
-                    if (!motor_unready && GET_MC_Online_stu() > 0) // 等待bmcu就绪
+                    if (!motor_unready && GET_MC_Online_stu() < 2) // 等待bmcu就绪
                     {
                         data_save.BambuBus_now_filament_num = numx;
                         Motor_reboot();
                     }
-                }else if (data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].motion_set == idle) // on same filament but idle
+                    //data_save.BambuBus_now_filament_num = numx;
+                }
+                else if (data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].motion_set == idle) // on same filament but idle
                 {
                     Motor_reboot();
                 }
@@ -733,6 +735,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 if (data_save.filament[AMS_num][read_num].pressure < 0x0700)
                     data_save.filament[AMS_num][read_num].pressure = 0x3700;
                 pre_pull_count = 0;
+                idle_count = 0;
             }
             else if ((statu_flags == 0x07) && (fliment_motion_flag == 0x7F)) // 07 7F
             {
@@ -775,8 +778,14 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
             {
                 for (auto i = 0; i < 4; i++)
                 {
-                    if (data_save.BambuBus_now_filament_num  == (AMS_num * 4 + i) && (data_save.filament[AMS_num][i].motion_set == need_pull_back && GET_MC_Online_stu() > 1))
-                        continue;
+                    if (data_save.BambuBus_now_filament_num == (AMS_num * 4 + i))
+                    {
+                        if (idle_count < 300000 && (data_save.filament[AMS_num][i].motion_set == need_pull_back && GET_MC_Online_stu() > 1)) // 30s idle
+                        {
+                            idle_count += time_used;
+                            continue;
+                        }
+                    }
                     if (data_save.filament[AMS_num][i].motion_set != on_use)
                         data_save.filament[AMS_num][i].motion_set = idle;
                     data_save.filament[AMS_num][i].pressure = 0xFFFF;
@@ -1520,13 +1529,13 @@ void Bmcu_run()
                         }
                         else if (filament->motion_set == need_pull_back || (filament->motion_set == idle && GET_MC_Online_stu() > 1))
                         {
-                            filament_res[6] = 0xB9;                                         //--指定通道need_pull_back
+                            filament_res[6] = 0xB9; //--指定通道need_pull_back
                             Bmcu_package_send_with_crc(filament_res, sizeof(filament_res));
                             my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为pullback", AMS_num, i);
                         }
                         else if (filament->motion_set == need_send_out)
                         {
-                            filament_res[6] = 0xC9;                                         //--指定通道need_send_out
+                            filament_res[6] = 0xC9; //--指定通道need_send_out
                             Bmcu_package_send_with_crc(filament_res, sizeof(filament_res));
                             my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为sendout", AMS_num, i);
                         }
