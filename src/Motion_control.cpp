@@ -491,15 +491,16 @@ void motor_motion_run()
             break;
         case idle:
             LED_setColor(0, 0x00, 0x00, 0xFF); // 蓝灯
-            if (MC_ONLINE_key_stu > 0 && motor_unready)
+            if (MC_ONLINE_key_stu > 0)
             {
-                MOTOR_CONTROL.set_motion(-66, 100);
-            }
-            else
-                MOTOR_CONTROL.set_motion(0, 100);
-            if (MC_PULL_stu == 2 && MC_ONLINE_key_stu > 0) // 手动退料
-            {
-                MOTOR_CONTROL.set_motion(-1, 100);
+                if (MC_PULL_stu == 2 || motor_unready)
+                {
+                    MOTOR_CONTROL.set_motion(-66, 100);
+                }
+                else
+                {
+                    MOTOR_CONTROL.set_motion(0, 100);
+                }
             }
             break;
         }

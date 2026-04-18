@@ -780,7 +780,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 {
                     if (data_save.BambuBus_now_filament_num == (AMS_num * 4 + i))
                     {
-                        if (idle_count < 300000 && (data_save.filament[AMS_num][i].motion_set == need_pull_back && GET_MC_Online_stu() > 1)) // 30s idle
+                        if (idle_count < pullback_time && (data_save.filament[AMS_num][i].motion_set == need_pull_back && GET_MC_Online_stu() > 1)) // 30s idle
                         {
                             idle_count += time_used;
                             continue;
