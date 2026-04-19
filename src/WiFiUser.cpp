@@ -427,6 +427,7 @@ void WebHandler::handleData(AsyncWebServerRequest *request)
   if (catchkey == "open")
   {
     catch_key = 1;
+    mqtt_status = 9; // 设置为9以触发mqtt重连并开始发送数据
     my_printf("(http) Bambu-hub开启抓包");
     request->send(200, "text/plain", "open catch");
   }

@@ -56,6 +56,16 @@ void hub_msg()
         my_printf("(mqtt) MQTT发布失败,正在重连...尝试次数: %d", mqtt_status);
       }
     }
+    else if (mqtt_status > 8)
+    {
+      my_printf("(sensor) 电机输出: %d", motor_pwm);
+      my_printf("(sensor) pull+online+H_pwm: %s", Motion_get_status().c_str());
+      mqtt_status ++;
+      if (mqtt_status > 15)
+      {
+        mqtt_status = 0; // 重置状态以尝试重新连接
+      }
+    }
     sw_send = !sw_send;
     // my_printf("{\"Pull_Voltage\":%.2f,\"Online_Voltage\":%.2f,\"Buf_PWM\":%.2f}",pull_voltage, online_voltage, Buf_pwm_read());
     // my_printf("(sensor) 拉力传感器电压: %.2f V", MC_PULL_stu_raw);
