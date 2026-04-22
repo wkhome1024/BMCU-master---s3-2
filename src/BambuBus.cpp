@@ -19,6 +19,7 @@ uint64_t pullback_time = 30000; // 30s
 _filament_motion_state_set motion_temp[4][4];
 uint8_t statu_temp[4][4];
 uint8_t slave_pull_statu[4][4] = {0};
+bool have_registered[4] = {false, false, false, false};
 struct _filament
 {
     // AMS statu
@@ -184,7 +185,7 @@ void RX_IRQ(unsigned char _RX_IRQ_data)
                 data_length_index = 2;
                 data_CRC8_index = 3;
             }
-            else if (data == 0)
+            else if (data == 0 && 0)
             {
                 _index = 0;
                 return;
@@ -1164,6 +1165,7 @@ void p2s_reset_startup_seq(void)
         p2s_a0_seq_pos = 0;
         p2s_0237_seq_pos[i] = 0;
         p2s_023c_seq_pos[i] = 0;
+        have_registered[i] = false;
     }
     p2s_state = p2s_runtime_state::runtime;
 }
@@ -1188,19 +1190,19 @@ static const uint8_t p2s_a0_payload_seq[][10] = {
 static const uint8_t p2s_0237_resp_boot0[25] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x1A, 0x00, 0x00, 0x00};
+    0x00, 0x1C, 0x00, 0x00, 0x00};
 static const uint8_t p2s_0237_resp_boot1[25] = {
     0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
     0xFA, 0x12, 0x6A, 0x6C, 0x94, 0x0F, 0x15, 0x6E, 0x73, 0x0C, 0x98, 0x0C, 0x90, 0x0C,
-    0x00, 0x1A, 0x00, 0x00, 0x00};
+    0x00, 0x1C, 0x00, 0x00, 0x00};
 static const uint8_t p2s_0237_resp_boot2[25] = {
     0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
     0xFA, 0x12, 0x6A, 0x6C, 0x94, 0x0F, 0x15, 0x6E, 0x73, 0x0C, 0x98, 0x0C, 0x90, 0x0C,
-    0x02, 0x1A, 0x00, 0x00, 0x00};
+    0x02, 0x1C, 0x00, 0x00, 0x00};
 static const uint8_t p2s_0237_resp_run[25] = {
     0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
     0xFA, 0x12, 0x6A, 0x6C, 0x94, 0x0F, 0x15, 0x6E, 0x73, 0x0C, 0x98, 0x0C, 0x90, 0x0C,
-    0x01, 0x1A, 0x00, 0xF1, 0xFB};
+    0x01, 0x1C, 0x00, 0xF1, 0xFB};
 
 static const uint8_t p2s_023c_const_prefix[14] = {
     0x00, 0xE8, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x15, 0x16, 0x16, 0x15};
@@ -1278,22 +1280,17 @@ static void send_for_0237(unsigned char *buf, int length)
     uint8_t AMS_num = printer_data_long.datas[0];
     if (printer_data_long.target_address != BambuBus_address || AMS_num < F_AMS_num)
         return;
-    const bool is_boot_req = (printer_data_long.data_length >= 3) && (printer_data_long.datas[2] == 0x01);
+    //const bool is_boot_req = (printer_data_long.data_length >= 3) && (printer_data_long.datas[2] == 0x01);
     const uint8_t *payload;
 
-    if (is_boot_req)
-    {
-        if (p2s_0237_seq_pos[AMS_num] == 0u)
-            payload = p2s_0237_resp_boot0;
-        else if (p2s_0237_seq_pos[AMS_num] == 1u)
-            payload = p2s_0237_resp_boot1;
-        else
-            payload = p2s_0237_resp_boot2;
-    }
-    else
-    {
+    if (p2s_0237_seq_pos[AMS_num] <= 2)
+        payload = p2s_0237_resp_boot0;
+    else if (p2s_0237_seq_pos[AMS_num] > 2 && p2s_0237_seq_pos[AMS_num] <= 4)
+        payload = p2s_0237_resp_boot1;
+    else if (p2s_0237_seq_pos[AMS_num] > 4)
+        payload = p2s_0237_resp_boot2;
+    if (p2s_state == p2s_runtime_state::runtime)
         payload = p2s_0237_resp_run;
-    }
 
     uint8_t resp[25];
     memcpy(resp, payload, sizeof(resp));
@@ -1301,15 +1298,7 @@ static void send_for_0237(unsigned char *buf, int length)
     if (payload != p2s_0237_resp_boot0)
         resp[0] = (uint8_t)AMS_num;
 
-    if (!is_boot_req)
-    {
-        if (p2s_state == p2s_runtime_state::boot)
-            resp[21] = 0x1A;
-        else if (p2s_state == p2s_runtime_state::runtime)
-            resp[21] = 0x1B;
-        else
-            resp[21] = 0x1C;
-    }
+    resp[21] = 0x1C;
 
     long_packge_data data;
     data.datas = resp;
@@ -1320,7 +1309,7 @@ static void send_for_0237(unsigned char *buf, int length)
     data.target_address = printer_data_long.source_address;
     Bambubus_long_package_send(&data);
 
-    if (is_boot_req && p2s_0237_seq_pos[AMS_num] < 0xFFu)
+    if (p2s_0237_seq_pos[AMS_num] < 0xFFu)
         p2s_0237_seq_pos[AMS_num]++;
 }
 
@@ -1371,7 +1360,6 @@ unsigned char F01_res[] = {
     0x00, 0x00, 0x00, 0x33, 0xF0};
 int num_F00 = 0;
 uint8_t detect_num = 14;
-bool have_registered[4] = {false, false, false, false};
 void send_for_online_detect(unsigned char *buf, int length)
 {
     uint8_t F00_res[sizeof(F01_res)];
@@ -1525,9 +1513,9 @@ unsigned char long_packge_version_serial_number[] = {16, // length
                                                      0xFF, 0xFF, 0xFF, 0xFF,
                                                      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xBB, 0x44, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
 
-unsigned char long_packge_version_version_and_name_AMS_lite[] = {0x3E, 0x06, 0x01, 0x00, // verison number
+unsigned char long_packge_version_version_and_name_AMS_lite[] = {0x3E, 0x06, 0x01, 0x03, // verison number
                                                                  0x41, 0x4D, 0x53, 0x5F, 0x46, 0x31, 0x30, 0x32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-unsigned char long_packge_version_version_and_name_AMS08[] = {0x00, 0x00, 0x00, 0x00, // verison number
+unsigned char long_packge_version_version_and_name_AMS08[] = {0x3E, 0x06, 0x01, 0x00, // verison number
                                                               0x41, 0x4D, 0x53, 0x30, 0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 void send_for_long_packge_version(unsigned char *buf, int length)
@@ -1752,6 +1740,7 @@ void send_for_long_packge_set_filament(unsigned char *buf, int length)
         Bmcu_package_send_with_crc(filament_res, sizeof(filament_res));
     }
 }
+
 package_type BambuBus_stu()
 {
     return bambu_stu;
@@ -1790,7 +1779,7 @@ void Bmcu_run()
                         filament_res[3] = AMS_num;
                         filament_res[4] = i;
                         filament_res[5] = 0x00;
-                        if (now_time - last_time > 500)   //每500ms发送一次，防止bmcu掉线后状态不更新
+                        if (now_time - last_time > 500) // 每500ms发送一次，防止bmcu掉线后状态不更新
                         {
                             last_time = now_time;
                             if (filament->motion_set == on_use)
@@ -1809,7 +1798,7 @@ void Bmcu_run()
                             {
                                 filament_res[6] = 0xC9; //--指定通道need_send_out
                                 Bmcu_package_send_with_crc(filament_res, sizeof(filament_res));
-                                //my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为sendout", AMS_num, i);
+                                // my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为sendout", AMS_num, i);
                             }
                         }
                     }
@@ -1951,6 +1940,15 @@ package_type BambuBus_run()
                 break;
             case BambuBus_package_023c:
                 send_for_023c(buf_X, data_length);
+                break;
+            case BambuBus_cert_datas_sync:
+                //cert_datas_sync(buf_X, data_length);
+                break;
+            case BambuBus_read_cert:
+                //get_read_cert(buf_X, data_length);
+                break;
+            case BambuBus_send_cert_verify:
+                //send_cert_verify(buf_X, data_length);
                 break;
             default:
                 break;

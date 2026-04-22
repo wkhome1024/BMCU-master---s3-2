@@ -18,7 +18,7 @@ char mqtt_id[20];
 int save_count = 0;
 uint8_t mqtt_status = 0;        // MQTT连接状态
 int catch_key = 0;              // 抓包计数
-bool catch_mode = false;        // 抓包模式
+bool catch_mode = true;        // 抓包模式
 bool server_key = false;        // HTTP服务器开关
 WiFiClient espclient;           // 创建一个WiFiClient对象
 PubSubClient client(espclient); // 创建一个PubSubClient对象
@@ -254,7 +254,6 @@ void loop()
     {
       if (switch_time == 0)
       {
-        p2s_reset_startup_seq();
         Motor_reboot();
         switch_time = time_now + 8000; // 强制刷新
         my_printf("(hub) AMS数据刷新成功");
@@ -262,6 +261,7 @@ void loop()
       else if (switch_time < time_now && switch_time != 0)
       {
         Switch_set_refresh(false);
+        p2s_reset_startup_seq();
         switch_time = 0;
       }
     }
