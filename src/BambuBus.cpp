@@ -11,7 +11,7 @@ int BambuBus_have_data = 0;
 BambuBus_device_type BambuBus_address = BambuBus_none;
 uint8_t AMS_num_c = 0;
 uint8_t Tay_num_c = 0;
-uint8_t AMS_num_max = 2;
+uint8_t AMS_num_max = 4;
 bool bambus_onflush = false;
 bool bambus_error = false;
 uint8_t motor_unready = 0;
@@ -1063,7 +1063,7 @@ void send_for_motion_long(unsigned char *buf, int length)
         package_num[AMS_num]++;
     else
         package_num[AMS_num] = 0;
-    if (Motion_long_res[3] == (bmcu_package_num + 1) % AMS_num_max)
+    if (bmcu_package_num % (AMS_num_max - 1) == 0)
     {
         Bmcu_package_send_with_crc(Motion_long_res, sizeof(Motion_long_res)); // 重写amsnum 转发bmcu
     }
@@ -1566,6 +1566,16 @@ void Bmcu_run()
                 {
                     if (motion_temp[AMS_num][i] == pre_pull)
                     {
+                        filament_res[2] = 0x08;
+                        filament_res[3] = AMS_num;
+                        filament_res[4] = i;
+                        filament_res[5] = 0x00;
+                        if (filament->motion_set == on_use)
+                        {
+                            filament_res[6] = 0xD9;                                         // 选中激活为onuse
+                            Bmcu_package_send_with_crc(filament_res, sizeof(filament_res)); // 发送选中激活为onuse
+                            my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为onuse", AMS_num, i);
+                        }
                     }
                     motion_temp[AMS_num][i] = pre_pull;
                 }
