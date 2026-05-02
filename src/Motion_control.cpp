@@ -218,6 +218,7 @@ public:
         uint32_t time_now = millis();
         static uint32_t time_set_speed = 0;
         static uint32_t time_last = 0;
+        static uint8_t retry_times = 0;
         float speed_set = 0;
         uint8_t CHx = get_now_filament_num();
         uint8_t pull_statu = slave_pull_statu[CHx / 4][CHx % 4] >> 4;
@@ -284,14 +285,19 @@ public:
         if (speed_as5600 > 0.2 || motion == 0 || speed_as5600 < -0.2)
         {
             time_set_speed = time_now + 2000;
+            retry_times = 0;
         }
         if (time_set_speed < time_now && time_set_speed != 0)
         {
             if (x > 820 || x < -820)
             {
                 x = 0; // 防止电机卡死过热
-                if (time_set_speed < time_now - 2000)
-                    PID.clear();                 
+                if (time_set_speed < time_now - 2000 && retry_times < 5)
+                {
+                    PID.clear();
+                    time_set_speed = time_now + 2000;
+                    retry_times++;
+                }
             }
         }
         Motion_control_set_PWM(x);

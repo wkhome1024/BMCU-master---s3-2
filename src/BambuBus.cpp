@@ -14,6 +14,7 @@ uint8_t Tay_num_c = 0;
 uint8_t AMS_num_max = 4;
 bool bambus_onflush = false;
 bool bambus_error = false;
+bool pull_error = false;
 uint8_t motor_unready = 0;
 uint64_t pullback_time = 30000; // 30s
 _filament_motion_state_set motion_temp[4][4];
@@ -609,7 +610,7 @@ uint8_t get_filament_left_char(uint8_t AMS_num, uint8_t checknum)
         {
             data |= (0x1 << i) << i; // 1<<(2*i)
             if (BambuBus_address == BambuBus_AMS)
-                if (data_save.filament[AMS_num][i].motion_set != idle && i != checknum)
+                if (data_save.filament[AMS_num][i].motion_set != idle && i != checknum && pull_error == false)
                 {
                     data |= (0x2 << i) << i; // 2<<(2*i)
                 }
@@ -1584,6 +1585,10 @@ void Bmcu_run()
                     if (motion_temp[AMS_num][i] == on_use)
                     {
                         filament->motion_set = motion_temp[AMS_num][i];
+                        if (slave_pull_statu[AMS_num][i] < 0x40 && GET_MC_PULL_raw() < 1.3)    //主从机缓冲同时压缩，且压缩力度较大时，认为拉料异常
+                            pull_error = true;
+                        else
+                            pull_error = false;
                     }
                     motion_temp[AMS_num][i] = on_use;
                 }
