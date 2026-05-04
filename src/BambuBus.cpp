@@ -610,7 +610,7 @@ uint8_t get_filament_left_char(uint8_t AMS_num, uint8_t checknum)
         {
             data |= (0x1 << i) << i; // 1<<(2*i)
             if (BambuBus_address == BambuBus_AMS)
-                if (data_save.filament[AMS_num][i].motion_set != idle && i != checknum && pull_error == false)
+                if (data_save.filament[AMS_num][i].motion_set != idle && i != checknum)
                 {
                     data |= (0x2 << i) << i; // 2<<(2*i)
                 }
@@ -684,6 +684,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
     static uint64_t idle_count = 0;
     static uint64_t meters_virtual_count = 0;
     static uint64_t pre_pull_count = 0;
+    static uint64_t pull_error_count = 0;
     uint64_t time_now = get_time64();
     uint64_t time_used = time_now - time_last[AMS_num];
     time_last[AMS_num] = time_now;
@@ -706,7 +707,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                         data_save.BambuBus_now_filament_num = numx;
                         Motor_reboot();
                     }
-                    //data_save.BambuBus_now_filament_num = numx;
+                    // data_save.BambuBus_now_filament_num = numx;
                 }
                 else if (data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].motion_set == idle) // on same filament but idle
                 {
@@ -744,6 +745,17 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 data_save.BambuBus_now_filament_num = AMS_num * 4 + read_num;
                 data_save.filament[AMS_num][read_num].pressure = 0x2B00;
                 meters_virtual_count = 0;
+                if ((slave_pull_statu[AMS_num][read_num] < 0x40 || motor_pwm > 500) && GET_MC_PULL_raw() < 1.3) // 主从机缓冲同时压缩，且压缩力度较大时，认为拉料异常
+                    pull_error_count += time_used;
+                else
+                    pull_error_count = 0;
+                if (pull_error_count > 2000) // 2s异常则认为拉料异常，进入保护状态
+                {
+                    pull_error = true;
+                    data_save.filament[AMS_num][read_num].pressure = 0xF06F;  //卡料
+                }
+                else
+                    pull_error = false;
             }
             else if ((statu_flags == 0x07) && (fliment_motion_flag == 0x00)) // 07 00
             {
@@ -787,7 +799,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                             continue;
                         }
                     }
-                    if (data_save.filament[AMS_num][i].motion_set != on_use)
+                    if (data_save.filament[AMS_num][i].motion_set != on_use || idle_count > pullback_time)
                         data_save.filament[AMS_num][i].motion_set = idle;
                     data_save.filament[AMS_num][i].pressure = 0xFFFF;
                 }
@@ -1064,7 +1076,7 @@ void send_for_motion_long(unsigned char *buf, int length)
         package_num[AMS_num]++;
     else
         package_num[AMS_num] = 0;
-    if (bmcu_package_num % (AMS_num_max - 1) == 0)
+    if (Motion_long_res[3] == bmcu_package_num || Motion_long_res[4] == data_save.BambuBus_now_filament_num % 4)
     {
         Bmcu_package_send_with_crc(Motion_long_res, sizeof(Motion_long_res)); // 重写amsnum 转发bmcu
     }
@@ -1528,7 +1540,7 @@ void Bmcu_run()
                             Bmcu_package_send_with_crc(filament_res, sizeof(filament_res)); // 发送选中激活为onuse
                             my_printf("(bmcu) 自动选中 Bmcu%d-%d 激活为onuse", AMS_num, i);
                         }
-                        else if (filament->motion_set == need_pull_back || (filament->motion_set == idle && GET_MC_Online_stu() > 1))
+                        else if (filament->motion_set == need_pull_back)
                         {
                             filament_res[6] = 0xB9; //--指定通道need_pull_back
                             Bmcu_package_send_with_crc(filament_res, sizeof(filament_res));
@@ -1585,10 +1597,6 @@ void Bmcu_run()
                     if (motion_temp[AMS_num][i] == on_use)
                     {
                         filament->motion_set = motion_temp[AMS_num][i];
-                        if (slave_pull_statu[AMS_num][i] < 0x40 && GET_MC_PULL_raw() < 1.3)    //主从机缓冲同时压缩，且压缩力度较大时，认为拉料异常
-                            pull_error = true;
-                        else
-                            pull_error = false;
                     }
                     motion_temp[AMS_num][i] = on_use;
                 }
