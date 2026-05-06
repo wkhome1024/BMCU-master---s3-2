@@ -17,7 +17,7 @@ float MC_PULL_stu_raw = 0;
 //  -2-1.3过低  -1-1.45低 0 正常 1-1.8高 2-1.9过高
 int MC_PULL_stu = 0;
 float MC_ONLINE_key_stu_raw = 0;
-// 0-离线 1-在线单微动触发 2-双微动触发 3-抖动
+// 0-离线 1-在线单微动触发 2-双微动触发
 uint8_t MC_ONLINE_key_stu = 3;
 // float H_PULL_stu_raw = 0;
 //  30(-2) 低 40(-1)正常低 60(1)正常高 80(2)高
@@ -92,24 +92,29 @@ void MC_PULL_ONLINE_read()
         LED_setColor(2, 0x00, 0xFF, 0x00); // 绿灯
     }
 
+    static uint8_t last_online = 0;
     /*在线状态*/
     // 双微动
     if (MC_ONLINE_key_stu_raw < 0.4f)
     { // 小于则离线.
         MC_ONLINE_key_stu = 0;
+        last_online = 0;
     }
     else if ((MC_ONLINE_key_stu_raw < 1.8f) & (MC_ONLINE_key_stu_raw > 1.4f))
     { // 仅触发1个微动，需辅助进料
-        MC_ONLINE_key_stu = 1;
+        if (last_online == 0)
+            MC_ONLINE_key_stu = 1;
+        else if (last_online > 200)
+            MC_ONLINE_key_stu = 1;
+        else if (MC_ONLINE_key_stu == 2)
+            last_online += 1;
     }
     else if (MC_ONLINE_key_stu_raw > 1.8f)
     { // 双微动同时触发, 在线状态
         MC_ONLINE_key_stu = 2;
+        last_online = 2;
     }
-    else if (MC_ONLINE_key_stu_raw < 1.4f)
-    { // 仅触发内侧微动 , 需确认是缺料还是抖动.
-        MC_ONLINE_key_stu = 3;
-    }
+
 
     /*
     // 缓冲压力pwm读取

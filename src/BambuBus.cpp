@@ -676,6 +676,11 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
     set_buf[3] = read_num; // filament number or maybe using number
     memcpy(set_buf + 4, &meters, sizeof(float));
     memcpy(set_buf + 8, &pressure, sizeof(uint16_t));
+    if (pull_error && (motion_flag == 0x04))
+    {
+        set_buf[10] = 0xE7; // 拉料异常
+        set_buf[11] = 0x1C;
+    }
     set_buf[24] = get_filament_left_char(AMS_num, checknum);
 }
 bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char statu_flags, unsigned char fliment_motion_flag)
