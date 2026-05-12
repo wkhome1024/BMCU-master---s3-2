@@ -53,6 +53,7 @@ void MC_IO_read()
 }
 uint8_t GET_MC_Online_stu()
 {
+    uint8_t MC_ONLINE_stu = MC_ONLINE_key_stu?2:0;
     return MC_ONLINE_key_stu;
 }
 float GET_MC_PULL_raw()
@@ -97,17 +98,15 @@ void MC_PULL_ONLINE_read()
     // 双微动
     if (MC_ONLINE_key_stu_raw < 0.4f)
     { // 小于则离线.
-        MC_ONLINE_key_stu = 0;
-        last_online = 0;
+        if (last_online > 100)
+            MC_ONLINE_key_stu = 0;
+        else if (MC_ONLINE_key_stu > 0)
+            last_online += 1;
     }
     else if ((MC_ONLINE_key_stu_raw < 1.8f) & (MC_ONLINE_key_stu_raw > 1.4f))
     { // 仅触发1个微动，需辅助进料
-        if (last_online == 0)
-            MC_ONLINE_key_stu = 1;
-        else if (last_online > 200)
-            MC_ONLINE_key_stu = 1;
-        else if (MC_ONLINE_key_stu == 2)
-            last_online += 1;
+        MC_ONLINE_key_stu = 1;
+        last_online = 1;
     }
     else if (MC_ONLINE_key_stu_raw > 1.8f)
     { // 双微动同时触发, 在线状态
@@ -319,6 +318,7 @@ void Motion_control_set_PWM(int PWM)
         // ledcWrite(1, 0);
         // ledcWrite(3, 0);
         motor.setFreewheel();
+        motor_pwm = 0;
         return;
     }
     if (PWM == 0)
