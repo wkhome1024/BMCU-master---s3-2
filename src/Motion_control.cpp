@@ -3,7 +3,7 @@
 /******************************     电机控制接口       *******************************/
 #define Motor_H_pin 17
 #define Motor_L_pin 18
-MotorMCPWMConfig hw{Motor_H_pin, Motor_L_pin, -1, MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM0A, MCPWM0B};
+MotorMCPWMConfig hw{Motor_H_pin, Motor_L_pin, -1, MCPWM_UNIT_0, MCPWM_TIMER_1, MCPWM1A, MCPWM1B};
 Motor motor;
 
 /******************************     AS5600 角度传感器接口       *******************************/
@@ -18,7 +18,7 @@ float MC_PULL_stu_raw = 0;
 int MC_PULL_stu = 0;
 float MC_ONLINE_key_stu_raw = 0;
 // 0-离线 1-在线单微动触发 2-双微动触发
-uint8_t MC_ONLINE_key_stu = 3;
+uint8_t MC_ONLINE_key_stu = 0;
 // float H_PULL_stu_raw = 0;
 //  30(-2) 低 40(-1)正常低 60(1)正常高 80(2)高
 // int H_PULL_stu = 0;
@@ -105,8 +105,10 @@ void MC_PULL_ONLINE_read()
     }
     else if ((MC_ONLINE_key_stu_raw < 1.8f) & (MC_ONLINE_key_stu_raw > 1.4f))
     { // 仅触发1个微动，需辅助进料
-        MC_ONLINE_key_stu = 1;
-        last_online = 1;
+        if (last_online > 50 || MC_ONLINE_key_stu == 0)
+            MC_ONLINE_key_stu = 1;
+        else if (MC_ONLINE_key_stu > 1)
+            last_online += 1;
     }
     else if (MC_ONLINE_key_stu_raw > 1.8f)
     { // 双微动同时触发, 在线状态

@@ -842,7 +842,7 @@ void online_buf_set(unsigned char *set_buf)
     if (motor_unready)
         set_buf[0] |= 0x30;
     // set_buf[1] = (uint8_t)((GET_MC_PULL_raw() - 0.9f) * 128); // 通道压力值/128 增大0.2
-    set_buf[1] = 77; // p1s固定压力值1.6
+    set_buf[1] = 26; // p1s固定压力值1.2
 }
 unsigned char Hit_res[] = {0x9D, 0x0A, 0x20,
                            0x00, 0x00, // amsnum + taynum
