@@ -27,7 +27,7 @@ int motor_pwm = 0;
 float PULL_voltage_up = 1.80f;   // 1.80V 状态 压力高 红灯
 float PULL_voltage_down = 1.45f; // 1.45V 状态 压力低 蓝灯
 // 微动触发控制相关常量
-float MC_PULL_voltage_pull = 1.70f; // 压力平衡点 1.70
+float MC_PULL_voltage_pull = 1.75f; // 压力平衡点 1.70
 // bool Assist_send_filament[4] = {false, false, false, false};
 //  bool pull_state_old = false; // 上次触发状态——True：未触发，False：进料完成
 //  bool is_backing_out = false;
@@ -98,14 +98,14 @@ void MC_PULL_ONLINE_read()
     // 双微动
     if (MC_ONLINE_key_stu_raw < 0.4f)
     { // 小于则离线.
-        if (last_online > 100)
+        if (last_online > 40)
             MC_ONLINE_key_stu = 0;
         else if (MC_ONLINE_key_stu > 0)
             last_online += 1;
     }
     else if ((MC_ONLINE_key_stu_raw < 1.8f) & (MC_ONLINE_key_stu_raw > 1.4f))
     { // 仅触发1个微动，需辅助进料
-        if (last_online > 50 || MC_ONLINE_key_stu == 0)
+        if (last_online > 20 || MC_ONLINE_key_stu == 0)
             MC_ONLINE_key_stu = 1;
         else if (MC_ONLINE_key_stu > 1)
             last_online += 1;

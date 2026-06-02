@@ -58,14 +58,14 @@ void Readuart()
     while (Serial0.available())
     {
         uint8_t c = Serial0.read();
-        //rxBuffer0.write(c);
-        RX_IRQ(c);
+        rxBuffer0.write(c);
+        //RX_IRQ(c);
     }
     while (Serial1.available())
     {
         uint8_t d = Serial1.read();
-        //rxBuffer1.write(d);
-        RX_BMCU(d);
+        rxBuffer1.write(d);
+        //RX_BMCU(d);
     }
 }
 
@@ -143,19 +143,19 @@ void BMCU_UART_Init()
 
 void start_rs485_task()
 {
-
+    /*
     BaseType_t bmcuResult = xTaskCreate(bmcuTask, "Bmcu Task", TASK_STACK_SIZE, NULL, 2, NULL);
     if (bmcuResult != pdPASS)
     {
         ESP_LOGE("(bmcu)", "Failed to create Bmcu  Task");
     }
-    /*
+    */    
     BaseType_t serialResult = xTaskCreate(serialTask, "Serial Task", TASK_STACK_SIZE, NULL, 4, NULL);
     if (serialResult != pdPASS)
     {
         ESP_LOGE("(rs485)", "Failed to create Serial Task");
     }
-    */
+
 }
 void RS485_init()
 {
