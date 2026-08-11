@@ -242,10 +242,10 @@ public:
         }
         else if (motion == 1) // send 370 40  130 15
         {
-            if (pull_statu < 5)
-                speed_set = 40;
+            if (pull_statu > 2)
+                speed_set = (pull_statu - 2) * 16;
             else
-                speed_set = (pull_statu - 2) * 16; // 线性压力反馈;
+                speed_set = 10; // 线性压力反馈;
         }
         else if (motion == 2 || motion == 3) // over pressure
         {

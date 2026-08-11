@@ -14,7 +14,7 @@ uint8_t Tay_num_c = 0;
 uint8_t AMS_num_max = 4;
 bool bambus_onflush = false;
 bool bambus_error = false;
-//bool pull_error = false;
+// bool pull_error = false;
 uint8_t motor_unready = 0;
 uint64_t pullback_time = 30000; // 30s
 _filament_motion_state_set motion_temp[4][4];
@@ -609,11 +609,11 @@ uint8_t get_filament_left_char(uint8_t AMS_num, uint8_t checknum)
         if (data_save.filament[AMS_num][i].statu == online)
         {
             data |= (0x1 << i) << i; // 1<<(2*i)
-            if (BambuBus_address == BambuBus_AMS)
-                if (data_save.filament[AMS_num][i].motion_set != idle && i != checknum)
-                {
-                    data |= (0x2 << i) << i; // 2<<(2*i)
-                }
+
+            if (data_save.filament[AMS_num][i].motion_set != idle && i != checknum)
+            {
+                data |= (0x2 << i) << i; // 2<<(2*i)
+            }
         }
     }
     return data;
@@ -666,6 +666,7 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
             {
                 last_meters = 0;
                 checknum = data_save.BambuBus_now_filament_num % 4;
+                data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].motion_set = idle;
             }
         }
     }
@@ -750,13 +751,13 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 data_save.BambuBus_now_filament_num = AMS_num * 4 + read_num;
                 data_save.filament[AMS_num][read_num].pressure = 0x2B00;
                 meters_virtual_count = 0;
-                if ((slave_pull_statu[AMS_num][read_num] < 0x30 || motor_pwm > 500) && GET_MC_PULL_raw() < 1.25f) // 主从机缓冲同时压缩，且压缩力度较大时，认为拉料异常
+                if ((slave_pull_statu[AMS_num][read_num] < 0x30 || motor_pwm > 800) && GET_MC_PULL_raw() < 1.25f) // 主从机缓冲同时压缩，且压缩力度较大时，认为拉料异常
                     pull_error_count += time_used;
                 else
                     pull_error_count = 0;
                 if (pull_error_count > 2500 && statu_temp[AMS_num][read_num] == 0) // 2s异常则认为拉料异常，进入保护状态
                 {
-                    data_save.filament[AMS_num][read_num].pressure = 0xF06F;  //卡料
+                    data_save.filament[AMS_num][read_num].pressure = 0xF06F; // 卡料
                 }
             }
             else if ((statu_flags == 0x07) && (fliment_motion_flag == 0x00)) // 07 00
@@ -955,7 +956,7 @@ void send_for_motion_short(unsigned char *buf, int length)
 
     set_motion_res_datas(Cxx_res + 5, AMS_num, read_num, statu_flags);
 
-    if (1)
+    if (package_num[AMS_num] % 3 == 0)
     {
         package_send_with_crc(Cxx_res, sizeof(Cxx_res));
     }
@@ -1018,6 +1019,10 @@ void send_for_motion_long(unsigned char *buf, int length)
     ams_status[AMS_num][0] = read_num;
     ams_status[AMS_num][1] = statu_flags;
     ams_status[AMS_num][2] = fliment_motion_flag;
+    if (statu_flags == 0x03 && AMS_num == data_save.BambuBus_now_filament_num / 4 && data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].motion_set == need_send_out)
+    {
+        ams_status[AMS_num][0] = data_save.BambuBus_now_filament_num % 4;
+    }
     Motion_long_res[2] = 0x04;
     online_buf_set(Motion_long_res + 7);
     for (auto i = 0; i < 4; i++)
@@ -1074,6 +1079,11 @@ void send_for_motion_long(unsigned char *buf, int length)
         }
         last_detect--;
     }
+    /*
+
+
+    package_send_with_crc(Dxx_res, sizeof(Dxx_res));
+    */
     if (bambus_onflush)
     {
         if (Dxx_res[5] == data_save.BambuBus_now_filament_num / 4)
@@ -1087,7 +1097,17 @@ void send_for_motion_long(unsigned char *buf, int length)
     else
         package_num[AMS_num] = 0;
 
-    if (AMS_num != AMS_num_max - 1)
+    if (AMS_num == AMS_num_max - 2)
+    {
+        if (motor_reboot_flag)
+        {
+            Motor_reboot();
+            send_reset(); // 打印完成 耗材复位
+            motor_reboot_flag = false;
+        }
+        return;
+    }
+    else if (AMS_num != AMS_num_max - 1)
         return;
     if (onuse_ams)
     {
@@ -1100,7 +1120,7 @@ void send_for_motion_long(unsigned char *buf, int length)
         onuse_ams = false;
     }
     else
-    { 
+    {
         Motion_long_res[3] = last_ams;
         Motion_long_res[4] = ams_status[last_ams][0]; // read_num;
         Motion_long_res[5] = ams_status[last_ams][1]; // statu_flags;
@@ -1377,7 +1397,7 @@ unsigned char filament_res[] = {0x7D, 0x0A, 0x08,
                                 0x00, 0x00, // 公用控制位 + 专用控制位
                                 0x00};      // crc8 校验
 unsigned char Set_filament_res[] = {0x3D, 0xC0, 0x08, 0xB2, 0x08, 0x60, 0xB4, 0x04};
-uint8_t motor_time[4] = {1, 4, 8, 12};  // 电机退料时间
+uint8_t motor_time[4] = {1, 2, 4, 8};   // 电机退料时间
 uint8_t pwm_zero[4] = {22, 30, 38, 46}; // 电机pwm 零点
 void send_reset()
 {
@@ -1553,7 +1573,8 @@ void Bmcu_run()
             bmcu_online = buf_Bmcu[12];
             for (int i = 0; i < 4; i++)
             {
-                slave_pull_statu[AMS_num][i] = buf_Bmcu[i + 4] & 0XF0;
+                if (buf_Bmcu[i + 4] & 0XF0)
+                    slave_pull_statu[AMS_num][i] = buf_Bmcu[i + 4] & 0XF0;
                 _filament *filament = &data_save.filament[AMS_num][i];
                 if ((buf_Bmcu[i + 4] & 0X0F) == 0x00)
                 {

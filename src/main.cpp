@@ -280,15 +280,6 @@ void loop()
       }
       save_count = 0;
     }
-    else if (save_count == 30)
-    {
-      if (motor_reboot_flag)
-      {
-          Motor_reboot();
-          send_reset();  //打印完成 耗材复位
-          motor_reboot_flag = false;      
-      }
-    }
     save_count++;
   }
   if (server_time == 0) // 如果WebServer未开启
