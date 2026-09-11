@@ -432,10 +432,7 @@ bool package_check_crc16(uint8_t *data, int data_length)
 {
     crc_16.restart();
     data_length -= 2;
-    for (auto i = 0; i < data_length; i++)
-    {
-        crc_16.add(data[i]);
-    }
+    crc_16.add(data, (crc_size_t)data_length); // 批量计算，减少逐字节函数调用
     uint16_t num = crc_16.calc();
     if ((data[(data_length)] == (num & 0xFF)) && (data[(data_length + 1)] == ((num >> 8) & 0xFF)))
         return true;
@@ -448,26 +445,17 @@ void package_send_with_crc(uint8_t *data, int data_length)
     crc_8.restart();
     if (data[1] & 0x80)
     {
-        for (auto i = 0; i < 3; i++)
-        {
-            crc_8.add(data[i]);
-        }
+        crc_8.add(data, 3); // 批量计算，减少逐字节函数调用
         data[3] = crc_8.calc();
     }
     else
     {
-        for (auto i = 0; i < 6; i++)
-        {
-            crc_8.add(data[i]);
-        }
+        crc_8.add(data, 6);
         data[6] = crc_8.calc();
     }
     crc_16.restart();
     data_length -= 2;
-    for (auto i = 0; i < data_length; i++)
-    {
-        crc_16.add(data[i]);
-    }
+    crc_16.add(data, (crc_size_t)data_length);
     uint16_t num = crc_16.calc();
     data[(data_length)] = num & 0xFF;
     data[(data_length + 1)] = num >> 8;
@@ -604,17 +592,17 @@ uint8_t bmcu_package_num = 0;
 
 uint8_t get_filament_left_char(uint8_t AMS_num, uint8_t checknum)
 {
+    const _filament *filament = data_save.filament[AMS_num]; // 表首地址只取一次，避免重复二维寻址
     uint8_t data = 0;
     for (int i = 0; i < 4; i++)
     {
-
-        if (data_save.filament[AMS_num][i].statu == online)
+        if (filament[i].statu == online)
         {
-            data |= (0x1 << i) << i; // 1<<(2*i)
+            data |= (uint8_t)(1u << (2 * i)); // 1<<(2*i)
 
-            if (data_save.filament[AMS_num][i].motion_set != idle && i != checknum)
+            if (filament[i].motion_set != idle && i != checknum)
             {
-                data |= (0x2 << i) << i; // 2<<(2*i)
+                data |= (uint8_t)(2u << (2 * i)); // 2<<(2*i)
             }
         }
     }
@@ -654,21 +642,23 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
     }
     else if (read_num == 0xFF && statu_flags == 0x03) // ams退料状态更新
     {
-        if (data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].motion_set == need_pull_back)
+        const uint8_t now_num = data_save.BambuBus_now_filament_num % 4; // 取模只算一次
+        _filament *filament = &data_save.filament[AMS_num][now_num];
+        if (filament->motion_set == need_pull_back)
         {
             if (last_time > now_time - pullback_time && GET_MC_Online_stu() > 0)
             {
-                meters = data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].meters;
+                meters = filament->meters;
                 last_meters = meters;
-                read_num = data_save.BambuBus_now_filament_num % 4;
+                read_num = now_num;
                 motion_flag = 0x02;
                 pressure = 0x4700;
             }
             else
             {
                 last_meters = 0;
-                checknum = data_save.BambuBus_now_filament_num % 4;
-                data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].motion_set = idle;
+                checknum = now_num;
+                filament->motion_set = idle;
             }
         }
     }
@@ -701,6 +691,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
     {
         if (read_num < 4)
         {
+            _filament *filament = &data_save.filament[AMS_num][read_num]; // 目标通道地址只算一次
             if ((statu_flags == 0x03) && (fliment_motion_flag == 0x00)) // 03 00
             {
                 uint8_t numx = AMS_num * 4 + read_num;
@@ -718,41 +709,41 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                     }
                     data_save.BambuBus_now_filament_num = numx;
                 }
-                else if (data_save.filament[data_save.BambuBus_now_filament_num / 4][data_save.BambuBus_now_filament_num % 4].motion_set == idle) // on same filament but idle
+                else if (filament->motion_set == idle) // on same filament but idle
                 {
                     Motor_reboot();
                 }
-                data_save.filament[AMS_num][read_num].motion_set = need_send_out;
-                // data_save.filament[AMS_num][read_num].pressure = 0x4700;
+                filament->motion_set = need_send_out;
+                // filament->pressure = 0x4700;
                 meters_virtual_count = 0;
                 pre_pull_count = 0;
             }
             else if ((statu_flags == 0x09)) // 09 A5 / 09 3F
             {
-                if (data_save.filament[AMS_num][read_num].motion_set == need_send_out)
+                if (filament->motion_set == need_send_out)
                 {
-                    data_save.filament[AMS_num][read_num].motion_set = on_use;
+                    filament->motion_set = on_use;
                     meters_virtual_count = 0;
-                    data_save.filament[AMS_num][read_num].pressure = 0x3700;
+                    filament->pressure = 0x3700;
                 }
                 else if (meters_virtual_count < 5000) // 10s virtual data
                 {
-                    data_save.filament[AMS_num][read_num].meters += (float)time_used / 100000; // 10mm/s
+                    filament->meters += (float)time_used / 100000; // 10mm/s
                     meters_virtual_count += time_used;
                 }
-                data_save.filament[AMS_num][read_num].motion_set = on_use;
+                filament->motion_set = on_use;
                 data_save.BambuBus_now_filament_num = AMS_num * 4 + read_num;
-                data_save.filament[AMS_num][read_num].pressure -= (uint16_t)time_used * 10; // reduce pressure
-                if (data_save.filament[AMS_num][read_num].pressure < 0x0700)
-                    data_save.filament[AMS_num][read_num].pressure = 0x3700;
+                filament->pressure -= (uint16_t)time_used * 10; // reduce pressure
+                if (filament->pressure < 0x0700)
+                    filament->pressure = 0x3700;
                 pre_pull_count = 0;
                 idle_count = 0;
             }
             else if ((statu_flags == 0x07) && (fliment_motion_flag == 0x7F)) // 07 7F
             {
-                data_save.filament[AMS_num][read_num].motion_set = on_use;
+                filament->motion_set = on_use;
                 data_save.BambuBus_now_filament_num = AMS_num * 4 + read_num;
-                data_save.filament[AMS_num][read_num].pressure = 0x2B00;
+                filament->pressure = 0x2B00;
                 meters_virtual_count = 0;
                 if ((slave_pull_statu[AMS_num][read_num] < 0x30 || motor_pwm > 800) && GET_MC_PULL_raw() < 1.25f) // 主从机缓冲同时压缩，且压缩力度较大时，认为拉料异常
                     pull_error_count += time_used;
@@ -760,24 +751,24 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                     pull_error_count = 0;
                 if (pull_error_count > 2500 && statu_temp[AMS_num][read_num] == 0) // 2s异常则认为拉料异常，进入保护状态
                 {
-                    data_save.filament[AMS_num][read_num].pressure = 0xF06F; // 卡料
+                    filament->pressure = 0xF06F; // 卡料
                 }
             }
             else if ((statu_flags == 0x07) && (fliment_motion_flag == 0x00)) // 07 00
             {
 
-                data_save.filament[AMS_num][read_num].pressure = 0x2B00;
+                filament->pressure = 0x2B00;
                 if (pre_pull_count < 10000 && pre_pull_count > 1000) // 10s pre pull
                 {
-                    if (data_save.filament[AMS_num][read_num].motion_set == on_use)
+                    if (filament->motion_set == on_use)
                     {
-                        data_save.filament[AMS_num][read_num].motion_set = pre_pull;
+                        filament->motion_set = pre_pull;
                     }
                     pre_pull_count += time_used;
                 }
                 else
                 {
-                    data_save.filament[AMS_num][read_num].motion_set = on_use;
+                    filament->motion_set = on_use;
                 }
             }
         }
@@ -832,10 +823,7 @@ void Bmcu_package_send_with_crc(uint8_t *data, int data_length)
     data[0] = 0x9D;
     data[1] = data_length;
     crc_8.restart();
-    for (auto i = 0; i < data_length - 1; i++)
-    {
-        crc_8.add(data[i]);
-    }
+    crc_8.add(data, (crc_size_t)(data_length - 1)); // 批量计算，减少逐字节函数调用
     uint8_t num = crc_8.calc();
     data[(data_length - 1)] = num;
     send_bmcu_uart(data, data_length);
@@ -1034,7 +1022,8 @@ void send_for_motion_long(unsigned char *buf, int length)
     ams_status[AMS_num][0] = read_num;
     ams_status[AMS_num][1] = statu_flags;
     ams_status[AMS_num][2] = fliment_motion_flag;
-    if (statu_flags == 0x03 && AMS_num == data_save.BambuBus_now_filament_num / 4 && data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].motion_set == need_send_out)
+    const _filament *ams_filament = data_save.filament[AMS_num]; // 该AMS通道表首地址只取一次
+    if (statu_flags == 0x03 && AMS_num == data_save.BambuBus_now_filament_num / 4 && ams_filament[data_save.BambuBus_now_filament_num % 4].motion_set == need_send_out)
     {
         ams_status[AMS_num][0] = data_save.BambuBus_now_filament_num % 4;
     }
@@ -1043,11 +1032,11 @@ void send_for_motion_long(unsigned char *buf, int length)
     for (auto i = 0; i < 4; i++)
     {
         // filament[i].meters;
-        if (data_save.filament[AMS_num][i].statu == online)
+        if (ams_filament[i].statu == online)
         {
             filament_flag_on |= 1 << i;
         }
-        else if (data_save.filament[AMS_num][i].statu == NFC_waiting)
+        else if (ams_filament[i].statu == NFC_waiting)
         {
             filament_flag_on |= 1 << i;
             filament_flag_NFC |= 1 << i;
@@ -1350,14 +1339,15 @@ void send_for_long_packge_filament(unsigned char *buf, int length)
         return;
     }
 
-    memcpy(long_packge_filament + 19, data_save.filament[AMS_num][filament_num].ID, sizeof(data_save.filament[AMS_num][filament_num].ID));
-    memcpy(long_packge_filament + 27, data_save.filament[AMS_num][filament_num].name, sizeof(data_save.filament[AMS_num][filament_num].name));
-    long_packge_filament[59] = data_save.filament[AMS_num][filament_num].color_R;
-    long_packge_filament[60] = data_save.filament[AMS_num][filament_num].color_G;
-    long_packge_filament[61] = data_save.filament[AMS_num][filament_num].color_B;
-    long_packge_filament[62] = data_save.filament[AMS_num][filament_num].color_A;
-    memcpy(long_packge_filament + 79, &data_save.filament[AMS_num][filament_num].temperature_max, 2);
-    memcpy(long_packge_filament + 81, &data_save.filament[AMS_num][filament_num].temperature_min, 2);
+    const _filament *filament = &data_save.filament[AMS_num][filament_num]; // 地址只算一次
+    memcpy(long_packge_filament + 19, filament->ID, sizeof(filament->ID));
+    memcpy(long_packge_filament + 27, filament->name, sizeof(filament->name));
+    long_packge_filament[59] = filament->color_R;
+    long_packge_filament[60] = filament->color_G;
+    long_packge_filament[61] = filament->color_B;
+    long_packge_filament[62] = filament->color_A;
+    memcpy(long_packge_filament + 79, &filament->temperature_max, 2);
+    memcpy(long_packge_filament + 81, &filament->temperature_min, 2);
 
     data.datas = long_packge_filament;
     data.data_length = sizeof(long_packge_filament);
@@ -1901,13 +1891,6 @@ uint16_t get_tay_color(uint8_t num)
 String Bmcu_set_json(int ams_num, int i)
 {
     const auto &filament = data_save.filament[ams_num][i];
-    String on_use = (filament.motion_set != idle) ? "true" : "false";
-    char colorBuf[20];
-    sprintf(colorBuf, "#%02X%02X%02X",
-            filament.color_R,
-            filament.color_G,
-            filament.color_B);
-    char meterBuf[10];
     float meters = filament.meters;
     meters = meters / 350 * 100; // 转换为百分比显示
     if (meters > 95.0f)
@@ -1918,7 +1901,14 @@ String Bmcu_set_json(int ams_num, int i)
     {
         meters = 0.0f;
     }
-    sprintf(meterBuf, "%6.1f", meters);
-    String json = ("{\"onuse\":\"" + on_use + "\",\"color\":\"" + (String)colorBuf + "\",\"meter\":\"" + (String)meterBuf + "\"}");
-    return json;
+    // 直接格式化到栈缓冲区，避免多次 String 拼接造成的堆分配与碎片
+    char jsonBuf[64];
+    snprintf(jsonBuf, sizeof(jsonBuf),
+             "{\"onuse\":\"%s\",\"color\":\"#%02X%02X%02X\",\"meter\":\"%6.1f\"}",
+             (filament.motion_set != idle) ? "true" : "false",
+             filament.color_R,
+             filament.color_G,
+             filament.color_B,
+             meters);
+    return String(jsonBuf);
 }
