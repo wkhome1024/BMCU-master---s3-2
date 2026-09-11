@@ -166,3 +166,23 @@ void RS485_init()
     delay(100);
     start_rs485_task();
 }
+
+void bmcu_485_task(void *parameter)
+{
+    while (1)
+    {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        bmcusend_for_Heart();
+        vTaskDelay(pdMS_TO_TICKS(100));
+        bmcusend_for_motion();
+    }
+}
+
+void bmcu_485_init()
+{
+    BaseType_t bmcuResult = xTaskCreate(bmcu_485_task, "Bmcu 485 Task", TASK_STACK_SIZE, NULL, 2, NULL);
+    if (bmcuResult != pdPASS)
+    {
+        ESP_LOGE("(bmcu)", "Failed to create Bmcu 485 Task");
+    }
+}

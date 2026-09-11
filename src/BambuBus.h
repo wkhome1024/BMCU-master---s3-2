@@ -82,6 +82,8 @@ extern "C"
     extern void RX_IRQ(unsigned char _RX_IRQ_data);
     extern void RX_BMCU(unsigned char inChar);
     extern uint16_t get_tay_color(uint8_t num);
+    extern void bmcusend_for_Heart();
+    extern void bmcusend_for_motion();
 #ifdef __cplusplus
 }
 #endif

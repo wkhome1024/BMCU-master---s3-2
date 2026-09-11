@@ -53,7 +53,7 @@ void MC_IO_read()
 }
 uint8_t GET_MC_Online_stu()
 {
-    uint8_t MC_ONLINE_stu = MC_ONLINE_key_stu?2:0;
+    uint8_t MC_ONLINE_stu = MC_ONLINE_key_stu ? 2 : 0;
     return MC_ONLINE_key_stu;
 }
 float GET_MC_PULL_raw()
@@ -115,7 +115,6 @@ void MC_PULL_ONLINE_read()
         MC_ONLINE_key_stu = 2;
         last_online = 2;
     }
-
 
     /*
     // 缓冲压力pwm读取
@@ -242,10 +241,10 @@ public:
         }
         else if (motion == 1) // send 370 40  130 15
         {
-            if (pull_statu > 2)
-                speed_set = (pull_statu - 2) * 16;
+            if (pull_statu < 5)
+                speed_set = pull_statu * 12;  // 线性压力反馈;
             else
-                speed_set = 10; // 线性压力反馈;
+                speed_set = 55; 
         }
         else if (motion == 2 || motion == 3) // over pressure
         {
@@ -298,7 +297,7 @@ public:
             if (x > 820 || x < -820)
             {
                 x = 0; // 防止电机卡死过热
-                if (time_set_speed < time_now - 2000 && retry_times < 5)
+                if (time_set_speed < time_now - 1000 && retry_times < 5)
                 {
                     PID.clear();
                     time_set_speed = time_now + 2000;
@@ -344,7 +343,7 @@ void Motion_control_set_PWM(int PWM)
 }
 void Motor_reboot()
 {
-    mqtt_status = 0; 
+    mqtt_status = 0;
     motor.clearFault();
     MOTOR_CONTROL.set_motion(0, 500);
 }
@@ -353,7 +352,7 @@ void Motor_init()
     // pinMode(Motor_H_pin, OUTPUT);
     // pinMode(Motor_L_pin, OUTPUT);
     motor.setup(hw);
-    //motor.reconfigureFrequency(100000);
+    // motor.reconfigureFrequency(100000);
     motor.setFreewheelMode(FreewheelMode::HiZ_Awake);
     motor.start();
     /*
@@ -468,7 +467,7 @@ void motor_motion_run()
             }
             else
             {
-                MOTOR_CONTROL.set_motion(-1, 100);
+                MOTOR_CONTROL.set_motion(-1, 500);
             }
             break;
         case on_use:
@@ -510,10 +509,10 @@ void motor_motion_run()
                 {
                     MOTOR_CONTROL.set_motion(-66, 100);
                 }
-                else
-                {
-                    MOTOR_CONTROL.set_motion(0, 100);
-                }
+            }
+            else
+            {
+                MOTOR_CONTROL.set_motion(0, 100);
             }
             break;
         }

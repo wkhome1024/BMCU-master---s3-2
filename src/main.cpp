@@ -83,8 +83,8 @@ void hub_msg()
     {
       postMsgId = 0;
       //my_printf("(mqtt) 发送数据成功");
-      my_printf("(sensor) 电机输出: %d", motor_pwm);
-      my_printf("(sensor) pull+online: %s", Motion_get_status().c_str());
+      //my_printf("(sensor) 电机输出: %d", motor_pwm);
+      my_printf("(sensor) pull+online: %s motor: %d", Motion_get_status().c_str(), motor_pwm);
       SYS_leds.setPixelColor(1, 0x00, 0x00, 0x30); // 发送数据成功后变为蓝色
       if (SYS_leds.canShow())
       {
@@ -176,6 +176,7 @@ void setup()
 
   RS485_init();
   Motion_control_init();
+  bmcu_485_init();
   // my_printf("(flash) SPIFFS总大小: %d, SPIFFS已使用大小: %d, Flash size: %d", LittleFS.totalBytes(), LittleFS.usedBytes(), ESP.getFlashChipSize());
   my_printf("(memory) RAM可使用大小: %d", ESP.getFreeHeap());
   my_printf("(memory) PSRAM可使用大小: %d", ESP.getFreePsram());
