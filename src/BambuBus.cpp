@@ -671,9 +671,15 @@ void set_motion_res_datas(unsigned char *set_buf, unsigned char AMS_num, unsigne
     memcpy(set_buf + 8, &pressure, sizeof(uint16_t));
     if (pressure == 0xF06F && (motion_flag == 0x04))
     {
+        if (set_buf[10] != 0xE7)
+            my_printf("(bambu) AMS%d 拉料异常", AMS_num);
         set_buf[10] = 0xE7; // 拉料异常
         set_buf[11] = 0x1C;
-        my_printf("(bambu) 检测到拉料异常");
+    }
+    else if (motion_flag != 0x00)
+    {
+        set_buf[10] = 0x00;
+        set_buf[11] = 0x00;
     }
     set_buf[24] = get_filament_left_char(AMS_num, checknum);
 }
@@ -745,7 +751,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                 data_save.BambuBus_now_filament_num = AMS_num * 4 + read_num;
                 filament->pressure = 0x2B00;
                 meters_virtual_count = 0;
-                if ((slave_pull_statu[AMS_num][read_num] < 0x30 || motor_pwm > 800) && GET_MC_PULL_raw() < 1.25f) // 主从机缓冲同时压缩，且压缩力度较大时，认为拉料异常
+                if ((slave_pull_statu[AMS_num][read_num] < 0x16 || motor_pwm > 800) && GET_MC_PULL_raw() < 1.25f) // 主从机缓冲同时压缩，且压缩力度较大时，认为拉料异常
                     pull_error_count += time_used;
                 else
                     pull_error_count = 0;
@@ -783,6 +789,7 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
                         filament->motion_set = need_pull_back;
                     filament->pressure = 0x4700;
                 }
+                pull_error_count = 0;
             }
             else if ((statu_flags == 0x01) && (fliment_motion_flag == 0x00)) // 01 00(FF)
             {
@@ -880,6 +887,11 @@ void bmcusend_for_Heart()
     }
     Hit_res[3] = AMS_num_c;
     Hit_res[4] = Tay_num_c;
+    if (bambus_onflush)
+    {
+        Hit_res[3] = data_save.BambuBus_now_filament_num / 4;
+        Hit_res[4] = data_save.BambuBus_now_filament_num % 4;
+    }
     Hit_res[2] = 0x20;
     AMS_num_c++; // 每个心跳包轮询一个bmcu_tay
     online_buf_set(Hit_res + 5);
@@ -942,6 +954,13 @@ void send_for_motion_short(unsigned char *buf, int length)
     ams_status[AMS_num][0] = read_num;
     ams_status[AMS_num][1] = statu_flags;
     ams_status[AMS_num][2] = fliment_motion_flag;
+    if (statu_flags == 0x03 && data_save.filament[AMS_num][data_save.BambuBus_now_filament_num % 4].motion_set == need_send_out)
+    {
+        ams_status[AMS_num][0] = data_save.BambuBus_now_filament_num % 4;
+    }
+
+
+    /*
 
     Motion_res[2] = 0x03;
     Motion_res[3] = AMS_num;
@@ -950,7 +969,6 @@ void send_for_motion_short(unsigned char *buf, int length)
     Motion_res[6] = fliment_motion_flag;
     online_buf_set(Motion_res + 7);
 
-    /*
     Cxx_res[38] = read_num;
     if (statu_flags == 0x03 && read_num == 0xFF)
     {
@@ -967,7 +985,7 @@ void send_for_motion_short(unsigned char *buf, int length)
     else if (package_num[AMS_num] % 3 == 1)
     {
         // package_send_with_crc(Cxx_res, sizeof(Cxx_res));
-        Bmcu_package_send_with_crc(Motion_res, sizeof(Motion_res)); // 重写amsnum 转发bmcu
+        // Bmcu_package_send_with_crc(Motion_res, sizeof(Motion_res)); // 重写amsnum 转发bmcu
     }
     if (package_num[AMS_num] < 7)
         package_num[AMS_num]++;
@@ -1027,7 +1045,7 @@ void send_for_motion_long(unsigned char *buf, int length)
     {
         ams_status[AMS_num][0] = data_save.BambuBus_now_filament_num % 4;
     }
-    Motion_long_res[2] = 0x04;
+    //Motion_long_res[2] = 0x04;
     //online_buf_set(Motion_long_res + 7);
     for (auto i = 0; i < 4; i++)
     {
@@ -1111,6 +1129,8 @@ void send_for_motion_long(unsigned char *buf, int length)
         }
         return;
     }
+
+    /*
     else if (AMS_num != AMS_num_max - 1 || 1)  //屏蔽
         return;
     if (onuse_ams)
@@ -1133,16 +1153,17 @@ void send_for_motion_long(unsigned char *buf, int length)
         if (Motion_long_res[3] != data_save.BambuBus_now_filament_num / 4)
             Bmcu_package_send_with_crc(Motion_long_res, sizeof(Motion_long_res)); // 重写amsnum 转发bmcu
         onuse_ams = true;
-    }
+    }    
+    */
 }
 void bmcusend_for_motion()
 { 
-    static bool onuse_ams = true;
+    static uint8_t onuse_ams = 0;
     static uint8_t last_ams = 0;
     online_buf_set(Motion_long_res + 7);
     if (last_ams >= AMS_num_max)
         last_ams = 0;
-    if (onuse_ams)
+    if (onuse_ams < 4)
     {
         uint8_t amsnum = data_save.BambuBus_now_filament_num / 4;
         Motion_long_res[3] = amsnum;
@@ -1150,7 +1171,10 @@ void bmcusend_for_motion()
         Motion_long_res[5] = ams_status[amsnum][1];
         Motion_long_res[6] = ams_status[amsnum][2];
         Bmcu_package_send_with_crc(Motion_long_res, sizeof(Motion_long_res)); // 重写amsnum 转发bmcu
-        onuse_ams = false;
+        if (bambus_onflush)
+            onuse_ams++;
+        else
+            onuse_ams = 4;
     }
     else
     {
@@ -1161,7 +1185,7 @@ void bmcusend_for_motion()
         last_ams++;
         if (Motion_long_res[3] != data_save.BambuBus_now_filament_num / 4)
             Bmcu_package_send_with_crc(Motion_long_res, sizeof(Motion_long_res)); // 重写amsnum 转发bmcu
-        onuse_ams = true;
+        onuse_ams = 0;
     }
 
 }
