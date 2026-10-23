@@ -147,6 +147,7 @@ const char root2_html[] PROGMEM = R"rawliteral(
 <body>
   <div class="card">
     <h1>BMCU-HUB</h1>
+    <div style="margin-bottom:1rem"><a href="/channels" style="color:#4d90fe;text-decoration:none">所有通道状态 →</a></div>
     <form id="captureForm" action="/data" method="POST">
       <div class="form-group">
         <select id="catchkey" name="catchkey" required>
@@ -274,6 +275,44 @@ const char upload_html[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
+const char channels_html[] PROGMEM = R"rawliteral(
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>通道状态</title>
+<style>
+:root{--p:#1383c6;--a:#f26721;--bg:#e5e9f2;--cbg:#f7f7f7;--td:#333;--tl:#666;--b:#d9d9d9}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:1rem;background:var(--bg);font-family:system-ui,sans-serif;color:var(--td)}
+.card{width:min(94vw,600px);padding:1.5rem;background:var(--cbg);border-radius:.75rem;box-shadow:0 .5rem 1rem rgba(0,0,0,.1)}
+h1{font-size:1.35rem;font-weight:500;color:var(--p);text-align:center;margin:0 0 .5rem}
+h1 span{color:var(--a)}
+#s{font-size:.8rem;color:var(--tl);text-align:center;line-height:1.7;margin-bottom:1rem}
+#g{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem}
+.c{background:#fff;border:1px solid var(--b);border-radius:.5rem;padding:.5rem;min-height:66px}
+.c.on{border-color:var(--p);background:#eef6fc;box-shadow:0 0 0 2px rgba(19,131,198,.15)}
+.c.off{opacity:.55}
+.l{font-size:.75rem;color:var(--tl);margin-bottom:.25rem}
+.d{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid #aaa;margin-right:4px;vertical-align:-1px}
+.m{font-size:.8rem}
+.t{font-size:.75rem;color:var(--tl);margin-top:.25rem}
+@media(max-width:430px){#g{grid-template-columns:repeat(2,1fr)}}
+</style></head><body><div class="card">
+<h1>BMCU-HUB <span>通道状态</span></h1>
+<div id="s">连接中...</div>
+<div id="g"></div>
+</div>
+<script>
+const N=['退料','送料','使用','预拉','空闲'],O=['离线','在线'],K=['离线','单微动','在线'],g=document.getElementById('g'),s=document.getElementById('s');
+let first=true;
+async function u(){try{
+const d=await(await fetch('/channels.json',{cache:'no-store'})).json();
+if(first){g.innerHTML=d.ch.map((c,i)=>`<div class="c" id="c${i}"><div class="l">${1+(i>>2)}-${1+(i&3)}</div><div><span class="d" id="d${i}"></span><span class="m" id="m${i}"></span></div><div class="t" id="t${i}"></div></div>`).join('');first=false;}
+d.ch.forEach((c,i)=>{const e=document.getElementById('c'+i);e.className='c'+(c[0]?'':' off')+(i==d.now?' on':'');document.getElementById('d'+i).style.background=c[2];document.getElementById('m'+i).textContent=O[c[0]]+' · '+N[c[1]];document.getElementById('t'+i).textContent='用量 '+c[3]+'%';});
+const n=d.now<16?(1+(d.now>>2))+'-'+(1+(d.now&3)):'--';
+s.textContent='当前 '+n+' ｜ 拉力 '+d.p.toFixed(2)+'V ｜ 传感器 '+K[d.o]+' ｜ PWM '+d.pwm+' ｜ 通道缓冲 '+(d.now<16?d.s:'--');
+}catch(e){s.textContent='连接中断';}}
+u();setInterval(u,1000);
+</script></body></html>
+)rawliteral";
+
 /*
  * 处理网站根目录的访问请求
  */
@@ -294,6 +333,16 @@ void WebHandler::handleRoot(AsyncWebServerRequest *request)
   }
 
   request->send(200, "text/html", htmlBuf);
+}
+
+void WebHandler::handleChannels(AsyncWebServerRequest *request)
+{
+  request->send_P(200, "text/html", channels_html);
+}
+
+void WebHandler::handleChannelsJson(AsyncWebServerRequest *request)
+{
+  request->send(200, "application/json", Bmcu_channels_json());
 }
 
 void WebHandler::handleConfigWifi(AsyncWebServerRequest *request)
@@ -547,6 +596,8 @@ void WebHandler::handleNotFound(AsyncWebServerRequest *request)
 void WebHandler::registerRoutes(AsyncWebServer &server)
 {
   server.on("/", HTTP_GET, WebHandler::handleRoot);
+  server.on("/channels", HTTP_GET, WebHandler::handleChannels);
+  server.on("/channels.json", HTTP_GET, WebHandler::handleChannelsJson);
   server.on("/configwifi", HTTP_POST, WebHandler::handleConfigWifi);
   server.on("/updatewifi", HTTP_POST, WebHandler::handleUpdateWifi);
   server.on("/data", HTTP_POST, WebHandler::handleData);

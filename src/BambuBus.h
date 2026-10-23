@@ -78,6 +78,7 @@ extern "C"
     extern bool BambuBus_not_on_print();
     extern void send_reset();
     extern String Bmcu_set_json(int ams_num, int i);
+    extern String Bmcu_channels_json();
     extern int get_AMS_num_max();
     extern void RX_IRQ(unsigned char _RX_IRQ_data);
     extern void RX_BMCU(unsigned char inChar);

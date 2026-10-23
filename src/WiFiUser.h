@@ -15,6 +15,8 @@
 class WebHandler {
 public:
     static void handleRoot(AsyncWebServerRequest *request);
+    static void handleChannels(AsyncWebServerRequest *request);
+    static void handleChannelsJson(AsyncWebServerRequest *request);
     static void handleConfigWifi(AsyncWebServerRequest *request);
     static void handleUpdateWifi(AsyncWebServerRequest *request);
     static void handleData(AsyncWebServerRequest *request);

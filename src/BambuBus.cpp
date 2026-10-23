@@ -1719,7 +1719,7 @@ void Bmcu_run()
                 {
                     if (statu_temp[AMS_num][i] > 20)
                         filament->statu = offline;
-                    if (filament->motion_set == idle || GET_MC_Online_stu() < 2)
+                    if (filament->motion_set == idle || filament->motion_set == need_pull_back || GET_MC_Online_stu() < 2)
                         statu_temp[AMS_num][i] += 1; // 离线状态计数
                 }
             }
@@ -1935,4 +1935,45 @@ String Bmcu_set_json(int ams_num, int i)
              filament.color_B,
              meters);
     return String(jsonBuf);
+}
+
+// 16 通道状态快照，供 /channels.json 使用。为了减小网页体积，只发送必要字段。
+String Bmcu_channels_json()
+{
+    char buf[64];
+    uint8_t now = data_save.BambuBus_now_filament_num;
+    if (now >= 16)
+        now = 0xFF;
+    uint8_t slave_pull = (now < 16) ? (slave_pull_statu[now / 4][now % 4] >> 4) : 0xFF;
+
+    String json;
+    json.reserve(512);
+    snprintf(buf, sizeof(buf), "{\"now\":%u,\"p\":%.2f,\"o\":%u,\"s\":%u,\"pwm\":%d,\"ch\":[",
+             (unsigned)now, GET_MC_PULL_raw(), (unsigned)GET_MC_Online_stu(),
+             (unsigned)slave_pull, motor_pwm);
+    json += buf;
+
+    for (uint8_t ams = 0; ams < 4; ams++)
+    {
+        const _filament *row = data_save.filament[ams];
+        for (uint8_t tray = 0; tray < 4; tray++)
+        {
+            const _filament &f = row[tray];
+            uint8_t online = (f.statu == offline) ? 0 : 1;
+            float meters = f.meters;
+            if (isnan(meters) || isinf(meters))
+                meters = 0;
+            int percent = (int)(meters / 350.0f * 100.0f);
+            if (percent < 0)
+                percent = 0;
+            if (percent > 100)
+                percent = 100;
+            snprintf(buf, sizeof(buf), "%s[%u,%u,\"#%02X%02X%02X\",%d]",
+                     (ams || tray) ? "," : "", (unsigned)online, (unsigned)f.motion_set,
+                     (unsigned)f.color_R, (unsigned)f.color_G, (unsigned)f.color_B, percent);
+            json += buf;
+        }
+    }
+    json += "]}";
+    return json;
 }
