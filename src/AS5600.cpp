@@ -13,12 +13,12 @@ void AS5600::begin()
 
 uint16_t AS5600::readRawAngle()
 {
-    return readRegister16(REG_RAW_ANGLE_H, REG_RAW_ANGLE_L);
+    return readRegister16(REG_RAW_ANGLE_H);
 }
 
 uint16_t AS5600::readAngle()
 {
-    return readRegister16(REG_ANGLE_H, REG_ANGLE_L);
+    return readRegister16(REG_ANGLE_H);
 }
 
 uint8_t AS5600::readStatus()
@@ -33,12 +33,14 @@ uint8_t AS5600::readAGC()
 
 uint16_t AS5600::readMagnitude()
 {
-    return readRegister16(REG_MAGNITUDE_H, REG_MAGNITUDE_L);
+    return readRegister16(REG_MAGNITUDE_H);
 }
 
 int AS5600::getMagnetStatus()
 {
     uint8_t status = readStatus();
+    if (status == 0xFF) // I2C 读失败
+        return -2;
     if (status & 0x20)
     {
         return 1; // 磁铁太强
@@ -67,7 +69,7 @@ void AS5600::setZeroPosition(uint16_t position)
 
 uint16_t AS5600::getZeroPosition()
 {
-    return readRegister16(REG_ZPOS_H, REG_ZPOS_L) & 0x0FFF;
+    return readRegister16(REG_ZPOS_H) & 0x0FFF;
 }
 
 void AS5600::setMaximumAngle(uint16_t angle)
@@ -91,16 +93,25 @@ uint8_t AS5600::readRegister8(uint8_t reg)
 {
     Wire1.beginTransmission(AS5600_ADDRESS);
     Wire1.write(reg);
-    Wire1.endTransmission(false);
-    Wire1.requestFrom(AS5600_ADDRESS, (uint8_t)1);
+    if (Wire1.endTransmission(false) != 0)
+        return 0;
+    if (Wire1.requestFrom(AS5600_ADDRESS, (uint8_t)1) != 1)
+        return 0;
     return Wire1.read();
 }
 
-uint16_t AS5600::readRegister16(uint8_t regH, uint8_t regL)
+uint16_t AS5600::readRegister16(uint8_t regH)
 {
-    uint8_t highByte = readRegister8(regH);
-    uint8_t lowByte = readRegister8(regL);
-    return (highByte << 8) | lowByte;
+    Wire1.beginTransmission(AS5600_ADDRESS);
+    Wire1.write(regH);
+    if (Wire1.endTransmission(false) != 0)
+        return 0;
+    // 高低字节必须在同一次 I2C 事务中读取，避免电机转动时角度撕裂。
+    if (Wire1.requestFrom(AS5600_ADDRESS, (uint8_t)2) != 2)
+        return 0;
+    uint8_t highByte = Wire1.read();
+    uint8_t lowByte = Wire1.read();
+    return ((uint16_t)highByte << 8) | lowByte;
 }
 
 void AS5600::writeRegister16(uint8_t regH, uint8_t regL, uint16_t value)
@@ -119,55 +130,37 @@ void AS5600::writeRegister16(uint8_t regH, uint8_t regL, uint16_t value)
 // 异步 readRawAngle 相关方法
 bool AS5600::updateRawAngleAsync()
 {
-    switch (rawAngleState)
+    if (rawAngleState == RAW_ANGLE_IDLE)
     {
-    case RAW_ANGLE_READING_HIGH:
-        if (Wire1.available()) 
-        {
-            rawAngleHighByte = Wire1.read();
-            rawAngleState = RAW_ANGLE_READING_LOW;
-            requestRegister(REG_RAW_ANGLE_L); // 请求低位字节
-        } 
-        else 
-        {
-            requestRegister(REG_RAW_ANGLE_H);
-        }
-        break;
-
-    case RAW_ANGLE_READING_LOW:
-        if (Wire1.available()) 
-        {
-            rawAngleLowByte = Wire1.read();
-            rawAngleResult = (rawAngleHighByte << 8) | rawAngleLowByte;
-            rawAngleState = RAW_ANGLE_READING_HIGH; // 重置为初始状态
-            requestRegister(REG_RAW_ANGLE_H); // 准备下次读取高位
-            return true; // 返回 true 表示读取完成
-        } 
-        else 
-        {
-            requestRegister(REG_RAW_ANGLE_L);
-        }
-        break;
-    case RAW_ANGLE_IDLE:
-        requestRegister(REG_RAW_ANGLE_H);
-        rawAngleState = RAW_ANGLE_READING_HIGH;
-        break;
-    default:
-        // 异常状态处理，可根据需要增加日志或恢复动作
-        break;
+        requestRegister(REG_RAW_ANGLE_H, 2); // 一次请求高低两个字节
+        rawAngleState = RAW_ANGLE_READING;
+        return false;
     }
 
-    return false; // 返回 false 表示读取未完成
+    if (Wire1.available() < 2)
+    {
+        while (Wire1.available())
+            Wire1.read(); // 丢弃不完整数据，避免下次拼错
+        rawAngleState = RAW_ANGLE_IDLE; // 读取失败/不完整，下次重新请求
+        return false;
+    }
+
+    rawAngleHighByte = Wire1.read();
+    rawAngleLowByte = Wire1.read();
+    rawAngleResult = ((uint16_t)rawAngleHighByte << 8) | rawAngleLowByte;
+    rawAngleState = RAW_ANGLE_IDLE;
+    return true; // 返回 true 表示读取完成
 }
 uint16_t AS5600::getRawAngleResult()
 {
     return rawAngleResult;
 }
 // 封装公共 I2C 请求逻辑
-void AS5600::requestRegister(uint8_t regAddr)
+void AS5600::requestRegister(uint8_t regAddr, uint8_t length)
 {
     Wire1.beginTransmission(AS5600_ADDRESS);
     Wire1.write(regAddr);
-    Wire1.endTransmission(false);
-    Wire1.requestFrom(AS5600_ADDRESS, (uint8_t)1);
+    if (Wire1.endTransmission(false) != 0)
+        return;
+    Wire1.requestFrom(AS5600_ADDRESS, length);
 }

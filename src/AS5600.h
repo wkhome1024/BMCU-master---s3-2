@@ -6,9 +6,7 @@
 // 异步读取原始角度的状态枚举
 enum RawAngleState {
     RAW_ANGLE_IDLE,
-    RAW_ANGLE_READING_HIGH,
-    RAW_ANGLE_READING_LOW,
-    RAW_ANGLE_COMPLETE
+    RAW_ANGLE_READING
 };
 
 class AS5600 {
@@ -41,9 +39,9 @@ private:
 
     // 私有辅助方法
     uint8_t readRegister8(uint8_t reg);
-    uint16_t readRegister16(uint8_t regH, uint8_t regL);
+    uint16_t readRegister16(uint8_t regH);
     void writeRegister16(uint8_t regH, uint8_t regL, uint16_t value);
-    void requestRegister(uint8_t regAddr);
+    void requestRegister(uint8_t regAddr, uint8_t length);
 
 public:
     AS5600();

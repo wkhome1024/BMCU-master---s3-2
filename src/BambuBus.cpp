@@ -872,11 +872,15 @@ bool set_motion(unsigned char AMS_num, unsigned char read_num, unsigned char sta
 }
 void Bmcu_package_send_with_crc(uint8_t *data, int data_length)
 {
+    if (!data || data_length < 2)
+        return;
     data[0] = 0x9D;
     data[1] = data_length;
-    crc_8.restart();
-    crc_8.add(data, (crc_size_t)(data_length - 1)); // 批量计算，减少逐字节函数调用
-    uint8_t num = crc_8.calc();
+    // 这里可能被串口任务和 BMCU 心跳任务同时调用，使用局部 CRC 对象避免共享状态。
+    CRC8 crc(0x39, 0x66, 0x00, false, false);
+    crc.restart();
+    crc.add(data, (crc_size_t)(data_length - 1)); // 批量计算，减少逐字节函数调用
+    uint8_t num = crc.calc();
     data[(data_length - 1)] = num;
     send_bmcu_uart(data, data_length);
 }

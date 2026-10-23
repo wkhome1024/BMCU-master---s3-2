@@ -43,8 +43,8 @@ void MC_IO_read()
     static float MC_ONLINE_old = 0;
     // static float H_PULL_old = 0;
     auto voltage = ADC_read();
-    if (voltage.first > 1.0f)
-        MC_PULL_stu_raw = voltage.first * 0.5f + MC_pull_old * 0.5f;      // 滤波处理
+    // 低电压也要更新，断线时不能让压力值停留在最后一次正常值。
+    MC_PULL_stu_raw = voltage.first * 0.5f + MC_pull_old * 0.5f;          // 滤波处理
     MC_ONLINE_key_stu_raw = voltage.second * 0.5f + MC_ONLINE_old * 0.5f; // 滤波处理
     // H_PULL_stu_raw = Buf_pwm_read() * 0.5f + H_PULL_old * 0.5f;           // 滤波处理
     MC_pull_old = MC_PULL_stu_raw;
@@ -165,7 +165,8 @@ public:
     }
     float caculate(float E, float time_E)
     {
-
+        if (time_E <= 0.0f)
+            return 0.0f;
         float I_save_set = (I_save + E * time_E);
         if ((abs(I * I_save_set) < pid_range / 2)) // 对I限幅
             I_save = I_save_set;                   // 线性I系数
@@ -283,7 +284,14 @@ public:
                 speed_set = (pull_statu - 14) * 15; // 线性压力反馈
         }
         // speed_set = -speed_set; // 方向反转
-        float x = PID.caculate(speed_set - speed_as5600, (float)(time_now - time_last) / 1000);
+        uint32_t dt_ms = time_now - time_last;
+        if (dt_ms == 0)
+            return;
+        if (isnan(speed_as5600) || isinf(speed_as5600))
+            speed_as5600 = 0;
+        float x = PID.caculate(speed_set - speed_as5600, (float)dt_ms / 1000.0f);
+        if (isnan(x) || isinf(x))
+            x = 0;
         if (x > 5)
             x += pwm_zero;
         else if (x < -5)
@@ -376,14 +384,23 @@ void AS5600_distance_updata()
 {
     static int32_t distance_save = 0;
     static uint32_t time_last = 0;
+    static bool initialized = false;
     uint32_t time_now = millis();
     uint8_t filament_num = get_now_filament_num();
     if (as5600.updateRawAngleAsync() == false)
         return;
+
+    int32_t now_distance = as5600.getRawAngleResult();
+    if (!initialized)
+    {
+        distance_save = now_distance;
+        time_last = time_now;
+        initialized = true;
+        return;
+    }
+
     int32_t cir_E = 0;
     int32_t last_distance = distance_save;
-    int32_t now_distance = as5600.getRawAngleResult();
-    float distance_E;
     if ((now_distance > 3072) && (last_distance <= 1024))
     {
         cir_E = -4096;
@@ -393,12 +410,30 @@ void AS5600_distance_updata()
         cir_E = 4096;
     }
 
-    distance_E = (float)(now_distance - last_distance + cir_E) * AS5600_PI * -7.5 / 4096; // D=7.5mm 反向
+    float distance_E = (float)(now_distance - last_distance + cir_E) * AS5600_PI * -7.5f / 4096.0f; // D=7.5mm 反向
     distance_save = now_distance;
-    float T = (float)(time_now - time_last);
-    float speedx = distance_E / T * 1000;
-    T = speed_filter_k / (T + speed_filter_k);
-    speed_as5600 = speedx * (1 - T) + speed_as5600 * T; // mm/s
+
+    uint32_t dt_ms = time_now - time_last;
+    if (dt_ms == 0 || distance_E > 100.0f || distance_E < -100.0f)
+    {
+        // 同一毫秒重复回调或传感器跳变，丢弃本次样本。
+        time_last = time_now;
+        return;
+    }
+
+    float speedx = distance_E / (float)dt_ms * 1000.0f;
+    if (isnan(speedx) || isinf(speedx))
+        speedx = 0;
+    if (speedx > 500.0f)
+        speedx = 500.0f;
+    if (speedx < -500.0f)
+        speedx = -500.0f;
+
+    float alpha = speed_filter_k / ((float)dt_ms + speed_filter_k);
+    speed_as5600 = speedx * (1.0f - alpha) + speed_as5600 * alpha; // mm/s
+    if (isnan(speed_as5600) || isinf(speed_as5600))
+        speed_as5600 = 0;
+
     if (MC_ONLINE_key_stu == 2 || (distance_E > 0 && MC_ONLINE_key_stu > 0))
     {
         add_filament_meters(filament_num, distance_E / 1000);

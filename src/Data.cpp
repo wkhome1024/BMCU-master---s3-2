@@ -10,6 +10,8 @@ static size_t C_data_size = 0;
 static size_t L_data_size = 0;
 static int data_count = 0;
 static int log_count = 0;
+static SemaphoreHandle_t data_mutex = xSemaphoreCreateMutex();
+static SemaphoreHandle_t log_mutex = xSemaphoreCreateMutex();
 
 void INIT_DATA()
 {
@@ -108,6 +110,8 @@ void get_C_data(uint8_t *buf_X, int data_length)
 void WriteData(const char *data)
 {
     if (!data || !C_data || C_data_size == 0) return;
+    if (data_mutex)
+        xSemaphoreTake(data_mutex, portMAX_DELAY);
 
     size_t len = strlen(data);
     if (len >= C_data_size)
@@ -120,6 +124,9 @@ void WriteData(const char *data)
     memcpy(C_data + data_count, data, len);
     data_count += len;
     C_data[data_count] = '\0';
+
+    if (data_mutex)
+        xSemaphoreGive(data_mutex);
 }
 
 size_t my_log(const char *format)
@@ -133,6 +140,9 @@ size_t my_log(const char *format)
     size_t len = (size_t)n;
     if (len >= sizeof(hexStr))
         len = sizeof(hexStr) - 1;
+
+    if (log_mutex)
+        xSemaphoreTake(log_mutex, portMAX_DELAY);
     if ((size_t)log_count + len + 1 > L_data_size)
     {
         log_count = 0;
@@ -142,6 +152,8 @@ size_t my_log(const char *format)
     memcpy(L_data + log_count, hexStr, len);
     log_count += len;
     L_data[log_count] = '\0';
+    if (log_mutex)
+        xSemaphoreGive(log_mutex);
 
     return len;
 }
