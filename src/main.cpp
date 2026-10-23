@@ -105,18 +105,17 @@ void publishLogOverMQTT()
     return;
   }
 
-  int logLength = strlen(L_data);
-  static int offset = 0;
-  int remaining = 0;
+  size_t logLength = strlen(L_data);
+  static size_t offset = 0;
+  size_t remaining = 0;
 
   if (offset < logLength)
   {
     remaining = logLength - offset;
   }
-  else if (offset > 63 * 1024 && logLength < 1024) // 如果偏移量超过64KB且日志长度小于1KB
+  else if (offset > logLength) // 日志缓冲回绕/清零后从头开始
   {
-    my_printf("(LOG) 日志缓冲已重置，重置偏移量");
-    offset = 0; // 重置偏移量
+    offset = 0;
     remaining = logLength;
   }
   else
@@ -130,11 +129,14 @@ void publishLogOverMQTT()
     offset = 0;
     return;
   }
-  int chunkSize = (remaining > CHUNK_SIZE) ? CHUNK_SIZE : remaining;
-  char payload[chunkSize];
-  snprintf(payload, sizeof(payload), L_data + offset);
+  size_t chunkSize = (remaining > CHUNK_SIZE) ? CHUNK_SIZE : remaining;
+  if (chunkSize == 0)
+    return;
+  char payload[CHUNK_SIZE + 1];
+  memcpy(payload, L_data + offset, chunkSize);
+  payload[chunkSize] = '\0';
   client.publish(logTopic, payload);
-  offset += (chunkSize - 1);
+  offset += chunkSize;
 }
 void setup()
 {

@@ -226,6 +226,13 @@ public:
         static uint8_t retry_times = 0;
         float speed_set = 0;
         uint8_t CHx = get_now_filament_num();
+        if (CHx >= 16)
+        {
+            motion = 0;
+            PID.clear();
+            Motion_control_set_PWM(0);
+            return;
+        }
         uint8_t pull_statu = slave_pull_statu[CHx / 4][CHx % 4] >> 4;
         if (time_now >= motor_stop_time)
         {
@@ -442,6 +449,12 @@ bool Position_check()
 void motor_motion_run()
 {
     uint8_t num = get_now_filament_num();
+    if (num >= 16)
+    {
+        MOTOR_CONTROL.set_motion(0, 100);
+        MOTOR_CONTROL.run();
+        return;
+    }
     if (get_filament_online(num) || MC_ONLINE_key_stu)
     {
         switch (get_filament_motion(num))

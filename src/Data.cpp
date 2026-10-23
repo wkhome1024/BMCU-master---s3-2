@@ -6,6 +6,10 @@ Preferences preferences;
 char *C_data = NULL;
 char *L_data = NULL;
 bool EN_catch = false;
+static size_t C_data_size = 0;
+static size_t L_data_size = 0;
+static int data_count = 0;
+static int log_count = 0;
 
 void INIT_DATA()
 {
@@ -16,39 +20,39 @@ void INIT_DATA()
         err = nvs_flash_init();
     }
     ESP_ERROR_CHECK(err);
-    //if (!LittleFS.begin()) {
-    //    my_log("无法挂载LittleFS");
-    //    return;
-    //}
-    //my_log("LittleFS 初始化成功");
-    if (catch_mode)
-    {
-        EN_catch = true;        
-        C_data = (char *)heap_caps_malloc(BUFFER_SIZE * 64, MALLOC_CAP_SPIRAM);
-        //memset(C_data, 0, BUFFER_SIZE * 64);
-    }
-    else
-    {
-        EN_catch = false;
-        C_data = (char *)heap_caps_malloc(BUFFER_SIZE, MALLOC_CAP_SPIRAM);   
-        //memset(L_data, 0, BUFFER_SIZE);     
-    }
+
+    const size_t c_size = catch_mode ? (BUFFER_SIZE * 64) : BUFFER_SIZE;
+    C_data = (char *)heap_caps_malloc(c_size, MALLOC_CAP_SPIRAM);
     L_data = (char *)heap_caps_malloc(BUFFER_SIZE, MALLOC_CAP_SPIRAM);
+    C_data_size = C_data ? c_size : 0;
+    L_data_size = L_data ? BUFFER_SIZE : 0;
+    EN_catch = catch_mode && C_data;
 
-    if (!C_data || !L_data) {
+    if (C_data)
+        memset(C_data, 0, C_data_size);
+    if (L_data)
+        memset(L_data, 0, L_data_size);
+    if (!C_data || !L_data)
+    {
         ESP_LOGE("(ERROR)", "Failed to allocate memory for buffers");
-        //while (1) {} // 死循环，防止继续运行
+        EN_catch = false;
     }
-    memset(C_data, 0, BUFFER_SIZE);
-    memset(L_data, 0, BUFFER_SIZE);
-
 }
+
 void RESET_DATA(char *data)
 {
-    if (strlen(data) <= BUFFER_SIZE)
-        memset(data, 0, BUFFER_SIZE);
-    else
-        memset(data, 0, BUFFER_SIZE * 64);
+    if (!data)
+        return;
+    if (data == C_data && C_data_size)
+    {
+        memset(C_data, 0, C_data_size);
+        data_count = 0;
+    }
+    else if (data == L_data && L_data_size)
+    {
+        memset(L_data, 0, L_data_size);
+        log_count = 0;
+    }
 }
 
 void get_C_data(uint8_t *buf_X, int data_length)
@@ -74,7 +78,7 @@ void get_C_data(uint8_t *buf_X, int data_length)
 
     // 写入时间戳
     uint32_t timestamp = millis();
-    offset += snprintf(logBuffer + offset, maxBufSize - offset, "%08d : ", timestamp);
+    offset += snprintf(logBuffer + offset, maxBufSize - offset, "%08lu : ", (unsigned long)timestamp);
 
     // 构建十六进制字符串
     for (int i = 0; i < data_length && offset < maxBufSize - 4; i++)
@@ -101,37 +105,43 @@ void get_C_data(uint8_t *buf_X, int data_length)
     }
 }
 
-static int data_count = 0;
 void WriteData(const char *data)
 {
-    if (!data || !C_data) return;
+    if (!data || !C_data || C_data_size == 0) return;
 
-    int len = strlen(data);
-    if ((data_count + len >= BUFFER_SIZE && !EN_catch) || (data_count + len >= BUFFER_SIZE * 64 && EN_catch))
+    size_t len = strlen(data);
+    if (len >= C_data_size)
+        len = C_data_size - 1;
+    if ((size_t)data_count + len + 1 > C_data_size)
     {
         data_count = 0;
+        memset(C_data, 0, C_data_size);
     }
     memcpy(C_data + data_count, data, len);
     data_count += len;
+    C_data[data_count] = '\0';
 }
 
-static int log_count = 0;
 size_t my_log(const char *format)
 {
-    if (!EN_log || !L_data) return 0;
+    if (!EN_log || !L_data || L_data_size == 0) return 0;
 
     char hexStr[256]; // 固定大小缓冲区，避免 String 的开销
-    sprintf(hexStr, "<br />%010d : > %s\n", millis(), format);
-
-    int len = strlen(hexStr);
-    if (log_count + len >= BUFFER_SIZE)
+    int n = snprintf(hexStr, sizeof(hexStr), "<br />%010lu : > %s\n", (unsigned long)millis(), format);
+    if (n < 0)
+        return 0;
+    size_t len = (size_t)n;
+    if (len >= sizeof(hexStr))
+        len = sizeof(hexStr) - 1;
+    if ((size_t)log_count + len + 1 > L_data_size)
     {
         log_count = 0;
-        memset(L_data, 0, BUFFER_SIZE);
+        memset(L_data, 0, L_data_size);
     }
 
     memcpy(L_data + log_count, hexStr, len);
     log_count += len;
+    L_data[log_count] = '\0';
 
     return len;
 }

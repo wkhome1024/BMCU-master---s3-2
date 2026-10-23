@@ -2,6 +2,15 @@
 
 #define HTML_BUF_SIZE 1024 * 4
 static char htmlBuf[HTML_BUF_SIZE]; // 静态变量，避免栈溢出
+static bool html_append(const char *s)
+{
+  size_t len = strlen(htmlBuf);
+  size_t add = strlen(s);
+  if (len + add >= sizeof(htmlBuf))
+    return false;
+  memcpy(htmlBuf + len, s, add + 1);
+  return true;
+}
 const byte DNS_PORT = 53;           // 设置DNS端口号
 const int webPort = 80;             // 设置Web端口号
 
@@ -37,6 +46,16 @@ struct alignas(4) config_struct
   bool resetcheck = true; // 是否重置
 } config_save;
 
+// 仅按目标字段容量截断，不改变配置结构。
+static void copy_cfg_limit(char *dst, size_t cap, const String &src)
+{
+  size_t len = src.length();
+  if (len >= cap)
+    len = cap - 1;
+  memset(dst, 0, cap);
+  memcpy(dst, src.c_str(), len);
+}
+
 bool Config_read()
 {
   config_struct ptr;
@@ -45,6 +64,11 @@ bool Config_read()
   if (ptr.version == Bambubus_version)
   {
     memcpy(&config_save, &ptr, sizeof(config_save));
+    config_save.wifi_ssid[sizeof(config_save.wifi_ssid) - 1] = '\0';
+    config_save.wifi_password[sizeof(config_save.wifi_password) - 1] = '\0';
+    config_save.mqtt_server[sizeof(config_save.mqtt_server) - 1] = '\0';
+    config_save.mqtt_username[sizeof(config_save.mqtt_username) - 1] = '\0';
+    config_save.mqtt_password[sizeof(config_save.mqtt_password) - 1] = '\0';
 
     mqtt_server = config_save.mqtt_server;
     mqtt_port = config_save.mqtt_port;
@@ -60,11 +84,6 @@ bool Config_read()
     wifi_pass = "";
     return true;
   }
-
-  // connectToWiFi(30);
-  // checkConnect(config_save.resetcheck);
-
-  return false;
 }
 bool wifi_needsave = false;
 bool WIFI_needsave()
@@ -108,16 +127,16 @@ const char ROOT_HTML_1[] PROGMEM = R"rawliteral(
     <div class="login-card">
       <h1>WiFi+MQTT</h1>
       <form name="login_form" method="post" action="/configwifi">
-        <input type="text" name="ssid" placeholder="请选择 WiFi 名称" list="data-list" required>
+        <input type="text" name="ssid" placeholder="请选择 WiFi 名称" list="data-list" maxlength="19" required>
         <datalist id="data-list">
 )rawliteral";
 
 const char ROOT_HTML_2[] PROGMEM = R"rawliteral(
-        <input type="password" name="password" placeholder="请输入 WiFi 密码" required>
-        <input type="text" name="mqtt_server" placeholder="请输入 MQTT IP" value="192.168.10.10">
-        <input type="text" name="mqtt_port" placeholder="请输入 MQTT 端口" value="1883">
-        <input type="text" name="mqtt_username" placeholder="请输入 MQTT 用户名">
-        <input type="password" name="mqtt_password" placeholder="请输入 MQTT 密码">
+        <input type="password" name="password" placeholder="请输入 WiFi 密码" maxlength="19" required>
+        <input type="text" name="mqtt_server" placeholder="请输入 MQTT IP" value="192.168.10.10" maxlength="19">
+        <input type="text" name="mqtt_port" placeholder="请输入 MQTT 端口" value="1883" maxlength="5">
+        <input type="text" name="mqtt_username" placeholder="请输入 MQTT 用户名" maxlength="19">
+        <input type="password" name="mqtt_password" placeholder="请输入 MQTT 密码" maxlength="19">
         <input type="submit" value="确 定 连 接">
       </form>
     </div>
@@ -324,8 +343,11 @@ void WebHandler::handleRoot(AsyncWebServerRequest *request)
   if (WiFi.getMode() != WIFI_STA)
   {
     strcpy_P(htmlBuf, ROOT_HTML_1);
-    strcat(htmlBuf, scanNetworksID.c_str());
-    strcat_P(htmlBuf, ROOT_HTML_2);
+    if (!html_append(scanNetworksID.c_str()) || !html_append(ROOT_HTML_2))
+    {
+      request->send(500, "text/plain", "page too large");
+      return;
+    }
   }
   else if (WiFi.status() == WL_CONNECTED)
   {
@@ -352,7 +374,8 @@ void WebHandler::handleConfigWifi(AsyncWebServerRequest *request)
   {
     wifi_ssid = request->getParam("ssid", true)->value();
     wifi_ssid.trim();
-    memcpy(config_save.wifi_ssid, wifi_ssid.c_str(), wifi_ssid.length());
+    copy_cfg_limit(config_save.wifi_ssid, sizeof(config_save.wifi_ssid), wifi_ssid);
+    wifi_ssid = config_save.wifi_ssid;
   }
   else
   {
@@ -364,7 +387,8 @@ void WebHandler::handleConfigWifi(AsyncWebServerRequest *request)
   {
     wifi_pass = request->getParam("password", true)->value();
     wifi_pass.trim();
-    memcpy(config_save.wifi_password, wifi_pass.c_str(), wifi_pass.length());
+    copy_cfg_limit(config_save.wifi_password, sizeof(config_save.wifi_password), wifi_pass);
+    wifi_pass = config_save.wifi_password;
   }
   else
   {
@@ -376,7 +400,8 @@ void WebHandler::handleConfigWifi(AsyncWebServerRequest *request)
   {
     mqtt_server = request->getParam("mqtt_server", true)->value();
     mqtt_server.trim();
-    memcpy(config_save.mqtt_server, mqtt_server.c_str(), mqtt_server.length());
+    copy_cfg_limit(config_save.mqtt_server, sizeof(config_save.mqtt_server), mqtt_server);
+    mqtt_server = config_save.mqtt_server;
   }
   else
   {
@@ -399,7 +424,8 @@ void WebHandler::handleConfigWifi(AsyncWebServerRequest *request)
   {
     mqtt_username = request->getParam("mqtt_username", true)->value();
     mqtt_username.trim();
-    memcpy(config_save.mqtt_username, mqtt_username.c_str(), mqtt_username.length());
+    copy_cfg_limit(config_save.mqtt_username, sizeof(config_save.mqtt_username), mqtt_username);
+    mqtt_username = config_save.mqtt_username;
   }
   else
   {
@@ -411,7 +437,8 @@ void WebHandler::handleConfigWifi(AsyncWebServerRequest *request)
   {
     mqtt_password = request->getParam("mqtt_password", true)->value();
     mqtt_password.trim();
-    memcpy(config_save.mqtt_password, mqtt_password.c_str(), mqtt_password.length());
+    copy_cfg_limit(config_save.mqtt_password, sizeof(config_save.mqtt_password), mqtt_password);
+    mqtt_password = config_save.mqtt_password;
   }
   else
   {
@@ -442,12 +469,10 @@ void WebHandler::handleConfigWifi(AsyncWebServerRequest *request)
     WiFi.softAPdisconnect(true); // 参数设置为true，设备将直接关闭接入点模式，即关闭设备所建立的WiFi网络。
     server.end();                // 关闭web服务
     WiFi.softAPdisconnect();     // 在不输入参数的情况下调用该函数,将关闭接入点模式,并将当前配置的AP热点网络名和密码设置为空值.
-    // Serial.println("WiFi Connect SSID:" + wifi_ssid + "  PASS:" + wifi_pass);
   }
 
   if (WiFi.status() != WL_CONNECTED) // wifi没有连接成功
   {
-    // Serial.println("开始调用连接函数connectToWiFi()..");
     connectToWiFi(connectTimeOut_s);
   }
 }
@@ -458,8 +483,11 @@ void WebHandler::handleUpdateWifi(AsyncWebServerRequest *request)
   htmlBuf[0] = '\0'; // 清空缓冲区
 
   strcpy_P(htmlBuf, ROOT_HTML_1);
-  strcat(htmlBuf, scanNetworksID.c_str());
-  strcat_P(htmlBuf, ROOT_HTML_2);
+  if (!html_append(scanNetworksID.c_str()) || !html_append(ROOT_HTML_2))
+  {
+    request->send(500, "text/plain", "page too large");
+    return;
+  }
 
   request->send(200, "text/html", htmlBuf);
 }
@@ -510,7 +538,7 @@ void WebHandler::handleData(AsyncWebServerRequest *request)
       request->send(200, "text/plain", "error, print is onuse");
   }
 
-  if (C_data[0] == '\0')
+  if (!C_data || C_data[0] == '\0')
   {
     request->send(200, "text/plain", "no catch data");
     return;
@@ -524,7 +552,8 @@ void WebHandler::handleData(AsyncWebServerRequest *request)
     // 使用 chunked response 发送数据
     AsyncWebServerResponse *response = request->beginChunkedResponse("text/plain", [dataPtr, dataLen](uint8_t *buffer, size_t maxLen, size_t index) -> size_t
                                                                      {
-        size_t bytesToSend = min(maxLen, (size_t)(dataLen - index));
+        if (index >= (size_t)dataLen) return 0;
+        size_t bytesToSend = min(maxLen, (size_t)dataLen - index);
         if (bytesToSend > 0) {
             memcpy(buffer, dataPtr + index, bytesToSend);
         }
@@ -548,7 +577,7 @@ void WebHandler::handleData(AsyncWebServerRequest *request)
 
 void WebHandler::handleLog(AsyncWebServerRequest *request)
 {
-  if (L_data[0] == '\0')
+  if (!L_data || L_data[0] == '\0')
   {
     request->send(200, "text/plain", "no log data");
     return;
@@ -695,28 +724,19 @@ void stopDNS()
  */
 bool scanWiFi()
 {
-  // Serial.println("scan start");
-  // Serial.println("--------->");
-  //  扫描附近WiFi
+  scanNetworksID = "";
   int n = WiFi.scanNetworks();
-  // Serial.println("scan done");
-  if (n == 0)
+  if (n <= 0)
   {
-    // Serial.println("no networks found");
-    scanNetworksID += "<option>no networks found</option>";
+    scanNetworksID += "<option>no networks found</option></datalist>";
     return false;
   }
-  else
+  for (int i = 0; i < min(n, 5); ++i)
   {
-    // Serial.print(n);
-    // Serial.println(" networks found");
-    for (int i = 0; i < min(n, 5); ++i)
-    {
-      scanNetworksID += "<option>" + WiFi.SSID(i) + "</option>";
-    }
-    scanNetworksID += "</datalist>";
-    return true;
+    scanNetworksID += "<option>" + WiFi.SSID(i) + "</option>";
   }
+  scanNetworksID += "</datalist>";
+  return true;
 }
 
 /*
