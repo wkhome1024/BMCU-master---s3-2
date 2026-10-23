@@ -466,6 +466,7 @@ void WebHandler::handleConfigWifi(AsyncWebServerRequest *request)
   }
   else
   {
+    server_key = false;
     WiFi.softAPdisconnect(true); // 参数设置为true，设备将直接关闭接入点模式，即关闭设备所建立的WiFi网络。
     server.end();                // 关闭web服务
     WiFi.softAPdisconnect();     // 在不输入参数的情况下调用该函数,将关闭接入点模式,并将当前配置的AP热点网络名和密码设置为空值.
@@ -474,6 +475,11 @@ void WebHandler::handleConfigWifi(AsyncWebServerRequest *request)
   if (WiFi.status() != WL_CONNECTED) // wifi没有连接成功
   {
     connectToWiFi(connectTimeOut_s);
+  }
+  if (WiFi.status() == WL_CONNECTED && !server_key)
+  {
+    server_key = true;
+    initWebServer();
   }
 }
 
@@ -802,8 +808,6 @@ void connectToWiFi(int timeOut_s)
     // my_log("<br />(http) Bambu-hub配置WiFi成功");
     config_save.resetcheck = false; // 如果wifi连接成功，则将resetcheck设置为false
     // Config_save();
-    if (millis() > 600000 && server_key)
-      initWebServer();
     // MDNS.end(); // 停止DNS服务器
     //  server.stop();                            //停止开发板所建立的网络服务器。
   }
@@ -819,39 +823,6 @@ void initWebServer()
   WebHandler::registerRoutes(server);
   server.begin();
   // Serial.println("WebServer started!");
-}
-
-void webServerTask(void *parameter)
-{
-  bool task_flag = true;
-  while (true)
-  {
-    if (server_key)
-    {
-      if (task_flag)
-      {
-        task_flag = false;
-        initWebServer();
-      }
-    }
-    else
-    {
-      if (!task_flag)
-      {
-        task_flag = true;
-        server.end();
-      }
-    }
-
-    vTaskDelay(pdMS_TO_TICKS(500));
-  }
-}
-// 在 setup() 中启动任务
-void webtask_setup()
-{
-  // server.reset();
-  // initWebServer();
-  xTaskCreate(webServerTask, "WebServer", 8192, NULL, 0, NULL);
 }
 
 void wifiConfig()

@@ -178,11 +178,9 @@ void setup()
 
   RS485_init();
   Motion_control_init();
-  bmcu_485_init();
   // my_printf("(flash) SPIFFS总大小: %d, SPIFFS已使用大小: %d, Flash size: %d", LittleFS.totalBytes(), LittleFS.usedBytes(), ESP.getFlashChipSize());
   my_printf("(memory) RAM可使用大小: %d", ESP.getFreeHeap());
   my_printf("(memory) PSRAM可使用大小: %d", ESP.getFreePsram());
-  webtask_setup();
   //setup_motor_task();
 }
 uint64_t error_time = 0;
@@ -288,8 +286,6 @@ void loop()
   if (server_time == 0) // 如果WebServer未开启
   {
     server_time = time_now + 20000; // 20秒后开启WebServer
-    // initWebServer();                  // 开启WebServer
-    // my_printf("(web) WebServer已开启");
   }
   else if (server_time == 1 && !enable_24())
   {
@@ -300,6 +296,7 @@ void loop()
     if (!server_key)
     {
       server_key = true;
+      initWebServer();
       my_printf("(web) WebServer已开启");
     }
     if (!enable_24())

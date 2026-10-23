@@ -21,58 +21,11 @@
 MyRingBuffer rxBuffer0(RX_BUFFER_SIZE);
 MyRingBuffer rxBuffer1(RX_BUFFER_SIZE);
 
-#define RS485_TX_QUEUE_LEN 12
-#define RS485_MAX_FRAME 512
-enum Rs485Port : uint8_t
-{
-    RS485_PORT_BAMBU = 0,
-    RS485_PORT_BMCU = 1
-};
-struct Rs485Frame
-{
-    uint8_t port;
-    uint16_t length;
-    uint8_t data[RS485_MAX_FRAME];
-};
-static QueueHandle_t rs485_tx_queue = nullptr;
-
-static bool rs485_enqueue(uint8_t port, const unsigned char *data, size_t length)
-{
-    if (!rs485_tx_queue || !data || length == 0 || length > RS485_MAX_FRAME)
-        return false;
-    Rs485Frame frame;
-    frame.port = port;
-    frame.length = (uint16_t)length;
-    memcpy(frame.data, data, length);
-    return xQueueSend(rs485_tx_queue, &frame, pdMS_TO_TICKS(2)) == pdTRUE;
-}
-
-// 唯一的 RS485 发送任务：串口写入、CRC 之后的帧都从这里发出。
-static void rs485TxTask(void *parameter)
-{
-    Rs485Frame frame;
-    for (;;)
-    {
-        if (xQueueReceive(rs485_tx_queue, &frame, portMAX_DELAY) != pdTRUE)
-            continue;
-        if (frame.port == RS485_PORT_BAMBU)
-        {
-            if (catch_mode || Switch_need_refresh())
-                continue;
-            Serial0.write(frame.data, frame.length);
-            vTaskDelay(pdMS_TO_TICKS(1));
-        }
-        else
-        {
-            Serial1.write(frame.data, frame.length);
-        }
-        if (catch_key > 200 && !catch_mode)
-            get_C_data(frame.data, frame.length);
-    }
-}
-
+// 单一通信任务：接收、协议处理、Bambu/BMCU 发送、BMCU 周期帧都在这里完成。
 void serialTask(void *parameter)
 {
+    uint32_t next_bmcu = millis() + 100;
+    bool send_heart = true;
     for (;;)
     {
         while (rxBuffer0.available())
@@ -81,26 +34,24 @@ void serialTask(void *parameter)
             RX_IRQ(c);
         }
         BambuBus_run();
-        vTaskDelay(pdMS_TO_TICKS(1));
+
+        uint32_t now = millis();
+        if ((int32_t)(now - next_bmcu) >= 0)
+        {
+            if (send_heart)
+                bmcusend_for_Heart();
+            else
+                bmcusend_for_motion();
+            send_heart = !send_heart;
+            next_bmcu = now + 100;
+        }
+
         while (rxBuffer1.available())
         {
             uint8_t d = rxBuffer1.read();
             RX_BMCU(d);
         }
-        vTaskDelay(pdMS_TO_TICKS(1)); // 每1ms调用一次BambuBus_run()
-    }
-}
-void bmcuTask(void *parameter)
-{
-    for (;;)
-    {
-        package_type stu = BambuBus_run();
-        if (stu != BambuBus_package_NONE)
-        {
-            // ESP_LOGE("BambuBus", "Processing package type: %d", stu);
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(1)); // 每2ms调用一次
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
 void Readuart()
@@ -121,7 +72,12 @@ void Readuart()
 
 void send_bambu_uart(const unsigned char *data, size_t length)
 {
-    rs485_enqueue(RS485_PORT_BAMBU, data, length);
+    if (catch_mode || Switch_need_refresh())
+        return;
+    Serial0.write(data, length);
+    vTaskDelay(pdMS_TO_TICKS(1)); // Bambu RS485 换向间隔
+    if (catch_key > 200 && !catch_mode)
+        get_C_data((uint8_t *)data, length);
 }
 
 void BambuBUS_UART_Init()
@@ -150,7 +106,9 @@ void BambuBUS_UART_Init()
 
 void send_bmcu_uart(const unsigned char *data, size_t length)
 {
-    rs485_enqueue(RS485_PORT_BMCU, data, length);
+    Serial1.write(data, length);
+    if (catch_key > 200 && !catch_mode)
+        get_C_data((uint8_t *)data, length);
 }
 
 void BMCU_UART_Init()
@@ -177,19 +135,11 @@ void BMCU_UART_Init()
 
 void start_rs485_task()
 {
-    /*
-    BaseType_t bmcuResult = xTaskCreate(bmcuTask, "Bmcu Task", TASK_STACK_SIZE, NULL, 2, NULL);
-    if (bmcuResult != pdPASS)
-    {
-        ESP_LOGE("(bmcu)", "Failed to create Bmcu  Task");
-    }
-    */    
     BaseType_t serialResult = xTaskCreate(serialTask, "Serial Task", TASK_STACK_SIZE, NULL, 4, NULL);
     if (serialResult != pdPASS)
     {
         ESP_LOGE("(rs485)", "Failed to create Serial Task");
     }
-
 }
 void RS485_init()
 {
@@ -198,39 +148,5 @@ void RS485_init()
     // Serial0.onReceive(Bambu_readuart); // 串口回调；
     // Serial1.onReceive(Bmcu_readuart);  // 串口回调；
     delay(100);
-
-    rs485_tx_queue = xQueueCreate(RS485_TX_QUEUE_LEN, sizeof(Rs485Frame));
-    if (!rs485_tx_queue)
-    {
-        ESP_LOGE("(rs485)", "Failed to create TX queue");
-    }
-    else
-    {
-        BaseType_t txResult = xTaskCreate(rs485TxTask, "RS485 TX", 4096, NULL, 5, NULL);
-        if (txResult != pdPASS)
-        {
-            ESP_LOGE("(rs485)", "Failed to create TX task");
-        }
-    }
     start_rs485_task();
-}
-
-void bmcu_485_task(void *parameter)
-{
-    while (1)
-    {
-        vTaskDelay(pdMS_TO_TICKS(100));
-        bmcusend_for_Heart();
-        vTaskDelay(pdMS_TO_TICKS(100));
-        bmcusend_for_motion();
-    }
-}
-
-void bmcu_485_init()
-{
-    BaseType_t bmcuResult = xTaskCreate(bmcu_485_task, "Bmcu 485 Task", TASK_STACK_SIZE, NULL, 2, NULL);
-    if (bmcuResult != pdPASS)
-    {
-        ESP_LOGE("(bmcu)", "Failed to create Bmcu 485 Task");
-    }
 }

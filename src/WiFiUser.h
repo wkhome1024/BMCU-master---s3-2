@@ -46,8 +46,7 @@ extern void connectToWiFi(int timeOut_s);    //连接WiFi
 extern void Config_save();                  //保存配置数据
 extern bool Config_read();                  //读取配置数据
 extern void stopWebServer();                //停止WebServer
-extern void initWebServer();                 //初始化WebServer 
-extern void webtask_setup();
+extern void initWebServer();                 //初始化WebServer
 
 //===========内部函数===========
 extern void initSoftAP();                    //进入AP模式
