@@ -142,7 +142,6 @@ void setup()
 {
   INIT_DATA();
   BambuBus_init();
-  Switch_init();
   Sht30_init();
   LED_init();
   // tft_init();
@@ -260,12 +259,7 @@ void loop()
     {
       Set_fan_t(30); // 30度开启风扇
       publishLogOverMQTT();
-      if (Switch_need_to_save())
-      {
-        // tft_print(catch_mode);
-        Switch_save();
-      }
-      else if (WIFI_needsave())
+      if (WIFI_needsave())
       {
         Config_save();
       }
