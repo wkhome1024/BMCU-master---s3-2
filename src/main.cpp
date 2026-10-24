@@ -99,13 +99,13 @@ void hub_msg()
 bool start_log = false;
 void publishLogOverMQTT()
 {
-  if (!EN_log || L_data == NULL)
+  if (!EN_log || !L_log.data())
   {
-    my_printf("(MQTT) 日志未启用或 L_data 为空");
+    my_printf("(MQTT) 日志未启用或缓冲区为空");
     return;
   }
 
-  size_t logLength = strlen(L_data);
+  size_t logLength = L_log.length();
   static size_t offset = 0;
   size_t remaining = 0;
 
@@ -133,7 +133,7 @@ void publishLogOverMQTT()
   if (chunkSize == 0)
     return;
   char payload[CHUNK_SIZE + 1];
-  memcpy(payload, L_data + offset, chunkSize);
+  memcpy(payload, L_log.data() + offset, chunkSize);
   payload[chunkSize] = '\0';
   client.publish(logTopic, payload);
   offset += chunkSize;

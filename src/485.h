@@ -5,8 +5,7 @@
 #include <HardwareSerial.h>
 #include "MyRingBuffer.h"
 
-//extern MyRingBuffer rxBuffer0;
-//extern MyRingBuffer rxBuffer1;
+// 接收缓冲区在 485.cpp 内部定义
 
 extern void send_bmcu_uart(const unsigned char *data, size_t length);
 extern void send_bambu_uart(const unsigned char *data, size_t length);

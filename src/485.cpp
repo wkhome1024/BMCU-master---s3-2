@@ -18,8 +18,8 @@
 
 #define TASK_STACK_SIZE (8192)
 #define RX_BUFFER_SIZE 1024
-MyRingBuffer rxBuffer0(RX_BUFFER_SIZE);
-MyRingBuffer rxBuffer1(RX_BUFFER_SIZE);
+MyRingBuffer<RX_BUFFER_SIZE> rxBuffer0;
+MyRingBuffer<RX_BUFFER_SIZE> rxBuffer1;
 
 // 单一通信任务：接收、协议处理、Bambu/BMCU 发送、BMCU 周期帧都在这里完成。
 void serialTask(void *parameter)

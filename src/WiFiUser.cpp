@@ -319,7 +319,7 @@ h1 span{color:var(--a)}
 <div id="g"></div>
 </div>
 <script>
-const N=['退料','送料','使用','预拉','空闲'],O=['离线','在线'],K=['离线','单微动','在线'],g=document.getElementById('g'),s=document.getElementById('s');
+const N=['退料','送料','使用','预拉','空闲'],O=['离线','在线'],K=['未触发','单微动','双微动'],g=document.getElementById('g'),s=document.getElementById('s');
 let first=true;
 async function u(){try{
 const d=await(await fetch('/channels.json',{cache:'no-store'})).json();
@@ -544,22 +544,23 @@ void WebHandler::handleData(AsyncWebServerRequest *request)
       request->send(200, "text/plain", "error, print is onuse");
   }
 
-  if (!C_data || C_data[0] == '\0')
+  const char *cdata = C_capture.data();
+  size_t dataLen = C_capture.length();
+  if (!cdata || dataLen == 0)
   {
     request->send(200, "text/plain", "no catch data");
     return;
   }
   else if (!EN_catch)
-    request->send(200, "text/plain", C_data);
+    request->send(200, "text/plain", cdata);
   else if (EN_catch)
   {
-    char *dataPtr = C_data;
-    int dataLen = strlen(C_data);
+    const char *dataPtr = cdata;
     // 使用 chunked response 发送数据
     AsyncWebServerResponse *response = request->beginChunkedResponse("text/plain", [dataPtr, dataLen](uint8_t *buffer, size_t maxLen, size_t index) -> size_t
                                                                      {
-        if (index >= (size_t)dataLen) return 0;
-        size_t bytesToSend = min(maxLen, (size_t)dataLen - index);
+        if (index >= dataLen) return 0;
+        size_t bytesToSend = min(maxLen, dataLen - index);
         if (bytesToSend > 0) {
             memcpy(buffer, dataPtr + index, bytesToSend);
         }
@@ -577,20 +578,21 @@ void WebHandler::handleData(AsyncWebServerRequest *request)
     request->send(response);
 
     // 记录日志
-    my_printf("(http) C_data downloaded, size: %d bytes", dataLen);
+    my_printf("(http) C_data downloaded, size: %u bytes", (unsigned)dataLen);
   }
 }
 
 void WebHandler::handleLog(AsyncWebServerRequest *request)
 {
-  if (!L_data || L_data[0] == '\0')
+  const char *log = L_log.data();
+  size_t len = L_log.length();
+  if (!log || len == 0)
   {
     request->send(200, "text/plain", "no log data");
     return;
   }
 
-  char *p = L_data;
-  int len = strlen(L_data);
+  const char *p = log;
   if (len > 1024 * 48)
     p += 1024 * 48;
   else if (len > 1024 * 32)

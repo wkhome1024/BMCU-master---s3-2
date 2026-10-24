@@ -1,4 +1,5 @@
 #include "Motion_control.h"
+#include "HubTypes.h"
 
 /******************************     电机控制接口       *******************************/
 #define Motor_H_pin 17
@@ -227,14 +228,14 @@ public:
         static uint8_t retry_times = 0;
         float speed_set = 0;
         uint8_t CHx = get_now_filament_num();
-        if (CHx >= 16)
+        if (CHx >= kTrayTotal)
         {
             motion = 0;
             PID.clear();
             Motion_control_set_PWM(0);
             return;
         }
-        uint8_t pull_statu = slave_pull_statu[CHx / 4][CHx % 4] >> 4;
+        uint8_t pull_statu = slave_pull_statu[CHx / kTrayCount][CHx % kTrayCount] >> 4;
         if (time_now >= motor_stop_time)
         {
             motion = 0;
@@ -467,7 +468,7 @@ void Motion_control_init()
     Motor_init();
     setup_motor_task();
 }
-uint8_t pullcheck[16] = {0}; // 当前bmcu通道使用标记
+uint8_t pullcheck[kTrayTotal] = {0}; // 当前bmcu通道使用标记
 uint8_t lastnum = 0;
 
 bool Position_check()
@@ -484,7 +485,7 @@ bool Position_check()
 void motor_motion_run()
 {
     uint8_t num = get_now_filament_num();
-    if (num >= 16)
+    if (num >= kTrayTotal)
     {
         MOTOR_CONTROL.set_motion(0, 100);
         MOTOR_CONTROL.run();

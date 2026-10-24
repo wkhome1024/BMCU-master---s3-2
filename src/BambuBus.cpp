@@ -1,11 +1,12 @@
 #include "BambuBus.h"
+#include "HubTypes.h"
 #include "CRC16.h"
 #include "CRC8.h"
 
 static constexpr int BAMBU_MIN_FRAME = 7;   // 0x3D + 标志 + 长度 + CRC8 + 最小载荷
 static constexpr int BAMBU_MAX_FRAME = 199; // 与现有解析窗口保持一致
-static constexpr uint8_t BAMBU_MAX_AMS = 4;
-static constexpr uint8_t BAMBU_MAX_TRAY = 4;
+static constexpr uint8_t BAMBU_MAX_AMS = kAmsCount;
+static constexpr uint8_t BAMBU_MAX_TRAY = kTrayCount;
 
 CRC16 crc_16;
 CRC8 crc_8;
@@ -22,10 +23,10 @@ bool bambus_error = false;
 // bool pull_error = false;
 uint8_t motor_unready = 0;
 uint64_t pullback_time = 30000; // 30s
-_filament_motion_state_set motion_temp[4][4];
-uint8_t statu_temp[4][4];
-uint8_t slave_pull_statu[4][4] = {0};
-float filament_meters[4][4] = {0};
+_filament_motion_state_set motion_temp[kAmsCount][kTrayCount];
+uint8_t statu_temp[kAmsCount][kTrayCount];
+uint8_t slave_pull_statu[kAmsCount][kTrayCount] = {0};
+float filament_meters[kAmsCount][kTrayCount] = {0};
 struct _filament
 {
     // AMS statu
@@ -55,6 +56,83 @@ struct alignas(4) flash_save_struct
     uint32_t version = Bambubus_version;
     uint32_t check = 0x40614061;
 } data_save;
+
+// Web/MQTT 只读快照；通信任务唯一写入。
+struct TraySnapshot
+{
+    uint32_t color;
+    uint16_t percent;
+    uint8_t online;
+    uint8_t motion;
+    uint8_t pull;
+    uint8_t flags;
+};
+
+struct HubSnapshot
+{
+    TraySnapshot tray[kTrayTotal];
+    uint8_t selected;
+    uint8_t active_ams;
+    uint8_t selected_pull;
+    uint8_t flags;
+    uint32_t seq;
+};
+
+static portMUX_TYPE hub_snapshot_mux = portMUX_INITIALIZER_UNLOCKED;
+static HubSnapshot hub_snapshot;
+
+static void hub_publish_snapshot()
+{
+    HubSnapshot next;
+    memset(&next, 0, sizeof(next));
+    const uint8_t now = data_save.BambuBus_now_filament_num;
+    next.selected = (now < kTrayTotal) ? now : 0xFF;
+    next.active_ams = (AMS_num_max > kAmsCount) ? kAmsCount : AMS_num_max;
+    next.flags = motor_unready;
+
+    for (uint8_t ams = 0; ams < kAmsCount; ++ams)
+    {
+        for (uint8_t tray = 0; tray < kTrayCount; ++tray)
+        {
+            const _filament &f = data_save.filament[ams][tray];
+            TraySnapshot &s = next.tray[ams * kTrayCount + tray];
+            s.color = ((uint32_t)f.color_R << 24) | ((uint32_t)f.color_G << 16) |
+                      ((uint32_t)f.color_B << 8) | f.color_A;
+            s.online = (f.statu == offline) ? 0 : 1;
+            s.motion = (uint8_t)f.motion_set;
+            s.pull = slave_pull_statu[ams][tray] >> 4;
+
+            float meters = f.meters;
+            if (isnan(meters) || isinf(meters))
+                meters = 0;
+            int percent = (int)(meters / 350.0f * 100.0f);
+            if (percent < 0)
+                percent = 0;
+            if (percent > 100)
+                percent = 100;
+            s.percent = (uint16_t)percent;
+        }
+    }
+    if (next.selected < kTrayTotal)
+        next.selected_pull = next.tray[next.selected].pull;
+    else
+        next.selected_pull = 0xFF;
+
+    portENTER_CRITICAL(&hub_snapshot_mux);
+    next.seq = hub_snapshot.seq + 1;
+    hub_snapshot = next;
+    portEXIT_CRITICAL(&hub_snapshot_mux);
+}
+
+static bool hub_get_snapshot(HubSnapshot *out)
+{
+    if (!out)
+        return false;
+    portENTER_CRITICAL(&hub_snapshot_mux);
+    *out = hub_snapshot;
+    portEXIT_CRITICAL(&hub_snapshot_mux);
+    return true;
+}
 
 bool Bambubus_read()
 {
@@ -313,12 +391,11 @@ void Bmcu_readuart()
     }
 }
 
-uint8_t online_detect_num[5][16] = {
+uint8_t online_detect_num[kAmsCount][16] = {
     {0x0E, 0x7D, 0x32, 0x31, 0x31, 0x38, 0x15, 0x00, 0x36, 0x39, 0x37, 0x33, 0xFF, 0xFF, 0xFF, 0xFF},
     {0x9B, 0x31, 0x33, 0x34, 0x36, 0x35, 0x02, 0x00, 0x37, 0x39, 0x33, 0x38, 0xFF, 0xFF, 0xFF, 0xFF},
     {0x2E, 0xC2, 0x35, 0x31, 0x38, 0x37, 0x18, 0x00, 0x36, 0x36, 0x38, 0x30, 0xFF, 0xFF, 0xFF, 0xFF},
-    {0xC9, 0xD2, 0x36, 0x38, 0x34, 0x36, 0x17, 0x00, 0x53, 0x33, 0x32, 0x33, 0xFF, 0xFF, 0xFF, 0xFF},
-    {0xBF, 0xCF, 0x30, 0x35, 0x39, 0x37, 0x18, 0x00, 0x4A, 0x36, 0x30, 0x35, 0xFF, 0xFF, 0xFF, 0xFF}};
+    {0xC9, 0xD2, 0x36, 0x38, 0x34, 0x36, 0x17, 0x00, 0x53, 0x33, 0x32, 0x33, 0xFF, 0xFF, 0xFF, 0xFF}};
 
 void BambuBus_init()
 {
@@ -453,6 +530,7 @@ void BambuBus_init()
             //   j.meters = 0;
         }
     }
+    hub_publish_snapshot();
 }
 
 bool package_check_crc16(uint8_t *data, int data_length)
@@ -624,7 +702,7 @@ package_type get_packge_type(unsigned char *buf, int length)
     }
     return BambuBus_package_NONE;
 }
-uint8_t package_num[4] = {0};
+uint8_t package_num[kAmsCount] = {0};
 uint8_t bmcu_package_num = 0;
 
 uint8_t get_filament_left_char(uint8_t AMS_num, uint8_t checknum)
@@ -992,7 +1070,7 @@ unsigned char Motion_res[] = {0x9D, 0x0A, 0x03,
                               0x00, 0x00, // 在线检测+缓冲
                               0x00};      // crc8 校验
 
-uint8_t ams_status[4][3] = {{0xFF, 0x01, 0x00}, {0xFF, 0x01, 0x00}, {0xFF, 0x01, 0x00}, {0xFF, 0x01, 0x00}};
+uint8_t ams_status[kAmsCount][3] = {{0xFF, 0x01, 0x00}, {0xFF, 0x01, 0x00}, {0xFF, 0x01, 0x00}, {0xFF, 0x01, 0x00}};
 void send_for_motion_short(unsigned char *buf, int length)
 {
     if (length < 9)
@@ -1305,7 +1383,7 @@ unsigned char F01_res[] = {
     0x0E, 0x7D, 0x32, 0x31, 0x31, 0x38, 0x15, 0x00, 0x36, 0x39, 0x37, 0x33, 0xFF, 0xFF, 0xFF, 0xFF,
     0x00, 0x00, 0x00, 0x33, 0xF0};
 int num_F00 = 0;
-bool have_registered[4] = {false, false, false, false};
+bool have_registered[kAmsCount] = {false, false, false, false};
 void send_for_online_detect(unsigned char *buf, int length)
 {
     if (length < 8)
@@ -1536,8 +1614,8 @@ unsigned char filament_res[] = {0x7D, 0x0A, 0x08,
                                 0x00, 0x00, // 公用控制位 + 专用控制位
                                 0x00};      // crc8 校验
 unsigned char Set_filament_res[] = {0x3D, 0xC0, 0x08, 0xB2, 0x08, 0x60, 0xB4, 0x04};
-uint8_t motor_time[4] = {1, 2, 4, 8};   // 电机退料时间
-uint8_t pwm_zero[4] = {22, 30, 38, 46}; // 电机pwm 零点
+uint8_t motor_time[kTrayCount] = {1, 2, 4, 8};   // 电机退料时间
+uint8_t pwm_zero[kTrayCount] = {22, 30, 38, 46}; // 电机pwm 零点
 void send_reset()
 {
     filament_res[2] = 0x08;
@@ -1962,6 +2040,7 @@ package_type BambuBus_run()
         bambu_stu = stu;
     else
         bambu_stu = BambuBus_package_heartbeat;
+    hub_publish_snapshot();
     return stu;
 }
 
@@ -2012,37 +2091,35 @@ String Bmcu_set_json(int ams_num, int i)
 {
     if (ams_num < 0 || ams_num >= BAMBU_MAX_AMS || i < 0 || i >= BAMBU_MAX_TRAY)
         return String("{}");
-    const auto &filament = data_save.filament[ams_num][i];
-    float meters = filament.meters;
-    meters = meters / 350 * 100; // 转换为百分比显示
-    if (meters > 95.0f)
-    {
-        meters = 95.0f;
-    }
-    if (isnan(meters) || isinf(meters))
-    {
-        meters = 0.0f;
-    }
-    // 直接格式化到栈缓冲区，避免多次 String 拼接造成的堆分配与碎片
+    HubSnapshot snap;
+    if (!hub_get_snapshot(&snap))
+        return String("{}");
+
+    const TraySnapshot &t = snap.tray[ams_num * kTrayCount + i];
+    uint8_t r = (t.color >> 24) & 0xFF;
+    uint8_t g = (t.color >> 16) & 0xFF;
+    uint8_t b = (t.color >> 8) & 0xFF;
+    float meter = (t.percent > 95) ? 95.0f : (float)t.percent;
+
     char jsonBuf[64];
     snprintf(jsonBuf, sizeof(jsonBuf),
              "{\"onuse\":\"%s\",\"color\":\"#%02X%02X%02X\",\"meter\":\"%6.1f\"}",
-             (filament.motion_set != idle) ? "true" : "false",
-             filament.color_R,
-             filament.color_G,
-             filament.color_B,
-             meters);
+             (t.motion != (uint8_t)idle) ? "true" : "false",
+             (unsigned)r, (unsigned)g, (unsigned)b, meter);
     return String(jsonBuf);
 }
 
 // 16 通道状态快照，供 /channels.json 使用。为了减小网页体积，只发送必要字段。
 String Bmcu_channels_json()
 {
+    HubSnapshot snap;
+    hub_get_snapshot(&snap);
+
     char buf[64];
-    uint8_t now = data_save.BambuBus_now_filament_num;
-    if (now >= 16)
+    uint8_t now = snap.selected;
+    if (now >= kTrayTotal)
         now = 0xFF;
-    uint8_t slave_pull = (now < 16) ? (slave_pull_statu[now / 4][now % 4] >> 4) : 0xFF;
+    uint8_t slave_pull = (now < kTrayTotal) ? snap.selected_pull : 0xFF;
 
     String json;
     json.reserve(512);
@@ -2051,26 +2128,16 @@ String Bmcu_channels_json()
              (unsigned)slave_pull, motor_pwm);
     json += buf;
 
-    for (uint8_t ams = 0; ams < 4; ams++)
+    for (uint8_t idx = 0; idx < kTrayTotal; idx++)
     {
-        const _filament *row = data_save.filament[ams];
-        for (uint8_t tray = 0; tray < 4; tray++)
-        {
-            const _filament &f = row[tray];
-            uint8_t online = (f.statu == offline) ? 0 : 1;
-            float meters = f.meters;
-            if (isnan(meters) || isinf(meters))
-                meters = 0;
-            int percent = (int)(meters / 350.0f * 100.0f);
-            if (percent < 0)
-                percent = 0;
-            if (percent > 100)
-                percent = 100;
-            snprintf(buf, sizeof(buf), "%s[%u,%u,\"#%02X%02X%02X\",%d]",
-                     (ams || tray) ? "," : "", (unsigned)online, (unsigned)f.motion_set,
-                     (unsigned)f.color_R, (unsigned)f.color_G, (unsigned)f.color_B, percent);
-            json += buf;
-        }
+        const TraySnapshot &t = snap.tray[idx];
+        uint8_t r = (t.color >> 24) & 0xFF;
+        uint8_t g = (t.color >> 16) & 0xFF;
+        uint8_t b = (t.color >> 8) & 0xFF;
+        snprintf(buf, sizeof(buf), "%s[%u,%u,\"#%02X%02X%02X\",%u]",
+                 idx ? "," : "", (unsigned)t.online, (unsigned)t.motion,
+                 (unsigned)r, (unsigned)g, (unsigned)b, (unsigned)t.percent);
+        json += buf;
     }
     json += "]}";
     return json;

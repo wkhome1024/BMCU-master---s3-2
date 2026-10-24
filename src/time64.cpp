@@ -1,24 +1,17 @@
 #include "main.h"
-uint64_t _time64_time_H = 0;
-uint32_t _time64_time_L = 0;
-uint32_t _time64_temp = 0;
+#include <esp_timer.h>
+
 uint64_t get_time64()
 {
-    // millis() should return the system uptime in milliseconds as a uint32_t; ensure it is defined elsewhere.
-    //uint32_t T = millis();
-    return (_time64_time_H + (uint64_t)_time64_time_L);
+    return (uint64_t)(esp_timer_get_time() / 1000ULL);
 }
+
 void update_time()
 {
-    _time64_temp = millis();
-    if (_time64_temp < _time64_time_L)
-    {
-        _time64_time_H += 0x100000000;
-    }
-    _time64_time_L = _time64_temp;
+    // 时间直接来自 esp_timer，不再维护 H/L 两个变量。
 }
+
 uint32_t get_time32()
 {
-    // This function returns the current time in milliseconds as a uint32_t.
-    return _time64_time_L;
-}   
+    return (uint32_t)(esp_timer_get_time() / 1000ULL);
+}
