@@ -56,7 +56,7 @@ void hub_msg()
       }
     }
     sw_send = !sw_send;
-
+    client.loop();
     // my_printf("(sensor) 拉力传感器电压: %.2f V", MC_PULL_stu_raw);
     // my_printf("(sensor) 在线传感器电压: %.2f V", MC_ONLINE_key_stu_raw);
     // my_printf("(sensor) 缓冲PWM状态: %.2f", H_PULL_stu_raw);

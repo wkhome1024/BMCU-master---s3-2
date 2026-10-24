@@ -289,53 +289,40 @@ void reset_filament_meters(uint8_t AMS_num, uint8_t read_num)
 }
 void add_filament_meters(int num, float meters)
 {
-    if (num >= 0 && num < 32)
+    if (num >= 0 && num < kTrayTotal)
     {
-        int AMS = num / 4, filament = num % 4;
+        int AMS = num / kTrayCount, filament = num % kTrayCount;
         if (data_save.rt[AMS][filament].motion_set != idle)
             data_save.filament[AMS][filament].meters += meters;
     }
 }
 void set_filament_meters(int num, float meters)
 {
-    if (num >= 0 && num < 32)
-        data_save.filament[num / 4][num % 4].meters = meters;
+    if (num >= 0 && num < kTrayTotal)
+        data_save.filament[num / kTrayCount][num % kTrayCount].meters = meters;
 }
 void set_filament_online(int num, bool if_online)
 {
-    if (num >= 0 && num < 32)
-        if (if_online)
-        {
-            data_save.rt[num / 4][num % 4].statu = online;
-        }
-        else
-        {
-            data_save.rt[num / 4][num % 4].statu = offline;
-        }
+    if (num < 0 || num >= kTrayTotal)
+        return;
+    data_save.rt[num / kTrayCount][num % kTrayCount].statu = if_online ? online : offline;
 }
 
 bool get_filament_online(int num)
 {
-    if (num >= 0 && num < 32)
-        if (data_save.rt[num / 4][num % 4].statu == offline)
-        {
-            return false;
-        }
-        else
-        {
-            return true;
-        }
-    return true;
+    if (num < 0 || num >= kTrayTotal)
+        return false;
+    return data_save.rt[num / kTrayCount][num % kTrayCount].statu != offline;
 }
 void set_filament_motion(int num, _filament_motion_state_set motion)
 {
-    if (num >= 0 && num < 32)
-        data_save.rt[num / 4][num % 4].motion_set = motion;
+    if (num >= 0 && num < kTrayTotal)
+        data_save.rt[num / kTrayCount][num % kTrayCount].motion_set = motion;
 }
 _filament_motion_state_set get_filament_motion(int num)
 {
-    if (num >= 0 && num < 32)
-        return (_filament_motion_state_set)data_save.rt[num / 4][num % 4].motion_set;
+    if (num >= 0 && num < kTrayTotal)
+        return (_filament_motion_state_set)data_save.rt[num / kTrayCount][num % kTrayCount].motion_set;
     else
         return idle;
 }
@@ -344,7 +331,7 @@ bool BambuBus_not_on_print()
     uint8_t now = data_save.BambuBus_now_filament_num;
     if (now >= BAMBU_MAX_AMS * BAMBU_MAX_TRAY)
         return false;
-    return (!bambus_onflush && data_save.rt[now / 4][now % 4].motion_set == idle);
+    return (!bambus_onflush && data_save.rt[now / kTrayCount][now % kTrayCount].motion_set == idle);
 }
 uint8_t buf_X[512];
 CRC8 _RX_IRQ_crcx(0x39, 0x66, 0x00, false, false);

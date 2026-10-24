@@ -435,7 +435,8 @@ void AS5600_distance_updata()
     if (isnan(speed_as5600) || isinf(speed_as5600))
         speed_as5600 = 0;
 
-    if (MC_ONLINE_key_stu == 2 || (distance_E > 0 && MC_ONLINE_key_stu > 0))
+    if (filament_num < kTrayTotal &&
+        (MC_ONLINE_key_stu == 2 || (distance_E > 0 && MC_ONLINE_key_stu > 0)))
     {
         add_filament_meters(filament_num, distance_E / 1000);
         last_total_distance += distance_E; // mm
