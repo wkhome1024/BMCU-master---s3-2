@@ -1,4 +1,5 @@
 #include "485.h"
+#include <driver/uart.h>
 #define s3v3 true   // 默认为v2
 
 #define Bambu_RX_PIN 44
@@ -28,11 +29,16 @@ void serialTask(void *parameter)
     bool send_heart = true;
     for (;;)
     {
+        bool work = false;
+
         while (rxBuffer0.available())
         {
             uint8_t c = rxBuffer0.read();
             RX_IRQ(c);
         }
+        if (BambuBus_have_data || Bmcu_have_data)
+            work = true;
+
         BambuBus_run();
 
         uint32_t now = millis();
@@ -51,7 +57,11 @@ void serialTask(void *parameter)
             uint8_t d = rxBuffer1.read();
             RX_BMCU(d);
         }
-        vTaskDelay(pdMS_TO_TICKS(1));
+
+        // 有接收/待处理/周期发送时不睡，避免固定 1 ms 排队延迟；
+        // 完全空闲时才让出 CPU，同时保持 1 ms 协议时基。
+        if (!work)
+            vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
 void Readuart()
@@ -75,7 +85,9 @@ void send_bambu_uart(const unsigned char *data, size_t length)
     if (catch_mode || Switch_need_refresh())
         return;
     Serial0.write(data, length);
-    vTaskDelay(pdMS_TO_TICKS(1)); // Bambu RS485 换向间隔
+    // 等待 UART 真正发完（含移位寄存器），代替固定 1 ms 延时。
+    // 199 B @1.25 Mbps 约 1.6 ms，5 ms 超时足够覆盖最坏帧。
+    uart_wait_tx_done(UART_NUM_0, pdMS_TO_TICKS(2));
     if (catch_key > 200 && !catch_mode)
         get_C_data((uint8_t *)data, length);
 }
